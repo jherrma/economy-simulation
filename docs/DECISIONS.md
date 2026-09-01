@@ -702,6 +702,121 @@ determinism and the paired-seed protocol of §13.1. Plus one boundary: the engin
 Parquet and nothing else — no analysis, no plotting — so it stays small enough to audit end to end
 and the analysis tooling remains a separate, reversible choice.
 
+### D28 — Profit is distributed annually, at a staggered fiscal year end
+
+**Decided:** a firm distributes profit once every `fiscal_year_ticks` (12), at its own year end, as
+part of the **same** review that sets wages (§5.2.2, §5.2.3). Year ends are staggered across the
+calendar by a per-firm `fiscal_year_offset`. `wage_review_period` is replaced by `fiscal_year_ticks`,
+since the two were always one event.
+
+**Why:** §5.2.2 said "each tick, after investment is decided, a firm splits its profit two ways"
+while §5.2.3, one subsection below, reviewed wages every twelve. Firms do not pay dividends monthly,
+and having the two cadences differ meant the firm decided pay and payout from different profit
+figures. One annual review computing one number, and deciding both from it, is both realistic and
+simpler.
+
+**Why staggered:** with 79 firms on a shared calendar, the town would receive a twelfth of its
+annual property income in a single tick — a demand spike that is an artefact of the calendar rather
+than of anything economic, and the same class of error as letting every mortgage amortise in
+lockstep (§5.1.2). `synchronised_fiscal_year` remains available and is swept, because real economies
+do have dividend seasons and the gap between the two settings is worth measuring.
+
+**What it costs, recorded because it is not free:** between year ends, revenue minus wages
+accumulates on firm balance sheets, so money returns to households later than before. It is bounded
+at twelve ticks, but firms hold more cash on average, which withdraws base money from the vault
+(§6.2) and tightens credit slightly. It also makes the capital call of §5.2 **less** frequent — a
+firm short of money in month eight has not yet paid out the year's profit, so retention is still
+available. Both effects are small and both are now reported.
+
+### D29 — The household's affordability test is myopic, and the rich/poor asymmetry is emergent
+
+**Decided:** a household's own affordability test is `instalment ≤ income − debt service already
+running − rent − subsistence`, evaluated **this tick**. Not over the term of the loan. Running costs
+are excluded from it by default. Both are switches (`affordability_horizon`,
+`affordability_includes_running_cost`) so each assumption is measured.
+
+**Why the horizon changed:** §6.2 previously required the instalment to fit "the monthly residual
+for the term of the loan", which handed every household perfect foresight over five to twenty-five
+years — and flatly contradicted §6.8, which needs households to stack loans that each pass alone
+and together do not. With full-term foresight, routes 1, 3 and 4 of §6.8 all close: a household
+could not stack, could not be caught by a later price rise, and would keep a buffer against both.
+Myopia is not a simplification here; it is the behaviour under test.
+
+**Why running costs are excluded:** §4.1 calls the running cost the commonest route into
+overextension and says it enters `unit_cost` but not the instalment the bank tests. That only works
+if the household is not already counting it either. The instalment is what a buyer looks at; the
+fuel and insurance arrive afterwards and do not stop.
+
+**The saying, and why it must not be coded:** there is a saying that the poor ask whether they can
+afford the monthly payment and the rich ask whether they can afford the price. The model reproduces
+it — but every household applies the **same** rule, and what differs is which test *binds*. A
+household with the cash clears the price test and pays cash, and since `r_l > r_d` always,
+financing strictly worsens a unit's score, so it strictly prefers to. A household without the cash
+can only reach the same unit through the instalment test, which is a far lower bar.
+
+That the asymmetry is **emergent from liquidity rather than assigned by type** is what lets the
+model say anything about it. If the two tests were handed out by household class, every
+distributional result would be a restatement of the assignment. As it stands, a household that
+becomes liquid stops using the instalment test on its own, and a squeezed one starts.
+
+### D30 — The replacement cycle is an output, and that is what instruments channel R
+
+**Decided:** `durability` is a good's **functional life**, not its replacement cycle. Electronics
+moves from 24 ticks to 60 — a five-year-old phone works. The observed replacement cycle of roughly
+1–5 years is an **output** of the §6.2 decision under status decay, never a drawn parameter.
+
+**Why the old value was wrong:** the goods table set electronics to 24 and annotated it "real
+replacement cycle ~2 years", conflating the two. §4 already flags exactly this distinction for
+housing — its 360 ticks are an ownership horizon, not the life of the building — and simply did not
+flag it here. The consequence was mispriced depreciation: €25 a month against a €600 phone rather
+than €10.
+
+**Why the correlation with `θ` must not be an input.** Replacement cycles do correlate with credit
+appetite, and it would be easy to draw a household's cycle from a distribution tied to `θ`. That
+would be a mistake. The mechanism already produces the correlation unaided: a household that can
+finance faces the instalment test, a far lower bar than accumulating €600, so a new unit's `score`
+crosses `λ` earlier and it replaces sooner; a cash buyer waits for the price and lands at the long
+end of the range. Households replacing at four to five years are, as a **result**, very unlikely to
+have financed.
+
+Imposing that correlation would make "credit shortens the replacement cycle" a restatement of the
+setup, and channel **R** of §1.1 — the replacement-cycle channel — would be assumed into existence
+rather than measured. As an output it is precisely the instrument R needs. This is the same class of
+error as the confounded pooled price ratio that D14 replaced, and it would have been harder to spot.
+
+**Consequences:** realised cycle by `θ` decile and the financed share of replacements are now
+reported (§9), and there is a **calibration gate** — if the realised electronics distribution does
+not span roughly 1–5 years, `status_decay` and `α_g` are miscalibrated and no treadmill result is
+usable.
+
+### D31 — Functional life, exponential car depreciation, and one value curve used three times
+
+**Decided:** the `durability` column becomes **functional life** — how long a good keeps working —
+and is no longer the replacement cycle. Cars 180 ticks, furniture 240, bicycles 180, clothing 60,
+electronics 60. A good's market value at age is defined **once** by a per-sector curve, and three
+places read it: the user-cost depreciation term (`V(age) − V(age+1)`), the second-hand opening ask,
+and collateral value for LTV, risk weight and recovery.
+
+**Cars depreciate exponentially at 16% a year; everything else is straight-line.** Straight-line is
+badly wrong for cars — over a 180-tick life it values a five-year-old car at 67% of new against a
+market figure near 40%. The exponential curve gives 59% at three years, 42% at five, 17% at ten.
+**Every car depreciates at the same rate** regardless of price or segment; that variation is real
+and deliberately not modelled, since it would add an unanchorable parameter. Car *prices* do vary,
+drawn per unit around the sector price.
+
+**What this fixes, which was worse than a wrong number.** The second-hand market priced a used unit
+against the **current new price** regardless of age, so a fifteen-year-old car and a one-year-old
+car had the same ask — and the abstainer's substitute, which §5.3.1 calls a sharper version of the
+primary claim, could not work. Under straight-line depreciation over the old 60-tick life, a
+five-year-old car was worth exactly zero.
+
+**Three consequences now expressible:** depreciation is **front-loaded**, so a new car costs ~€440 a
+tick against ~€289 for a five-year-old one — that gap *is* the cash buyer's substitute, quantified.
+A 60-month car loan against a 16% curve leaves the borrower in **negative equity** for roughly two
+years, which is why car repossession recovers so little. And the replacement cycle stays an
+**output** (D30): the observed 5–15 year range is a result, and long-cycle households should turn
+out to be the ones who did not finance.
+
 ## Open, deliberately
 
 Listed in `MODEL.md` §12. The two that most affect how results may be stated:

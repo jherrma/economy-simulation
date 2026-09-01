@@ -10,10 +10,14 @@ As the model author, I want the cost of a unit expressed as a per-tick flow rath
 
 ## Acceptance criteria
 
-- [ ] `user_cost = price/durability + financing + running_cost`, per tick (§6.2).
+- [ ] `user_cost = (V(age) − V(age+1)) + financing + running_cost`, per tick (§6.2) — the value **actually lost this tick**, from the §4.3 curve. Not `price / life`.
+- [ ] **One curve, three uses.** The same `V(age)` function serves user cost, the second-hand opening ask (07-08) and collateral value for LTV and risk weight. A test asserts all three call it rather than reimplementing it.
+- [ ] Cars use the **exponential** curve at `car_depreciation_rate` (0.16 p.a.), the same rate for every car regardless of price. Everything else is straight-line; housing has its own rule.
+- [ ] A test pins the shape: a car is worth ~59% of new at 3 years, ~42% at 5, ~17% at 10.
+- [ ] A test shows depreciation is **front-loaded**: a new car costs ~€440/tick against ~€289 for a five-year-old one — the gap that makes the second-hand market the cash buyer's substitute.
 - [ ] Financing is `r_l/1200 · outstanding` if financed, or `r_d/1200 · price` — interest forgone — if bought outright.
 - [ ] For a non-storable service `durability = 1` and there is no financing or running cost, so `user_cost` collapses to the price.
-- [ ] **Housing is the exception**: depreciation is `price · housing_depreciation_rate / 12`, not `price / durability`, because the 360 ticks are an ownership horizon and not the building's physical life (§6.5).
+- [ ] **Housing is the exception**: it uses its own low-rate curve, because its 360 ticks are an ownership horizon and not the building's physical life (§6.5).
 - [ ] Since `r_l > r_d` always, financing strictly **worsens** a unit's score. A test asserts this for every good.
 - [ ] A test compares a car and a meal and asserts neither is favoured by the *form* of the expression — both sides are flows.
 - [ ] No allocation on this path.

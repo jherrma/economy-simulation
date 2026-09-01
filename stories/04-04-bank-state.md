@@ -14,6 +14,7 @@ As the model author, I want the bank carrying reserves, its loan book, both depo
 - [ ] Loans carry type, principal, rate, remaining term, collateral and borrower — enough for risk weighting (§13.7) and for repossession (§7.2).
 - [ ] Risk weights per CRR3: mortgages LTV-graduated 0.20–0.70, consumer 0.75, firm 1.0, repossessed 1.0.
 - [ ] The bank employs `bank_headcount` staff on the same tier structure and distributes profit to shareholders in the same register as any firm — there is **no** separate `bank_shares` field (§5.1.3).
+- [ ] Its payout is **annual**, at its own staggered fiscal year end, on the §5.2.2 rule (D28). Interest accrues every tick; the dividend does not.
 - [ ] Bank profit is interest received − interest paid − write-offs − **its own wage bill**.
 - [ ] A test asserts the bank appears in the share register and in the §9 net-worth definition, since omitting it would understate the wealth Gini, which is C4.
 

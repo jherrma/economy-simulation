@@ -16,6 +16,7 @@ As the model author, I want households that cannot meet everything to choose bet
 - [ ] Breaking a time deposit sits after selling shares and before default in that order (§6.6).
 - [ ] `forbearance_ticks` missed payments are tolerated before repossession.
 - [ ] The four overextension routes of §6.8 are counted separately: stacking, income fall, price rise, no buffer.
+- [ ] Route 1 (stacking) depends on the myopic affordability horizon of §6.2. A test asserts it all but closes under `affordability_horizon = full_term`, which is the control that shows how much of the model's default rate is a foresight assumption.
 - [ ] **Route 2 runs entirely through demotion**, since there is no unemployment — so default rates are conservative and cannot be compared with observed data. A test asserts no other income-loss path exists.
 
 ## Where to start

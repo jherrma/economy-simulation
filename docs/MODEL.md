@@ -238,7 +238,11 @@ the run log records whether it did.
 
 Every good carries five properties that together determine how credit reaches it.
 
-- **Durability** — how many ticks it lasts before it must be replaced. `1` means non-storable.
+- **Functional life** — how many ticks the good keeps *working*. `1` means non-storable. It is
+  **not** the replacement cycle, which is an output (§4.2). Housing is the one exception: its figure
+  is an ownership horizon, and it depreciates on its own rule (§6.5).
+- **Depreciation curve** — how market value falls with age. Straight-line for most things,
+  **exponential for cars** (§4.3).
 - **Status weight** — how strongly owning it raises social standing. Status is *relative*
   (§6.3), so this is a coefficient, not a score.
 - **Joy** — direct contribution to wellbeing / stress reduction per tick of ownership or at
@@ -246,20 +250,20 @@ Every good carries five properties that together determine how credit reaches it
 - **Financeable** — whether the bank will lend against it, and on what terms.
 - **Supply elasticity** — how fast the producing sector can expand output.
 
-| Sector | Durability | Status | Joy | Financeable | Supply | Note |
-|---|---|---|---|---|---|---|
-| Food | 1 | 0.0 | subsistence | no | high | Fixed minimum quantity per household per tick |
-| Clothing | 18 | 0.4 | low | no | high | Replaced early for status, not wear |
-| Smartphones / electronics | **24** | 1.0 | medium | yes, 24 mo | high | Real replacement cycle ~2 years |
-| Furniture | 120 | 0.6 | low | yes, 36 mo | medium | |
-| Bicycles | 96 | 0.5 | medium | yes, 24 mo | medium | |
-| Cars | **60** | 1.3 | medium | yes, 60 mo | medium | Real replacement cycle ~5 years. Second-largest financed purchase after housing. Carries a **running cost** each tick — see §4.1 |
-| Public transport | 1 | −0.1 | low | no | **capacity-limited** | Non-storable service, flat fare, network capacity expandable only by investment |
-| Restaurants | 1 | 0.5 | high | no | medium | Non-storable service |
-| Personal services (hairdresser) | 1 | 0.1 | low | no | medium | Non-storable service |
-| Leisure / holidays | 1 | 0.9 | high | yes, 12 mo | medium | Consumed at once, high status |
-| Housing | **360** | 1.5 | high | yes, 300 mo | **near-zero** | Fixed stock; expanded only by construction. The 30 years is the **ownership horizon** — how long before a household moves or substantially renovates — not the physical life of the building, which persists in the stock indefinitely |
-| Construction | — | — | — | — | low | Produces dwellings; slow, capital-intensive |
+| Sector | Functional life | Depreciation | Status | Joy | Financeable | Supply | Note |
+|---|---|---|---|---|---|---|---|
+| Food | 1 | — | 0.0 | subsistence | no | high | Fixed minimum quantity per household per tick |
+| Clothing | **60** | straight-line | 0.4 | low | no | high | Replaced long before it wears out, for status. Cycle is an output |
+| Smartphones / electronics | **60** | straight-line ✓swept exp. | 1.0 | medium | yes, 24 mo | high | A five-year-old phone works. Observed replacement cycle **1–5 years is an output** (§4.2) |
+| Furniture | **240** | straight-line | 0.6 | low | yes, 36 mo | medium | Twenty-year functional life; replaced far sooner |
+| Bicycles | **180** | straight-line | 0.5 | medium | yes, 24 mo | medium | |
+| Cars | **180** | **exponential** | 1.3 | medium | yes, 60 mo | medium | Fifteen-year functional life; observed replacement **5–15 years is an output**. Prices vary by segment. Second-largest financed purchase. Carries a **running cost** each tick — §4.1 |
+| Public transport | 1 | — | −0.1 | low | no | **capacity-limited** | Non-storable service, flat fare, network capacity expandable only by investment |
+| Restaurants | 1 | — | 0.5 | high | no | medium | Non-storable service |
+| Personal services | 1 | — | 0.1 | low | no | medium | Non-storable service |
+| Leisure / holidays | 1 | — | 0.9 | high | yes, 12 mo | medium | Consumed at once, high status |
+| Housing | **360** | own rule (§6.5) | 1.5 | high | yes, 300 mo | **near-zero** | **The exception.** 360 is an *ownership horizon*, not a functional life — the building persists in the stock indefinitely. Depreciates at `housing_depreciation_rate` |
+| Construction | — | — | — | — | — | low | Produces dwellings and capacity; slow, capital-intensive |
 
 The table is deliberately spread across the elasticity × financeability grid. That grid is the
 experiment:
@@ -361,6 +365,90 @@ Two mechanisms, both optional switches, both drawn from the accompanying essay:
 
 With perceived obsolescence off, replacement is driven purely by wear. The difference between
 the two runs isolates how much of the demand is manufactured.
+
+#### The replacement cycle is an output, and it is how channel R is instrumented
+
+**`durability` is the functional life, not the replacement cycle.** An earlier draft set electronics
+to 24 ticks and annotated it "real replacement cycle ~2 years" — conflating the two, which is
+precisely the error §4 flags for housing and did not flag here. A five-year-old phone works. What
+ends its life is that a newer generation has taken its standing.
+
+So the household does not replace on a timer. It replaces when a new unit's `score` crosses `λ`
+(§6.2), and status decay is what pushes it there: as newer generations appear, the held unit's rank
+falls, the `status_gain` from replacing rises, and eventually the purchase clears. **The observed
+replacement cycle therefore falls out of the decision rule**, and the model predicts a range of
+roughly **1 to 5 years** across the population rather than a single figure.
+
+**The correlation with credit appetite must emerge, not be assumed.** It is tempting — and it would
+be wrong — to draw a household's replacement cycle from a distribution correlated with `θ`. The
+mechanism already produces the correlation without help: a household that can finance faces the
+instalment test, which is a far lower bar than accumulating €600, so it crosses `λ` earlier and
+replaces sooner. A household that must pay cash waits until it has the price, and replaces at the
+long end of the range.
+
+If that correlation were an input, "credit shortens the replacement cycle" would be a restatement of
+the setup rather than a finding — and channel **R** of §1.1, the replacement-cycle channel, would be
+assumed into existence. As an output it is exactly the instrument R needs.
+
+**Two things follow, both required:**
+
+- **Reported:** realised replacement cycle per sector, **by `θ` decile**, and the share of
+  replacements that were financed. The prediction to check is that households replacing at 4–5 years
+  are very unlikely to have financed, and that financed replacements cluster at the short end.
+- **A calibration gate:** if the realised distribution does not span roughly 1–5 years, `status_decay`
+  and `α_g` are miscalibrated and no result about the treadmill is usable. This is a gate on the
+  warm-up, in the manner of §7.3's rate check, not something to notice afterwards.
+
+### 4.3 Depreciation and resale value
+
+**One curve, three uses.** A good's market value at a given age is defined once, and three separate
+parts of the model read the same function:
+
+1. **User cost** (§6.2) — the depreciation term is `V(age) − V(age+1)`, the value actually lost this
+   tick. Not `price / life`.
+2. **Second-hand price** (§5.3.1) — the bank's opening ask is `V(age) · (1 − liquidation_haircut)`.
+3. **Collateral value** — LTV at origination, risk weight under CRR3, and recovery on repossession
+   all use `V(age)`.
+
+Before this they were three different rules, and the second-hand market was the worst of them: it
+priced a used unit against the *current new price* regardless of age, so a fifteen-year-old car and
+a one-year-old car cost the same.
+
+**The curves:**
+
+```
+straight-line   V(a) = P · max(0, 1 − a / functional_life)
+exponential     V(a) = P · (1 − δ)^(a/12)             δ = annual rate
+housing         V(a) = P · (1 − housing_depreciation_rate)^(a/12)     δ = 0.01
+```
+
+**Cars are exponential and everything else is straight-line.** Straight-line is badly wrong for
+cars: over a 180-tick functional life it would value a five-year-old car at 67% of new, where the
+market says about 40%. At `car_depreciation_rate = 0.16` a year the curve gives 59% at three years,
+42% at five and 17% at ten — which is the observed shape.
+
+**Every car depreciates at the same rate**, regardless of price or segment. Real depreciation varies
+by marque and that variation is not modelled: it would add a parameter nobody can anchor and it is
+not what the experiment is about.
+
+**Cars vary in price.** Prices are drawn per unit from `price_dispersion_car` around the sector
+price, so the town has a range of vehicles rather than one car repeated. The same **rate** applies to
+all of them, so an expensive car loses more in absolute euros and the same fraction.
+
+**Three consequences, all of which matter:**
+
+- **Depreciation is front-loaded, which is why cash buyers buy used.** A new €18,000 car loses about
+  €260 in its first month; the same car at five years old loses about €109. Add the €180 running cost
+  and a new car costs roughly €440 a tick against €289 for a used one. That gap is the abstainer's
+  substitute (§5.3.1) expressed as a number, and under straight-line depreciation it would not exist.
+- **Negative equity early in a car loan.** A 60-month loan against a curve losing 16% a year leaves
+  the borrower owing more than the car is worth for roughly the first two years. That is realistic,
+  it is what makes car repossession recover so little, and it means `ltv_max` on cars binds
+  differently over the life of the loan than on a mortgage.
+- **The replacement cycle stays an output.** Nothing here sets when a car is replaced. As with
+  electronics (§4.2), a household replaces when a new unit's `score` crosses `λ`, and the observed
+  5–15 year range across the population is a result. The prediction to check is the same: long-cycle
+  households are very unlikely to have financed.
 
 ---
 
@@ -761,12 +849,33 @@ sheets monotonically over 480 ticks, demand falls, and the run deflates — an a
 be attributed to whatever scenario parameter happened to be under test. This is not an
 omission to note; it is a hole that has to be closed.
 
-Each tick, after investment is decided, a firm splits its profit two ways:
+**Distribution is annual, not per tick.** It happens once every `fiscal_year_ticks` (12), at the
+firm's own year end, as part of the same review that sets wages (§5.2.3) — the firm computes the
+year's profit once and decides pay and dividends from that single number. An earlier draft
+distributed every tick, which contradicted the annual wage review sitting one subsection below it
+and made firms behave in a way no firm does.
+
+At its year end, a firm splits the year's profit two ways:
 
 1. **Retention** — up to `firm_buffer_months` of its wage bill as working capital, plus whatever
    its capacity investment plan requires (§5.2).
 2. **Distribution** — a share `shareholder_profit_share`, drawn per firm from a configurable
    range, paid to shareholders pro rata by holding (§5.1.3). The remainder is retained.
+
+**Fiscal years are staggered.** Each firm draws a `fiscal_year_offset` in [0, 11] at
+initialisation, so year ends are spread across the calendar. Without it all 79 firms would pay out
+in the same tick and the town would receive a twelfth of its annual property income in a single
+month — a demand spike that is an artefact of a shared calendar, and the same class of error as
+letting every mortgage in town amortise in lockstep (§5.1.2). A `synchronised_fiscal_year` switch
+is available and swept, because real economies do have dividend seasons and the difference between
+the two settings is itself worth seeing.
+
+**What the delay costs, stated because it is not free.** Between year ends, revenue minus wages
+accumulates on firm balance sheets, so money returns to households later than it did under per-tick
+distribution. That is realistic and it is bounded at twelve ticks, but it means firms hold more cash
+on average, which withdraws base money from the bank's vault (§6.2) and tightens credit slightly.
+It also makes the capital call of §5.2 **less** frequent: a firm short of money in month eight has
+not yet paid out the year's profit, so retention is still available to it.
 
 ```toml
 [firms.profit_split]
@@ -784,7 +893,8 @@ cuts wages, then calls capital from its shareholders, then borrows (§5.2). **It
 (D22) — the ladder has no last rung, by design, because this model is about what happens to prices
 and consumers, not about firm survival.
 
-**Metrics:** firm profit split retained versus distributed, per sector, every tick.
+**Metrics:** firm profit split retained versus distributed, per sector, per fiscal year; and the
+distribution of year ends across the calendar, so a synchronised run is visible as such.
 
 #### 5.2.3 Workforce and wage structure
 
@@ -857,7 +967,8 @@ than absorbed.
 
 #### Annual wage review — and what pins the price level
 
-Every 12 ticks each firm reviews wages against the year's profit:
+Every `fiscal_year_ticks` (12) each firm reviews wages against the year's profit — **the same
+review that distributes the dividend** (§5.2.2), computed from the same profit figure:
 
 | Year | Wages | Distribution | Retention |
 |---|---|---|---|
@@ -923,7 +1034,8 @@ nobody can supply the bank with reserves — see §7.
   with large consequences and must be reported, never buried.**
 - **The bank is also an employer.** It has a headcount and the same three-tier wage structure as
   any firm (§5.2.3), reviews wages annually against its own profit, and distributes to
-  shareholders on the same rule (§5.2.2). Its staff are ordinary households whose income rises
+  shareholders on the same rule and the same annual cadence (§5.2.2, D28) — it has a
+  `fiscal_year_offset` like any other firm. Its staff are ordinary households whose income rises
   with the bank's profitability — which means **part of the town's income depends directly on the
   size of the loan book.** That is not an artefact to be apologised for; it is a small, concrete
   instance of the argument the essay makes, and it should be reported: the share of household
@@ -959,8 +1071,9 @@ accumulates in phones and the write-off loop that D6 depends on never closes.
 fixed the used price at `(1 − liquidation_haircut)` × the current new price, which makes it a
 constant fraction of a price set in the new-goods market and unable to respond to used supply at
 all — while the paragraph after it claimed a falling-used-price feedback. The rule is therefore:
-`(1 − liquidation_haircut)` is the bank's **opening ask**, marked down by `used_markdown_step` each
-tick the unit goes unsold, and the realised price is what a household's §6.2 ranking accepts. Ten
+`V(age) · (1 − liquidation_haircut)` is the bank's **opening ask** — the §4.3 curve at the unit's
+actual age, *not* a fraction of the current new price — marked down by `used_markdown_step` each tick
+the unit goes unsold, with the realised price being what a household's §6.2 ranking accepts. Ten
 repossessed cars against three interested buyers clear low; one car against ten clears near the
 ask. The used price is an **output**.
 
@@ -1075,11 +1188,14 @@ the household's income is known, because the choice between paying debt service 
     **capital call** on shareholders' deposits, then a loan. The capital call is placed at this
     step, after wages have been paid from the buffer, so that a shareholder who is also the firm's
     employee is never asked to fund the wage he has not yet received.
-13. Firms distribute profit to owner households (§5.2.2).
+13. Firms **at their fiscal year end** distribute profit to owner households (§5.2.2). Most
+    firms do nothing at this step in most ticks; year ends are staggered by `fiscal_year_offset`.
 14. Households and firms rebalance across cash, demand deposits and time deposits (§6.6). Bank
     reserves move accordingly.
 15. Bank **accrues** interest on outstanding balances, processes arrears and defaults, and
-    distributes or retains profit. Interest accrual here is on balances *after* step 8's payments;
+    and **at its own fiscal year end** distributes or retains profit on the §5.2.2 rule. Interest
+    accrues every tick; the payout is annual, like any firm's. Interest accrual here is on balances
+    *after* step 8's payments;
     the payment and the accrual are separate operations on the same loan and must not both be
     treated as interest, which is the standard double-counting error.
 16. Stress, status ranks, and expectations update.
@@ -1162,7 +1278,7 @@ silently misbehaves.
 
 ```
 user_cost(g) = depreciation + financing cost + running cost
-             = price_g / durability_g
+             = V(age) − V(age+1)                  # §4.3 — the value actually lost this tick
              + (r_l/12 · outstanding)          if financed
                (r_d/12 · price_g)              if bought outright — interest forgone
              + running_cost_g                  per tick, e.g. a car
@@ -1218,21 +1334,58 @@ The household buys units in descending order of `score` while two tests pass:
    scale-free, `λ` needs no indexation — which is the point of having put the price level into
    `joy` instead. This is how saving enters: not as a pre-committed set-aside, but as a
    *reservation price on money itself*.
-2. **The affordability test.** A cash purchase must fit available funds now. A financed purchase
-   must fit the monthly residual for the term of the loan, and pass the bank's standards (§5.3).
+2. **The affordability test, and it is deliberately myopic.**
+
+   ```
+   cash purchase:      price      ≤ cash + demand deposits, now
+   financed purchase:  instalment ≤ monthly residual, this tick
+                       AND passes the bank's standards (§5.3)
+   ```
+
+   where `monthly residual = income − debt service already running − rent − subsistence`. This is
+   the "is there enough left?" test, and it is the household's **own**, distinct from the bank's
+   DSTI test at origination.
+
+   **The horizon is one tick, not the term of the loan.** An earlier draft said the instalment must
+   fit "the monthly residual for the term of the loan", which quietly gave every household perfect
+   foresight over five to twenty-five years — and contradicted §6.8, which needs households to
+   stack loans that each pass alone and together do not. A household that correctly projected the
+   term could not stack, could not be caught by a later price rise, and would keep a buffer against
+   both; routes 1, 3 and 4 of §6.8 would all close. Myopia is not a simplification here, it is the
+   behaviour under test. `affordability_horizon` is a switch (`myopic` default, `full_term` the
+   control) so the assumption is measured rather than assumed.
+
+   **Running costs are not in the household's test either.** For a car the instalment is what the
+   household looks at; `car_running_cost` arrives afterwards, every tick, and does not stop. §4.1
+   calls this the commonest route into overextension, and it only works if the household is not
+   already counting it. `affordability_includes_running_cost` is the switch, off by default.
 
 When affordability fails and the unit is financeable, the household takes credit with probability
 rising in `θ` and in the gap between desired and affordable consumption.
 
+#### The two tests are not two kinds of person
+
+There is a saying that the poor ask whether they can afford the monthly payment and the rich ask
+whether they can afford the price. **This model reproduces that without coding it as a personality
+trait**, and the distinction matters for what can be concluded from a run.
+
+Every household applies the same rule. What differs is which test *binds*. A household with the
+cash clears the price test and pays cash — and since `r_l > r_d` always, financing strictly worsens
+a unit's score, so it strictly prefers to. A household without the cash fails the price test, and
+the only remaining route to the same unit is the instalment test, which is a much lower bar: a
+household that would never accumulate €900 can carry €38 a month.
+
+So the asymmetry is **emergent from liquidity, not assumed from class.** That is worth insisting on,
+because it is what lets the model say something. If the two tests were assigned by household type,
+any distributional result would be a restatement of the assignment. As it stands, a household that
+becomes liquid stops using the instalment test on its own, and one that is squeezed starts.
+
 #### Why this can still refute the thesis
 
 Credit never makes anything look cheaper — financing strictly lowers a unit's score. What it does
-is widen the *choice set*: a unit whose lump sum the household cannot cover but whose instalment
-it can becomes reachable. A household that would never accumulate €900 can carry €38 a month.
-
-So a liquid household systematically prefers to pay cash, and if the model shows credit changing
-little, that is a genuine finding rather than a suppressed one. The mechanism is built to be able
-to fail.
+is widen the *choice set*. So a liquid household systematically prefers to pay cash, and if the
+model shows credit changing little, that is a genuine finding rather than a suppressed one. The
+mechanism is built to be able to fail.
 
 ### 6.3 Relative status
 
@@ -1344,7 +1497,7 @@ would otherwise pay — and it is in euros per tick, as is `joy_d`, following §
 `capitalisation_factor` reflects the expected holding period and the household's discount rate.
 
 **Three horizons coexist and are not the same quantity**, which is worth stating because they are
-easily conflated: `durability_housing = 360` is the **ownership horizon** (how long before a
+easily conflated: `ownership_horizon_housing = 360` is the **ownership horizon** (how long before a
 household moves or substantially renovates), `term_housing = 300` is the **mortgage term**, and
 `capitalisation_factor = 240` is the **valuation horizon** net of discounting. Nothing requires
 them to be equal and they are not.
@@ -1359,7 +1512,9 @@ depreciation_housing = price · housing_depreciation_rate / 12
 ```
 
 at roughly 1% a year, the maintenance-and-wear rate for a building whose structure persists in the
-stock indefinitely. Every other sector uses `price / durability` unchanged.
+stock indefinitely. Every other sector uses its §4.3 curve — straight-line for most, **exponential
+for cars** — and in all cases the tick's depreciation is `V(age) − V(age+1)`, the value actually
+lost, rather than a flat fraction of the purchase price.
 
 **Which side binds is a reported output.** If the credit limit binds in nearly every transaction,
 that is a genuine and striking finding — credit really is setting house prices. If valuations bind,
@@ -1554,7 +1709,10 @@ merely of what happened to it.
 origination, against income*. Four routes get past them, all of them real:
 
 1. **Stacking.** Each loan passes on its own; together, after the earlier ones are already
-   running, they do not. The bank sees the ratio it computes, not the household's future.
+   running, they do not. The bank sees the ratio it computes, not the household's future — and
+   neither does the household, whose own affordability test has a one-tick horizon (§6.2). Under
+   `affordability_horizon = full_term` this route closes almost entirely, which is why that control
+   run is worth having.
 2. **Income that later falls.** Demotion to a lower wage tier when a firm contracts and
    the household is reassigned (§5.2). There is no unemployment in the model, so this is milder
    than the real-world equivalent — the loan was prudent when granted, and income fell anyway.
@@ -1940,6 +2098,10 @@ Recorded every tick, written to CSV.
 - Realised minus reference share per category ← **how credit changed how people live**
 - Share of households in each stage of the squeeze order (§6.7)
 - Postponed replacements: goods held past their intended replacement date
+- **Realised replacement cycle per sector, by `θ` decile** (§4.2) — the instrument for channel R.
+  Reported with the share of replacements that were financed. The prediction under test: households
+  replacing at 4–5 years are very unlikely to have financed, and financed replacements cluster at
+  the short end of the range
 
 **Real economy**
 - Real consumption per household, total and by sector
@@ -2195,6 +2357,8 @@ non-negative — a test almost nothing fails:
 | `λ` | Marginal value of money. **Derived** (§6.2), not configured | dimensionless | — | |
 | `λ_base` | Reservation ratio at or above the buffer target. `1.0` = buys anything worth its cost | dimensionless | 1.0 | ✓ |
 | `λ_gap` | How much more a household with an empty buffer demands per euro | dimensionless | 1.5 | ⚠ |
+| `affordability_horizon` | `myopic` — the instalment must fit **this tick's** residual — or `full_term`, giving foresight over the loan. Myopia is the behaviour under test (§6.2) | enum | myopic | ✓ |
+| `affordability_includes_running_cost` | Whether the household counts `car_running_cost` in its own affordability test. Off is the §4.1 trap | switch | false | ✓ |
 | `rho_theta_phi` | Correlation of `θ` and `φ` in the joint draw | [−1,1] | −0.3 | ✓ |
 | `schwabe_gradient` | Strength of the falling-housing-share-with-income tie | [0,1] | 0.5 | ⚠ |
 | `abstainer_share` | Fraction of households in the abstainer cohort (§1.2) | [0,1] | 0.10 | ✓ |
@@ -2232,7 +2396,10 @@ The housing range is roughly 1.5× the German average (§5.1.1) and is swept.
 | `joy_g` | Direct value per unit (§6.2). **Indexed to CPI.** Not configured directly — *solved for* at initialisation, §13.11 | € per tick at t=0 | derived | ✓ |
 | `w_g` `status` | **Relative** status weight per sector — an ordering, not a level | dimensionless | per §4 table | ✓ |
 | `status_scale` | Euros per tick that one full rank of standing is worth. **Indexed to CPI.** The level at which status competes with rent and groceries — unobservable, and the whole positional result moves with it | € per tick at t=0 | 200 | ⚠ |
-| `durability_g` | Useful life | ticks | per §4 table | ✓ |
+| `functional_life_g` | How long the good keeps **working**. Not the replacement cycle, which is an output (§4.2). Formerly `durability_g` | ticks | per §4 table | ✓ |
+| `depreciation_form_g` | `straight_line`, `exponential`, or housing's own rule (§4.3) | enum | per §4 table | ✓ |
+| `car_depreciation_rate` | Annual exponential rate. **The same for every car**, regardless of price or segment | fraction p.a. | 0.16 | ✓ |
+| `price_dispersion_car` | Spread of car prices around the sector price, drawn per unit | fraction | ±0.55 | ✓ |
 | `financeable_g` | **Per-good switch.** Toggled one good at a time for the C2a experiment (§1.3) | bool | per §4 table | ✓ |
 | `term_g` | Loan term when financed | months | 24–300, per §4 table | ✓ |
 | `elasticity_g` | Numeric supply elasticity, replacing the "high/medium/low" wording so that §4's grid is derivable from the table | ≥ 0 | **per sector, below** | ✓ |
@@ -2305,7 +2472,9 @@ scales, so **any result that depends on stress feedback must be reported with
 | `earnings_multiple` | Share valuation = trailing earnings × this. **No market price in v1** | ratio | 12 | ✓ |
 | `wage_increment` | Annual rise in a profitable year, scaled by profit ÷ wage bill | fraction | 0.02 | ✓ |
 | `wage_cut_max` | Maximum annual fall in a loss year | fraction | 0.03 | ✓ |
-| `wage_review_period` | | ticks | 12 | |
+| `fiscal_year_ticks` | The firm's year. Governs **both** the wage review and profit distribution — they are one event (§5.2.2, §5.2.3). Replaces the former `wage_review_period` | ticks | 12 | |
+| `fiscal_year_offset` | Drawn per firm so year ends are staggered across the calendar | ticks | `{min 0, max 11}` | ✓ |
+| `synchronised_fiscal_year` | All firms share a year end. Off by default; swept, because a shared calendar concentrates all dividend income into one tick in twelve | switch | false | ✓ |
 | `firm_icr_min` | Operating surplus ÷ debt service at origination (§5.2) | ratio | 1.5 | ✓ |
 | `firm_gearing_max` | Total debt ÷ `capital_stock` at origination (§5.2) | ratio | 0.6 | ✓ |
 | `investment_lag` | Ticks from payment to capacity appearing. **The only such parameter** — `construction_lag` was a duplicate of the same quantity and is removed | ticks | 6; **24** for dwellings | ✓ |
@@ -2365,7 +2534,7 @@ listed-company ratios of 50×+ are a different phenomenon.
 | `seller_reserve_margin` | Reserve price above own valuation | fraction | 0.05 | ⚠ |
 | `rent_target_yield` | Landlords' listing target. Realised yield is an **output** | % p.a. | 4.0 | ✓ |
 | `sitting_tenant_lag` | Maximum annual move of a sitting tenant's rent toward market (§6.5). The *Kappungsgrenze* in model form | fraction p.a. | 0.15 | ✓ |
-| `housing_depreciation_rate` | Physical wear and maintenance. **Housing does not use `price / durability`** (§6.5) | fraction p.a. | 0.01 | ✓ |
+| `housing_depreciation_rate` | Physical wear and maintenance. Housing has its own §4.3 curve (§6.5) | fraction p.a. | 0.01 | ✓ |
 | `initial_loan_book_ratio` | Opening loans ÷ `M0`, checked by the loader and swept because §7.1.1 shows the gold run is otherwise set by it | ratio | 2.0 | ✓ |
 
 ### 13.9 Scenario switches
@@ -2462,10 +2631,10 @@ both reachable:
 |---|---|---|---|
 | Food | week of groceries | 90 | — |
 | Clothing | garment | 60 | — |
-| Electronics | smartphone | 600 | 25 (24 ticks) |
+| Electronics | smartphone | 600 | 10 (60 ticks functional life — the replacement *cycle* is an output, §4.2) |
 | Furniture | item | 700 | 5.8 (120 ticks) |
 | Bicycles | bicycle | 600 | 6.3 (96 ticks) |
-| Cars | car | 18,000 | 300 + 180 running = **480** |
+| Cars | car (mean; dispersed ±55%) | 18,000 | new: 260 depreciation + 180 running = **440**; at 5 years: 109 + 180 = **289** (§4.3) |
 | Public transport | mobility unit | 3 | **60** for the whole need |
 | Restaurants | meal | 35 | — |
 | Personal services | visit | 30 | — |

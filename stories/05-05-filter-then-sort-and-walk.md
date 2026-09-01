@@ -11,7 +11,10 @@ As the model author, I want candidates filtered by λ before being sorted, then 
 ## Acceptance criteria
 
 - [ ] Candidates with `score ≤ λ` are discarded **before** sorting; only survivors are ordered.
-- [ ] The walk proceeds in descending `score`, applying the affordability test: cash now, or an instalment over the term that passes the bank's standards (§5.3).
+- [ ] The walk proceeds in descending `score`, applying the affordability test (§6.2): a cash purchase must fit `cash + demand deposits` **now**; a financed purchase's **instalment** must fit `income − debt service already running − rent − subsistence` **this tick**, and pass the bank's standards (§5.3).
+- [ ] **The horizon is one tick, not the loan term.** `affordability_horizon = myopic` is the default and the behaviour under test; `full_term` is the control. A test asserts that under `full_term`, loan stacking (§6.8 route 1) all but disappears — if it does not, the horizon is not being applied.
+- [ ] The household's own test **excludes** `car_running_cost` by default (`affordability_includes_running_cost = false`). This is the §4.1 trap and it must be switchable.
+- [ ] A test demonstrates the emergent asymmetry: a liquid household pays cash for a unit that an otherwise identical illiquid household finances — same rule, different binding test.
 - [ ] The budget depletes **sequentially** — each purchase changes what is affordable next.
 - [ ] When affordability fails and the unit is financeable, the household takes credit with probability rising in `θ` and in the gap between desired and affordable consumption.
 - [ ] Abstainers (`θ = 0`) never finance. A test asserts no abstainer ever originates a loan in any scenario.

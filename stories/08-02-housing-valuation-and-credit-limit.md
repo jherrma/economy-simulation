@@ -14,7 +14,7 @@ As the model author, I want a dwelling valued by capitalising the same per-tick 
 - [ ] The separate renter's 'instalment plus running costs against rent' comparison is **deleted** — renting and buying are two candidates in the same ranking (05-04).
 - [ ] `credit_limit = min(dsti_max · income / instalment_per_euro(term, r_l), ltv_max · assessed_value)`.
 - [ ] The LTV circularity is broken by a **lag**: `assessed_value` is the previous tick's clearing price for that quality tier, which is also what a real valuer uses. At t = 0 it is the configured opening price.
-- [ ] Three horizons coexist and are **not** the same quantity: `durability_housing` 360 (ownership horizon), `term_housing` 300 (mortgage), `capitalisation_factor` 240 (valuation).
+- [ ] Three horizons coexist and are **not** the same quantity: `ownership_horizon_housing` 360 (ownership horizon), `term_housing` 300 (mortgage), `capitalisation_factor` 240 (valuation).
 - [ ] A test asserts the numerator of the capitalised valuation is byte-identical to the per-tick value used in the ranking.
 
 ## Where to start

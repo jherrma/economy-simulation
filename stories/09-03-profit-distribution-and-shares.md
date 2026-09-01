@@ -10,7 +10,10 @@ As the model author, I want profit split between retention and shareholders, wit
 
 ## Acceptance criteria
 
+- [ ] **Distribution is annual, not per tick** — once every `fiscal_year_ticks` at the firm's own year end, as part of the same review that sets wages (09-02).
 - [ ] Profit splits two ways: retention up to `firm_buffer_months` plus investment needs, and `shareholder_profit_share` distributed **pro rata by holding**, using 01-02's exact-sum rule.
+- [ ] Year ends are staggered by `fiscal_year_offset`; a test asserts dividend income is spread across the calendar rather than concentrated in one tick in twelve. `synchronised_fiscal_year` is the swept alternative.
+- [ ] Between year ends, revenue minus wages accumulates on the firm's balance sheet. A test asserts this is bounded — no firm carries undistributed profit for more than `fiscal_year_ticks`.
 - [ ] **Profit does not go to employees.** Income distribution inside a firm lives in the wage hierarchy (D15).
 - [ ] Valuation is `trailing_earnings × earnings_multiple` — **no endogenous share price in v1** (D16).
 - [ ] Households above their buffer direct a fraction rising in `ε` into shares; sellers are households below buffer, in the squeeze order, or in arrears.
@@ -19,6 +22,13 @@ As the model author, I want profit split between retention and shareholders, wit
 - [ ] The bank is in the same register (04-04). A test asserts bank shares reach the §9 net-worth definition.
 
 ## Where to start
+
+Distribution being annual has a consequence worth watching rather than assuming away: between year
+ends, money that would have reached households immediately now sits on firm balance sheets. That is
+realistic and bounded at twelve ticks, but it withdraws base money from the bank's vault (a firm
+holds `firm_cash_preference` of its buffer as cash), so it tightens credit slightly — and it makes
+the capital call of 09-04 *less* frequent, since a firm short of money in month eight has not yet
+paid out the year's profit.
 
 The distributional channel here needs no price movement at all: a credit-stressed household sells its
 stake to a household with surplus, transferring future profit income upward. That is worth making visible

@@ -16,6 +16,7 @@ As the person who will defend these results, I want the specific diagnostics the
 - [ ] **The loader's time-deposit shift** (03-05), since it makes scenarios start from different states.
 - [ ] **Realised `r_l` distribution** in warm-up (07-04), as the calibration gate.
 - [ ] **Realised candidate count** per household-tick (05-07), the largest uncertainty in the performance estimate.
+- [ ] **Realised replacement cycle by `θ` decile** and the financed share of replacements (§4.2) — the instrument for channel R, plus the gate that the electronics distribution spans roughly 1–5 years.
 - [ ] **Shortfall ticks**, chain-failure rate, halt tick and reason.
 - [ ] Each is written with a one-line note saying what it guards against, because a diagnostic whose purpose is not recorded gets dropped.
 

@@ -87,7 +87,7 @@ flowchart TD
     end
     subgraph P5["Phase 5 — close the books"]
         S12["12 · Firms invest, reallocate positions,<br/>run the wage-cut → capital-call ladder"]
-        S13["13 · Firms distribute profit"]
+        S13["13 · Firms at their <b>year end</b><br/>distribute profit — annual, staggered"]
         S14["14 · Rebalance cash / demand / time deposits"]
         S15["15 · Bank <b>accrues</b> interest, processes<br/>arrears and defaults, books profit"]
         S16["16 · Stress, status ranks, expectations update"]
