@@ -1,6 +1,7 @@
 # The performance gate — **V6**
 
 **Epic:** E5 — The purchase decision
+**Milestone:** M1
 **Depends on:** 05-06
 **New ground:** A measured budget for the loop that is 95% of the tick
 

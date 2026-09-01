@@ -1,6 +1,7 @@
 # Pricing and production
 
 **Epic:** E9 — Firms
+**Milestone:** M1
 **Depends on:** 04-03, 05-05
 **New ground:** Firms observing sales and moving prices without knowing the demand curve
 

@@ -1,6 +1,7 @@
 # The annual wage review
 
 **Epic:** E9 — Firms
+**Milestone:** M7
 **Depends on:** 09-01
 **New ground:** The only live wage mechanism, and what closes the indexation gap
 

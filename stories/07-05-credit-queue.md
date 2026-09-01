@@ -1,6 +1,7 @@
 # One queue, in seeded random order
 
 **Epic:** E7 — Credit
+**Milestone:** M2
 **Depends on:** 07-04
 **New ground:** Who gets credit when capacity is scarce, and why the order must not be fixed
 

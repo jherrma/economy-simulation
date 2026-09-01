@@ -1,8 +1,13 @@
 # Lending capacity: the three-way minimum
 
 **Epic:** E7 — Credit
-**Depends on:** 07-02, 06-06
+**Milestone:** M2
+**Depends on:** 07-02
 **New ground:** Headroom, and the constraint that was promised and missing
+
+> At M2 every deposit is a demand deposit, so `h_reserve` reads the whole deposit stock. 06-06 introduces
+> the time-deposit distinction at M3; 02-01 already carries the two fields separately, so nothing here is
+> retrofitted when it arrives.
 
 ## Story
 

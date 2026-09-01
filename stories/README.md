@@ -3,8 +3,14 @@
 Implementation backlog for the model specified in [`../docs/MODEL.md`](../docs/MODEL.md).
 Language decision and its reasoning: [`../docs/LANGUAGE-CHOICE.md`](../docs/LANGUAGE-CHOICE.md).
 
-**68 stories across 12 epics.** One story per file, `<epic>-<story>-<slug>.md`. Every story
-carries an objective pass/fail check — nothing is "done" because it looks done.
+**71 stories across 12 epics, built in 9 milestones.** One story per file,
+`<epic>-<story>-<slug>.md`. Every story carries an objective pass/fail check — nothing is "done"
+because it looks done, and every story carries the milestone it belongs to.
+
+**Read [`MILESTONES.md`](MILESTONES.md) first.** The epics are a thematic grouping; the milestones
+are the build order, and they are what makes the project deliver a running simulation early and one
+economic dimension at a time. [`../docs/FOUNDATION.md`](../docs/FOUNDATION.md) is the other half of
+that: the nine structural seams that make adding a dimension additive rather than a rewrite.
 
 `§` always refers to a section of `MODEL.md`. `D<n>` refers to a decision in
 [`../docs/DECISIONS.md`](../docs/DECISIONS.md); `B<n>` to an item in
@@ -27,6 +33,7 @@ load-bearing: do not weaken one to make a story pass.
 | **V4** | **The null run** (§10 item 3) — with credit stationary, prices must be constant | Secular drift that would otherwise be misread as a result |
 | **V5** | **Compile-fail tests** — the safety settings are only real if wrong code *fails to build* | Silent erosion of the guarantees D27 was chosen for |
 | **V6** | **The scoring benchmark** ([`../bench/`](../bench/)) as a performance gate | Accidental allocation or an O(n log n) → O(n²) regression in the one loop that matters |
+| **V7** | **Milestone regression** (01-06) — with a dimension switched off, the engine reproduces the previous milestone byte-for-byte on the same seeds | Anything a new dimension disturbed that it had no business disturbing. It is also the *measurement*: the on-versus-off difference is that dimension's attributed effect |
 
 **V1 is this project's white-furnace test.** It is the analogue of the raytracer's albedo-1.0
 check: a single invariant, trivially cheap, that any energy-creating or energy-destroying bug
@@ -36,6 +43,10 @@ violates immediately. Every story from E2 onward must leave it green.
 and never from one shared generator, so adding a story, reordering agents, or changing the thread
 count cannot perturb output. §13.1 requires the *same 30 seeds across scenarios, compared paired* —
 that protocol is worthless if a run is not reproducible.
+
+**V7 is what V2 is for.** Byte-identical reproducibility is only interesting because it lets the
+difference between two runs be attributed to exactly one cause. Without V2 there is no V7, and
+without V7 the milestone strategy degenerates into "the model got bigger and the numbers changed".
 
 ---
 
@@ -60,22 +71,47 @@ the backlog says no again, because they are the rabbit holes that will present t
   bug rather than a domain outcome, and where allocation is forbidden.
 - **Do not optimise before E5's gate tells you to.** The benchmark exists so that performance work
   is triggered by a measurement rather than a hunch.
+- **Do not build ahead of the milestone.** A dimension implemented early cannot be measured, because
+  the milestone it would have been measured against no longer exists. If a story from M5 looks easy
+  while you are in M2, that is not a reason to do it.
+- **A milestone that contradicts the specification stops.** The specification is corrected in
+  `DECISIONS.md`, with the contradiction stated, before the milestone continues. A parameter tuned
+  until a gate passes, with no recorded reason, is how a model stops being evidence and becomes an
+  illustration.
 
 ---
 
 ## Build order
 
-The order is deliberate and matches the specification's own instruction: **the ledger and its
-assertions are written before any agent behaviour**, so that every later story is developed against
-a running invariant rather than having consistency retrofitted.
+The build order is the **milestone** order in [`MILESTONES.md`](MILESTONES.md), not the epic order.
+Nine milestones, each of which runs and passes its own gate, each adding one economic dimension
+behind a switch that reproduces its predecessor when turned off.
 
-| Epic | Theme | Stories | Why here |
+| | Milestone | Stories | Cumulative |
 |---|---|---|---|
-| **E1** | Foundations you cannot retrofit | 5 | The value types and the RNG. Everything downstream inherits their guarantees |
+| **M0** | A town that conserves money | 24 | 24 |
+| **M1** | A town that trades | 15 | 39 |
+| **M2** | **Credit** — the first answer to the question the project exists to ask | 10 | **49** |
+| **M3** | Saving and the portfolio | 3 | 52 |
+| **M4** | The treadmill | 3 | 55 |
+| **M5** | Credit under stress | 4 | 59 |
+| **M6** | Housing | 4 | 63 |
+| **M7** | The supply side answers back | 5 | 68 |
+| **M8** | The campaign | 3 | 71 |
+
+Within that, one ordering rule from the specification still holds absolutely: **the ledger and its
+assertions are written before any agent behaviour**, so that every later story is developed against a
+running invariant rather than having consistency retrofitted. That is why M0 is as large as it is.
+
+## Epics — themes, not build order
+
+| Epic | Theme | Stories | Why grouped |
+|---|---|---|---|
+| **E1** | Foundations you cannot retrofit | 6 | The value types, the RNG, and the regression harness. Everything downstream inherits their guarantees |
 | **E2** | The ledger | 6 | V1 goes green here and stays green. No behaviour yet |
-| **E3** | Configuration and opening state | 6 | The loader is where "a parameter not in §13 does not exist" becomes enforceable |
+| **E3** | Configuration and opening state | 7 | The loader is where "a parameter not in §13 does not exist" becomes enforceable |
 | **E4** | The world, and an empty tick | 5 | Agents and the 17-step skeleton, doing nothing, in the right order |
-| **E5** | The purchase decision | 7 | §6.2 — the core, ~95% of the tick, and the only part that resists optimisation |
+| **E5** | The purchase decision | 8 | §6.2 — the core, ~95% of the tick, and the only part that resists optimisation |
 | **E6** | Status, stress, saving | 6 | The feedbacks that make demand move |
 | **E7** | Credit | 9 | The subject of the experiment |
 | **E8** | Housing | 5 | The largest price effect and the trickiest clearing |
@@ -98,7 +134,7 @@ Where each part of the specification is implemented:
 | §5.2 Firm, §5.2.1–5.2.3 | 04-03, 09-01, 09-02, 09-04, 09-05, 09-06 |
 | §5.3 Bank, §5.3.1 second-hand, §5.3.2 runs | 04-04, 07-08, 07-09 |
 | §6.1 Tick sequence | 04-05 |
-| §6.2 The purchase decision | 05-01 … 05-07 |
+| §6.2 The purchase decision | 05-01 … 05-08 |
 | §6.3 Status, §6.4 stress | 06-01, 06-02, 06-03 |
 | §6.5 Housing | 08-01 … 08-05 |
 | §6.6 Saving, cash-vs-deposit, time deposits | 06-04, 06-05, 06-06 |
@@ -107,7 +143,8 @@ Where each part of the specification is implemented:
 | §8 Scenarios | 12-01, 12-04 |
 | §9 Metrics | 10-01 … 10-05 |
 | §10 Validation | 02-05, 11-01 … 11-04 |
-| §13 Parameter appendix | 03-01, 03-02 |
+| Seams (`FOUNDATION.md` S1–S9) | 01-05, 01-06, 02-01, 03-07, 04-01, 04-05, 05-01, 10-01 |
+| §13 Parameter appendix | 03-01, 03-02, 03-07 |
 
 ---
 
@@ -119,6 +156,7 @@ Where each part of the specification is implemented:
 - [01-03](01-03-rate-value-type.md) — `Rate`, whose only exit applies the correct divisor
 - [01-04](01-04-result-based-error-handling.md) — Result-based failure, and an ignored Result is a build error
 - [01-05](01-05-deterministic-rng-streams.md) — Deterministic RNG, seeded per stream
+- [01-06](01-06-milestone-regression-harness.md) — **V7**: the milestone regression harness
 
 ### E2 — The ledger
 - [02-01](02-01-accounts-and-balance-sheets.md) — Accounts and the agent balance sheet
@@ -135,6 +173,7 @@ Where each part of the specification is implemented:
 - [03-04](03-04-opening-balance-sheet.md) — The opening balance sheet
 - [03-05](03-05-loader-assertions.md) — Loader assertions on reserves and bank equity
 - [03-06](03-06-initialisation-ordering.md) — Initialisation ordering, and breaking the tenure circularity
+- [03-07](03-07-additive-configuration.md) — Additive configuration: new parameters default to the old behaviour
 
 ### E4 — The world, and an empty tick
 - [04-01](04-01-goods-table.md) — The goods table
@@ -144,13 +183,14 @@ Where each part of the specification is implemented:
 - [04-05](04-05-tick-skeleton.md) — The 17-step tick, doing nothing, in order
 
 ### E5 — The purchase decision
-- [05-01](05-01-value-function.md) — `value`: joy, mobility, status, and CPI indexation
-- [05-02](05-02-user-cost-function.md) — `user_cost`: depreciation, financing, running cost
+- [05-01](05-01-value-function.md) — `value`: joy, mobility, and CPI indexation
+- [05-02](05-02-user-cost-function.md) — `user_cost`: depreciation and running cost
 - [05-03](05-03-score-and-lambda.md) — `score`, and λ as a reservation ratio
 - [05-04](05-04-candidate-generation.md) — Candidate units, and indivisible durables
 - [05-05](05-05-filter-then-sort-and-walk.md) — Filter before sorting, then the descending walk
 - [05-06](05-06-settlement-cash-first.md) — Settlement into the ledger
 - [05-07](05-07-scoring-performance-gate.md) — **V6**: the performance gate
+- [05-08](05-08-financing-in-user-cost.md) — The financing term in `user_cost` *(M2)*
 
 ### E6 — Status, stress, saving
 - [06-01](06-01-relative-status.md) — Relative status, and why the marginal form is required
@@ -209,9 +249,13 @@ Where each part of the specification is implemented:
 
 ## Story file convention
 
-Each file carries: a title; `Epic` / `Depends on` / `New ground` header lines; the story in
-as-a/I-want/so-that form; acceptance criteria as checkboxes; a **prose** implementation hint with
-no code; and a **How to verify** block giving the command and what to look for.
+Each file carries: a title; `Epic` / `Milestone` / `Depends on` / `New ground` header lines; the
+story in as-a/I-want/so-that form; acceptance criteria as checkboxes; a **prose** implementation
+hint with no code; and a **How to verify** block giving the command and what to look for.
+
+No story depends on a story from a later milestone. That property is mechanically checkable from the
+headers and should stay true — a violation means either the dependency is not real or the milestone
+boundary is in the wrong place.
 
 Hints are deliberately prose. A story should survive the implementation changing under it, and
 a story that contains the answer stops being a specification of *behaviour* and becomes a diff

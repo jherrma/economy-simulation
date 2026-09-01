@@ -1,6 +1,7 @@
 # The balance-sheet gate
 
 **Epic:** E11 — Validation gates
+**Milestone:** M1
 **Depends on:** 02-06, 10-01
 **New ground:** §10's first two items as a gate on every scenario, not only on tests
 

@@ -1,6 +1,7 @@
 # Capital calls
 
 **Epic:** E9 — Firms
+**Milestone:** M7
 **Depends on:** 09-03
 **New ground:** A firm's loss becoming its owners' loss, with an ordering trap
 

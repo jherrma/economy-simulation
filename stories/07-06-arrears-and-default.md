@@ -1,6 +1,7 @@
 # Arrears, forbearance, and the choice to default
 
 **Epic:** E7 — Credit
+**Milestone:** M5
 **Depends on:** 07-01, 06-03
 **New ground:** Default as a decision, split from default as a circumstance
 

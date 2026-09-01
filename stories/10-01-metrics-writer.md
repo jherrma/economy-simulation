@@ -1,6 +1,7 @@
 # The metrics writer
 
 **Epic:** E10 — Metrics and output
+**Milestone:** M1
 **Depends on:** 04-05
 **New ground:** The engine's only output surface, and the boundary D27 drew
 
@@ -12,6 +13,8 @@ As a maintainer, I want every recorded series written to CSV or Parquet and noth
 
 - [ ] **CSV or Parquet only.** No analysis, no statistics, no plotting inside the engine (D27).
 - [ ] One row per tick per series group, with the run seed and scenario id on every row so files can be concatenated without ambiguity.
+- [ ] Every row also carries the **milestone** and a hash of the effective configuration, so a file can be traced to the mechanism set that produced it.
+- [ ] **The schema is additive** (S8): columns are added, never renamed, never reordered by meaning, never repurposed. A test reads a committed M1-era output file with the current reader and asserts every column it expects is still present and still means the same thing.
 - [ ] The **effective configuration** is written alongside, so a result can always be traced to the parameters that produced it (03-02).
 - [ ] A **completion marker** is written only on a clean finish; a halted run (07-09, 02-05) leaves output that no collector will accept.
 - [ ] Writing is buffered and does not perturb the tick's timing measurably.

@@ -1,6 +1,7 @@
 # Simultaneous settlement and the chain problem
 
 **Epic:** E8 — Housing
+**Milestone:** M6
 **Depends on:** 08-03
 **New ground:** Buying and selling in the same instant, and the one cost the spec could not bound
 

@@ -1,6 +1,7 @@
 # Stress, and its switch
 
 **Epic:** E6 — Status, stress, saving
+**Milestone:** M4
 **Depends on:** 06-01
 **New ground:** The debt → stress → consumption → debt loop, and its exemptions
 

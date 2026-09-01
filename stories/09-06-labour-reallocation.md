@@ -1,6 +1,7 @@
 # Labour reallocation, and the empty pool
 
 **Epic:** E9 — Firms
+**Milestone:** M7
 **Depends on:** 09-01, 04-03
 **New ground:** Full employment as an identity rather than an aspiration
 

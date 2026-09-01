@@ -1,6 +1,7 @@
 # The headline, decomposed
 
 **Epic:** E10 — Metrics and output
+**Milestone:** M2
 **Depends on:** 10-02, 03-03
 **New ground:** The primary result, reported as two numbers because one would mislead
 

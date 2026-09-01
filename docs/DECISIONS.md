@@ -817,6 +817,44 @@ years, which is why car repossession recovers so little. And the replacement cyc
 **output** (D30): the observed 5–15 year range is a result, and long-cycle households should turn
 out to be the ones who did not finance.
 
+### D32 — The build order is nine milestones, not twelve epics
+
+**Decided:** the engine is built as nine milestones, each of which runs, produces output and passes
+its own gate, each adding exactly one economic dimension to the milestone before it. The epics stay
+as a thematic index. Full sequence in `../stories/MILESTONES.md`; the structural commitments that
+make it work in `FOUNDATION.md`.
+
+**Rejected:** building epic by epic. It was the original plan and it has one fatal property — no
+milestone produces a running simulation until nearly all 71 stories are done, so the first moment
+anyone learns whether the model behaves is also the last moment at which changing it is cheap. Two
+review rounds found ~45 specification defects without a line of code; the third source of defects is
+running the thing, and that source stays switched off for the entire project under the epic order.
+
+**Rejected:** cutting the model down to the minimum that answers the primary question. Tempting —
+the question needs perhaps a third of the specification — but the discarded parts are the ones that
+answer the obvious objections, and they would have to be rebuilt into a codebase that had grown
+around their absence. The milestone order gets the same early answer without throwing anything away:
+**M2, at 49 of 71 stories, produces the first number.**
+
+**The load-bearing constraint.** Each dimension is behind a switch, and *off* must reproduce the
+previous milestone **byte-for-byte on the same seeds** (verification device **V7**, story 01-06).
+This is not primarily a regression test. It makes the difference between two consecutive milestones
+the *attributed* effect of one mechanism, measured on paired seeds with everything else held
+identical — which is what lets the write-up say how much of the result the status treadmill or the
+second-hand market accounts for. A dimension that cannot be switched off is one whose contribution
+cannot be measured, and that is a reason to redesign the milestone rather than to skip the switch.
+
+**What it cost.** Three new stories (01-06 the regression harness, 03-07 additive configuration,
+05-08 the financing term split out of 05-02), four stories narrowed to their M1 scope, and six
+cross-milestone dependencies resolved — two by moving a story to a later milestone (construction to
+M7, so that M6 measures the housing effect against *fixed* supply), four by removing a dependency
+that was not real. No story now depends on a story from a later milestone, and that is mechanically
+checkable from the headers.
+
+**The obligation it creates.** Every parameter a later milestone introduces must default to the
+earlier behaviour (S4), or reproducing M2 from the M7 engine means reconstructing an M2-era config
+by hand — a task that gets skipped, after which the milestone comparisons quietly stop being run.
+
 ## Open, deliberately
 
 Listed in `MODEL.md` §12. The two that most affect how results may be stated:

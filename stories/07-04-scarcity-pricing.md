@@ -1,6 +1,7 @@
 # The price of credit under scarcity
 
 **Epic:** E7 — Credit
+**Milestone:** M2
 **Depends on:** 07-03
 **New ground:** Credit becoming dearer as the limit approaches, with a calibration gate
 

@@ -1,6 +1,7 @@
 # Property tests: random transfer sequences
 
 **Epic:** E2 — The ledger
+**Milestone:** M0
 **Depends on:** 02-05
 **New ground:** Fuzzing the ledger, since there is no external oracle for it
 

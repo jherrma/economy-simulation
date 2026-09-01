@@ -1,6 +1,7 @@
 # Paired-seed comparison
 
 **Epic:** E12 — Scenarios and the campaign
+**Milestone:** M2
 **Depends on:** 12-02
 **New ground:** Comparing scenarios seed by seed rather than in aggregate
 

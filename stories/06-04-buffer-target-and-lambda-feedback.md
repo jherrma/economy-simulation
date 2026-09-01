@@ -1,7 +1,8 @@
 # The buffer target φ and its feedback into λ
 
 **Epic:** E6 — Status, stress, saving
-**Depends on:** 05-03, 06-03
+**Milestone:** M3
+**Depends on:** 05-03
 **New ground:** Thrift as partly endogenous, and the second abstainer exemption
 
 ## Story
@@ -11,6 +12,7 @@ As the model author, I want `φ` responding to conditions and driving λ through
 ## Acceptance criteria
 
 - [ ] A household below its `φ` buffer withholds from discretionary spending through a raised λ; above it, λ returns to `λ_base`.
+- [ ] `λ_gap` defaults to 0, and with `λ_gap = 0` and `κ` pinned the milestone reproduces M2 byte for byte (**V7**). The **stress** term in `φ` is a further addend contributed by 06-03 at M4 and is inert here.
 - [ ] `φ` rises with the deposit rate `r_d`, with `stress`, and with recent demotions in the town; it falls when status pressure is high.
 - [ ] **Abstainers are exempt from this feedback too** — their `φ` stays pinned at the top of range (§1.2).
 - [ ] Higher `φ` measurably lowers aggregate demand in a controlled comparison, and lowers borrowing.

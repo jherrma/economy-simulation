@@ -1,6 +1,7 @@
 # Bank runs and negative equity
 
 **Epic:** E7 — Credit
+**Milestone:** M5
 **Depends on:** 07-03, 07-07
 **New ground:** Two ways the run ends, and the halt tick as a result
 

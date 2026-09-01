@@ -1,6 +1,7 @@
 # `Rate`, whose only exit applies the correct divisor
 
 **Epic:** E1 — Foundations you cannot retrofit
+**Milestone:** M0
 **Depends on:** 01-01
 **New ground:** Encoding a *convention* in a type, so it cannot be misapplied at a call site
 

@@ -1,6 +1,7 @@
 # Repossession, marked in two steps
 
 **Epic:** E7 — Credit
+**Milestone:** M5
 **Depends on:** 07-06, 07-03
 **New ground:** Where the loss hits equity, and when
 

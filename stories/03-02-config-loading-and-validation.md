@@ -1,6 +1,7 @@
 # Loading and validating a configuration
 
 **Epic:** E3 — Configuration and opening state
+**Milestone:** M0
 **Depends on:** 03-01, 01-04
 **New ground:** The first real use of Result at a boundary, with all errors reported at once
 

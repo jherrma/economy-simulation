@@ -1,6 +1,7 @@
-# `value`: joy, mobility, status, and CPI indexation
+# `value`: joy, mobility, and CPI indexation
 
 **Epic:** E5 — The purchase decision
+**Milestone:** M1
 **Depends on:** 04-01, 04-02
 **New ground:** The numerator of the decision rule, in euros per tick
 
@@ -11,9 +12,10 @@ As the model author, I want `value` computed in euros per tick and indexed to th
 ## Acceptance criteria
 
 - [ ] `value(g, n) = (joy_g(t) + mobility_value_g(t) + σ · status_gain(g, n)) · n^(−α_g)`, per §6.2.
+- [ ] **`value` is an accumulating sum of addends, not an expression rewritten per milestone** (S5). At M1 `σ = 0` and the status term is not evaluated; 06-01 contributes it at M4 without this file's structure changing.
 - [ ] **Everything is euros per tick at the t = 0 price level**, indexed as `joy_g(t) = joy_g(0) · P(t)/P(0)`. There are no utils anywhere in the codebase.
 - [ ] Indexation uses the **lagged, town-wide** CPI — never the good's own price, which would make every demand curve vertical and destroy the experiment.
-- [ ] `w_g` is a dimensionless relative weight; `status_scale` supplies the euros and is indexed alongside `joy`.
+- [ ] `w_g` is a dimensionless relative weight; `status_scale` supplies the euros and is indexed alongside `joy`. Both exist at M1 and are inert there — the parameters are present so that M4 adds no fields (S4).
 - [ ] `mobility_value_g` is non-zero only for transport, and equals `min(capacity_g, mobility_need) · fare` — capacity beyond the household's need is worth nothing.
 - [ ] A unit test doubles every nominal quantity and asserts every `value` doubles exactly.
 - [ ] No allocation on this path.

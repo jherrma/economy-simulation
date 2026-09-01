@@ -1,6 +1,7 @@
 # CPI, sector indices, and realised budget shares
 
 **Epic:** E10 — Metrics and output
+**Milestone:** M1
 **Depends on:** 10-01, 09-01
 **New ground:** The index that 05-01's indexation depends on, and shares as an output
 

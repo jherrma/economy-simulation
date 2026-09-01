@@ -1,6 +1,7 @@
 # Construction
 
 **Epic:** E8 — Housing
+**Milestone:** M7
 **Depends on:** 08-03, 09-05
 **New ground:** The only way the housing stock grows, and the second product of a sector
 

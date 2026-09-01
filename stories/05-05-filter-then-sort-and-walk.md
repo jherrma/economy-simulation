@@ -1,6 +1,7 @@
 # Filter before sorting, then the descending walk
 
 **Epic:** E5 — The purchase decision
+**Milestone:** M1 (cash walk) · M2 (financed branch)
 **Depends on:** 05-04
 **New ground:** The rule itself, and the optimisation the benchmark identified
 

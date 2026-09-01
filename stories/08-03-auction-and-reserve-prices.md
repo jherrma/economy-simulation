@@ -1,6 +1,7 @@
 # The auction, and the option to do nothing
 
 **Epic:** E8 — Housing
+**Milestone:** M6
 **Depends on:** 08-02
 **New ground:** A clearing rule that derives the price instead of defining it
 

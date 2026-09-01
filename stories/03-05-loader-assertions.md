@@ -1,6 +1,7 @@
 # Loader assertions on reserves and bank equity
 
 **Epic:** E3 — Configuration and opening state
+**Milestone:** M0
 **Depends on:** 03-04
 **New ground:** Catching a starting state that would silently predetermine the result
 

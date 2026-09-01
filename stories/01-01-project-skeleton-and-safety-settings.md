@@ -1,6 +1,7 @@
 # Project skeleton and the safety settings
 
 **Epic:** E1 — Foundations you cannot retrofit
+**Milestone:** M0
 **Depends on:** nothing
 **New ground:** The solution layout, and the three csproj settings D27 was chosen for
 

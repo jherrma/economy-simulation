@@ -1,6 +1,7 @@
 # Relative status, and why the marginal form is required
 
 **Epic:** E6 — Status, stress, saving
+**Milestone:** M4
 **Depends on:** 05-01
 **New ground:** A positional channel that cannot be raised by aggregate spending
 
@@ -14,6 +15,7 @@ As the model author, I want status computed as a marginal gain in rank, not as a
 - [ ] The decision uses **`status_gain`** — the level after the purchase minus the level now — not the level.
 - [ ] `holding` is defined per sector: generation index for goods with obsolescence, assessed value for housing and cars, count for clothing, per-tick expenditure for services.
 - [ ] `status_relative = false` makes status an absolute constant, as the control run.
+- [ ] `σ` defaults to 0, and with `σ = 0` the milestone reproduces M3 **byte for byte** on the same seeds (**V7**, 01-06). The status term is an addend into 05-01's sum, not a second version of `value` (S5).
 - [ ] With `status_relative = true`, **aggregate status is ≈ constant** every tick. This is an internal check §9 requires and it is the cheapest test that the mechanism is right.
 - [ ] A test asserts that using the *level* instead of the gain would make status subtract from the value of every purchase a household does not already own.
 

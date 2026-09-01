@@ -1,6 +1,7 @@
 # The sweeps, and the per-good financeability switch
 
 **Epic:** E12 — Scenarios and the campaign
+**Milestone:** M8
 **Depends on:** 12-03, 10-05
 **New ground:** The sensitivity programme, enumerated from the schema rather than by hand
 

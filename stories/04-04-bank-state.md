@@ -1,6 +1,7 @@
 # Bank state
 
 **Epic:** E4 — The world, and an empty tick
+**Milestone:** M0
 **Depends on:** 02-01, 04-03
 **New ground:** The single bank, as both intermediary and employer
 

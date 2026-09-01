@@ -1,6 +1,7 @@
 # Household state
 
 **Epic:** E4 — The world, and an empty tick
+**Milestone:** M0
 **Depends on:** 03-03, 02-01
 **New ground:** The behavioural parameters and holdings, joined to the balance sheet
 

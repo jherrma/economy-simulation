@@ -1,6 +1,7 @@
 # Initialisation ordering, and breaking the tenure circularity
 
 **Epic:** E3 — Configuration and opening state
+**Milestone:** M0
 **Depends on:** 03-04
 **New ground:** Resolving a definition that refers to its own result
 

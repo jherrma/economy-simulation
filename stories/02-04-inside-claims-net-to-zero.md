@@ -1,6 +1,7 @@
 # Inside claims net to zero
 
 **Epic:** E2 — The ledger
+**Milestone:** M0
 **Depends on:** 02-03
 **New ground:** The second invariant, and the correction of one that was wrong in the spec
 

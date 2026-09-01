@@ -1,6 +1,7 @@
 # Credit standards, for households and for firms
 
 **Epic:** E7 — Credit
+**Milestone:** M2
 **Depends on:** 07-01
 **New ground:** Two different tests, because a firm has neither wage income nor a dwelling
 

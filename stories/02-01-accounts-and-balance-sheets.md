@@ -1,6 +1,7 @@
 # Accounts and the agent balance sheet
 
 **Epic:** E2 — The ledger
+**Milestone:** M0
 **Depends on:** 01-02, 01-04
 **New ground:** The stocks every agent holds, before anything moves between them
 
@@ -15,6 +16,8 @@ As the model author, I want each agent to carry an explicit balance sheet in `Mo
 - [ ] The bank holds: `reserves`, loans, demand deposits, time deposits and `equity` (§5.3).
 - [ ] **Demand and time deposits are separate fields.** §7.1's reserve inequality and §7.3's `h_reserve` refer to demand deposits only; conflating them makes the full-reserve case wrong in a way no test would name.
 - [ ] Every monetary field is `Money`. No field is a `double`.
+- [ ] **Every field exists from M0**, zero-valued until the milestone that writes to it — loans until M2, time deposits until M3, dwellings until M6 (S6). Adding a balance-sheet line later would mean re-deriving V1 and re-validating every stored run.
+- [ ] An account is `(owner, kind)`. The conservation invariant sums the cash and reserve **kinds** regardless of who owns them, so a new kind of holder does not require editing the check (S9).
 - [ ] Net worth is computed in one place, per the single definition in §9, and includes bank shares — the bank sits in the same share register as any firm (§5.1.3).
 - [ ] Nothing in this story moves money. Transfers are 02-02.
 

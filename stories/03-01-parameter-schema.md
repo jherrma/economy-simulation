@@ -1,6 +1,7 @@
 # The §13 parameter schema
 
 **Epic:** E3 — Configuration and opening state
+**Milestone:** M0
 **Depends on:** 01-02, 01-03
 **New ground:** Every configurable quantity, typed, with §13's own rule enforced
 

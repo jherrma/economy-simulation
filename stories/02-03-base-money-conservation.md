@@ -1,6 +1,7 @@
 # Base-money conservation — **V1**
 
 **Epic:** E2 — The ledger
+**Milestone:** M0
 **Depends on:** 02-02
 **New ground:** The invariant that everything afterwards is developed against
 

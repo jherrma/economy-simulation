@@ -1,6 +1,7 @@
 # The goods table
 
 **Epic:** E4 — The world, and an empty tick
+**Milestone:** M0
 **Depends on:** 03-01
 **New ground:** The twelve sectors, and the elasticity × financeability grid as data
 
@@ -12,6 +13,7 @@ As the model author, I want the §4 goods table as configuration, with the exper
 
 - [ ] Twelve sectors, each with durability, status weight `w_g`, financeability, loan term, `elasticity_g` and running cost, per §4 and §13.4.
 - [ ] Grid membership is **computed** from numeric `elasticity_g`, never stored as a label — the words high/medium/low could not produce the grid and were the original defect.
+- [ ] **No enum, no `switch` on sector** (S7). Housing's depreciation exception is a column, not a branch. A test adds a synthetic thirteenth sector to the table and asserts the engine runs it without a code change.
 - [ ] Leisure/holidays is present and lands in elastic-financeable. It is the only financeable good with durability 1, which is why §1.3 calls its price series the most informative in the model.
 - [ ] The **rental firm** and the **public transport operator** are sectors like any other, with headcount, capital and owners.
 - [ ] `financeable_g` is a **per-good switch**, toggleable one good at a time for the C2a experiment (§1.3).

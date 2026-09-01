@@ -1,6 +1,7 @@
 # Settlement into the ledger
 
 **Epic:** E5 — The purchase decision
+**Milestone:** M1
 **Depends on:** 05-05, 02-02
 **New ground:** Purchases becoming money movements, and reserves responding
 

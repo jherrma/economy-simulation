@@ -1,6 +1,7 @@
 # Generations and status decay
 
 **Epic:** E6 — Status, stress, saving
+**Milestone:** M4
 **Depends on:** 06-01, 04-01
 **New ground:** Goods losing standing without losing function
 

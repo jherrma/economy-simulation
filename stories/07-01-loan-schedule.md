@@ -1,6 +1,7 @@
 # The loan schedule, and not double-counting interest
 
 **Epic:** E7 — Credit
+**Milestone:** M2
 **Depends on:** 01-03, 02-02, 04-04
 **New ground:** Amortisation, and the separation of payment from accrual
 

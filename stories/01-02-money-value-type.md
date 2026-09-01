@@ -1,6 +1,7 @@
 # `Money`, in integer cents, with no way in from `double`
 
 **Epic:** E1 — Foundations you cannot retrofit
+**Milestone:** M0
 **Depends on:** 01-01
 **New ground:** The first domain value type, and the rule that money is never floating point
 

@@ -1,6 +1,7 @@
 # The second-hand market, with a clearing price
 
 **Epic:** E7 — Credit
+**Milestone:** M5
 **Depends on:** 07-07, 05-04
 **New ground:** The abstainer's substitute, and a used price that can actually fall
 

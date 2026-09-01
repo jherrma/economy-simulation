@@ -1,6 +1,7 @@
 # Defining a scenario
 
 **Epic:** E12 — Scenarios and the campaign
+**Milestone:** M2
 **Depends on:** 03-02, 10-01
 **New ground:** A scenario as data, so the grids of §8 are enumerable
 

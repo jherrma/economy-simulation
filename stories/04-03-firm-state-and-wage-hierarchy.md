@@ -1,6 +1,7 @@
 # Firm state and the wage hierarchy
 
 **Epic:** E4 — The world, and an empty tick
+**Milestone:** M0
 **Depends on:** 03-02, 02-01
 **New ground:** Positions, tiers, and the identity that every household holds exactly one job
 

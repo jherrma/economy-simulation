@@ -1,6 +1,7 @@
 # The warm-up transient gate
 
 **Epic:** E11 — Validation gates
+**Milestone:** M1
 **Depends on:** 11-01
 **New ground:** Checking that the initialisation transient actually decayed
 

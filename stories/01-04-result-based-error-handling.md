@@ -1,6 +1,7 @@
 # Result-based failure, and an ignored Result is a build error
 
 **Epic:** E1 — Foundations you cannot retrofit
+**Milestone:** M0
 **Depends on:** 01-01
 **New ground:** Failure as a return value, and the analyzer that makes it real
 

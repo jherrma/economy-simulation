@@ -1,6 +1,7 @@
 # Money neutrality — **V3**
 
 **Epic:** E11 — Validation gates
+**Milestone:** M1
 **Depends on:** 11-03
 **New ground:** The check that catches a nominal illusion in a decision rule
 

@@ -1,6 +1,7 @@
 # The cash-versus-deposit choice, κ
 
 **Epic:** E6 — Status, stress, saving
+**Milestone:** M3
 **Depends on:** 06-04, 05-06
 **New ground:** The self-correcting loop that makes §7 a slope rather than a wall
 

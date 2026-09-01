@@ -17,7 +17,9 @@ money is specified but deferred to a later phase.
 ## Status
 
 Specification stage. No engine code yet; the implementation language is settled (C# on .NET 10 —
-see below).
+see below) and the backlog is sequenced into nine milestones, each of which runs and adds one
+economic dimension. **M2 — 49 of 71 stories — is the first milestone that answers the question
+above.**
 
 - [`docs/MODEL.md`](docs/MODEL.md) — full model specification: agents, goods, behaviour,
   bank lending capacity, scenarios, metrics, and the limits of what the model can show.
@@ -28,9 +30,13 @@ see below).
   [`bench/`](bench/).
 - [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md) — four views: the tick pipeline, the value types, the
   data layout, and every entity in the simulation.
-- [`stories/`](stories/) — the implementation backlog: 68 stories across 12 epics, each with
+- [`docs/FOUNDATION.md`](docs/FOUNDATION.md) — the nine structural seams that let a dimension be
+  added without rewriting what came before, and what breaks silently without each of them.
+- [`stories/MILESTONES.md`](stories/MILESTONES.md) — the build order: nine milestones, what each
+  adds, the question it can answer, its gate, and what is deliberately wrong at that stage.
+- [`stories/`](stories/) — the implementation backlog: 71 stories across 12 epics, each with
   acceptance criteria and an objective pass/fail check. Start with
-  [`stories/README.md`](stories/README.md), which sets out the six verification devices this
+  [`stories/README.md`](stories/README.md), which sets out the seven verification devices this
   project relies on in place of an external oracle.
 
 ## Approach
@@ -39,6 +45,10 @@ The model is built so that it can refute the hypothesis. Any assumption strong e
 produce the expected result on its own is exposed as a switch, and the opposing setting is
 always run as a control. Results are reported with sensitivity ranges, and runs that
 contradict the hypothesis are published alongside those that support it.
+
+Those switches do double duty. Because every dimension can be turned off, and off must reproduce
+the previous milestone byte-for-byte, the difference between two milestones is the measured effect
+of one mechanism rather than the difference between two versions of a program.
 
 ## Licence
 

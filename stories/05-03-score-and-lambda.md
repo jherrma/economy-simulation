@@ -1,6 +1,7 @@
 # `score`, and λ as a reservation ratio
 
 **Epic:** E5 — The purchase decision
+**Milestone:** M1
 **Depends on:** 05-01, 05-02
 **New ground:** A dimensionless ranking, and saving as a price on money
 
@@ -12,6 +13,7 @@ As the model author, I want `score = value / user_cost` as a dimensionless numbe
 
 - [ ] `score` is dimensionless, both sides being euros per tick.
 - [ ] `λ = λ_base · (1 + λ_gap · max(0, (φ − buffer_months) / φ))`, per §6.2.
+- [ ] **`λ_gap` defaults to 0**, so at M1 λ is constant at `λ_base` and the buffer term is inert. 06-04 turns it on at M3 (S4); the expression here is already the final one.
 - [ ] `λ = 1` means the household buys anything worth at least what it costs. A test pins this interpretation.
 - [ ] At or above the buffer target, `λ = λ_base`; with an empty buffer, `λ = λ_base · (1 + λ_gap)`.
 - [ ] λ is **scale-free** and therefore never indexed — that is the point of having put the price level into `value` instead.

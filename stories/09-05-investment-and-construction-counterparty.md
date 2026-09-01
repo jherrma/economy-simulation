@@ -1,6 +1,7 @@
 # Investment, and who receives the money
 
 **Epic:** E9 — Firms
+**Milestone:** M7
 **Depends on:** 09-04, 08-05
 **New ground:** Closing an open money leak
 

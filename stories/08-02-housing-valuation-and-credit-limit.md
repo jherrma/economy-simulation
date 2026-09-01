@@ -1,6 +1,7 @@
 # Valuation, and defining `credit_limit`
 
 **Epic:** E8 — Housing
+**Milestone:** M6
 **Depends on:** 08-01, 05-03
 **New ground:** One valuation rule at two horizons, and a term that appeared nowhere
 

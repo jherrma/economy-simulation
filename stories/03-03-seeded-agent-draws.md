@@ -1,6 +1,7 @@
 # Seeded per-agent draws, including correlated θ and φ
 
 **Epic:** E3 — Configuration and opening state
+**Milestone:** M0
 **Depends on:** 03-02, 01-05
 **New ground:** Turning ranges into a heterogeneous population, reproducibly
 

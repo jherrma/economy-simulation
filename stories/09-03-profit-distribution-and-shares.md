@@ -1,7 +1,8 @@
 # Profit distribution and the share register
 
 **Epic:** E9 — Firms
-**Depends on:** 09-02, 04-04
+**Milestone:** M1
+**Depends on:** 09-01, 04-04
 **New ground:** Where profit goes, and a store of wealth that can be liquidated under pressure
 
 ## Story

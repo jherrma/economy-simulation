@@ -1,6 +1,7 @@
 # Deterministic RNG, seeded per stream
 
 **Epic:** E1 — Foundations you cannot retrofit
+**Milestone:** M0
 **Depends on:** 01-01
 **New ground:** **V2.** Reproducibility that survives parallelism and reordering
 
@@ -14,6 +15,9 @@ As the person who will defend these results, I want every random draw to come fr
 - [ ] Two runs with the same seed produce byte-identical output files.
 - [ ] A run executed with agents processed in a different order produces the same draws **for each agent**, because an agent's stream does not depend on when it was reached.
 - [ ] Adding a new consumer of randomness in one part of the model does not shift the draws in any other part.
+- [ ] Stream purposes are **string constants in one registry**. No stream is derived from an index, a counter, or a slice of another stream — those reintroduce the ordering dependence this story removes (S2).
+- [ ] A test **registers a new purpose, never draws from it, and asserts the run is byte-identical**. This is the property that makes every later milestone comparable to every earlier one on the same seeds.
+- [ ] Per-agent attributes are drawn at initialisation from named streams **even when nothing reads them yet** — θ is unused until M2 and φ until M3, and drawing them late would shift the opening state (03-03).
 - [ ] The generator is explicit and fixed in the code, not the framework default, and is documented — a runtime that changes its PRNG between versions would silently break every stored result.
 - [ ] A test runs the same seed twice, once serially and once across threads, and compares output byte for byte.
 

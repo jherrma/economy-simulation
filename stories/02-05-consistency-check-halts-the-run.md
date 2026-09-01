@@ -1,6 +1,7 @@
 # The consistency check, and halting on violation
 
 **Epic:** E2 — The ledger
+**Milestone:** M0
 **Depends on:** 02-03, 02-04, 01-04
 **New ground:** What actually happens when an invariant fails
 

@@ -1,6 +1,7 @@
 # Time deposits, and what they mean for the reserve test
 
 **Epic:** E6 — Status, stress, saving
+**Milestone:** M3
 **Depends on:** 06-05, 04-04
 **New ground:** The instrument without which the decisive control run is set by its own initialisation
 

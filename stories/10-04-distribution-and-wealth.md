@@ -1,6 +1,7 @@
 # Distribution and wealth
 
 **Epic:** E10 — Metrics and output
+**Milestone:** M8
 **Depends on:** 10-02
 **New ground:** Real terms throughout, and three answers to one question
 

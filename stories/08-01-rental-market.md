@@ -1,6 +1,7 @@
 # The rental market, and sitting tenants
 
 **Epic:** E8 — Housing
+**Milestone:** M6
 **Depends on:** 04-05, 05-03
 **New ground:** A tick step that the specification had no place for
 

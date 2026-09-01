@@ -1,6 +1,7 @@
 # The opening balance sheet
 
 **Epic:** E3 — Configuration and opening state
+**Milestone:** M0
 **Depends on:** 03-03, 02-03
 **New ground:** A t = 0 state that satisfies V1 before a single tick runs
 

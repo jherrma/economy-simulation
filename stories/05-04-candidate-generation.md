@@ -1,6 +1,7 @@
 # Candidate units, and indivisible durables
 
 **Epic:** E5 — The purchase decision
+**Milestone:** M1
 **Depends on:** 05-03, 04-01
 **New ground:** What a household is actually choosing between
 

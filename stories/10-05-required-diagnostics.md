@@ -1,6 +1,7 @@
 # The diagnostics the reviews made mandatory
 
 **Epic:** E10 — Metrics and output
+**Milestone:** M8
 **Depends on:** 10-04, 07-03, 08-03
 **New ground:** Numbers that exist to stop a result being misread
 

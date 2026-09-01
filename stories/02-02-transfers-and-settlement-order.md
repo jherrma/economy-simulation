@@ -1,6 +1,7 @@
 # Transfers, and settlement cash-first
 
 **Epic:** E2 — The ledger
+**Milestone:** M0
 **Depends on:** 02-01
 **New ground:** The only operations permitted to move money, and what each does to reserves
 
