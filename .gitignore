@@ -1,0 +1,23 @@
+# .NET
+bin/
+obj/
+*.user
+
+# Compiled benchmark output
+bench/bench
+bench/bench_go
+bench/bench_go2
+bench/bench_c
+bench/bench_c2
+bench/*.o
+bench/zig-out/
+bench/.zig-cache/
+
+# Simulation output
+out/
+*.csv
+*.parquet
+
+# Editor
+.vscode/
+.idea/
