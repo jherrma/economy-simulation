@@ -26,6 +26,8 @@ see below).
 - [`docs/LANGUAGE-CHOICE.md`](docs/LANGUAGE-CHOICE.md) — how the implementation language was
   chosen: the benchmark, the measurements, and the argument for C#. Sources in
   [`bench/`](bench/).
+- [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md) — four views: the tick pipeline, the value types, the
+  data layout, and every entity in the simulation.
 - [`stories/`](stories/) — the implementation backlog: 68 stories across 12 epics, each with
   acceptance criteria and an objective pass/fail check. Start with
   [`stories/README.md`](stories/README.md), which sets out the six verification devices this
