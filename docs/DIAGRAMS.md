@@ -6,6 +6,42 @@ in most editors without a toolchain, and they diff as text.
 `§` refers to a section of [`MODEL.md`](MODEL.md); `D<n>` to [`DECISIONS.md`](DECISIONS.md);
 story ids to [`../stories/`](../stories/).
 
+## Checking these before committing
+
+Mermaid that *parses* is not Mermaid that *reads*, and the difference is not visible in a diff.
+Both diagrams in the first version of this file were wrong in ways only rendering revealed: the
+tick laid its phases out as 4, 5, 1, 2, 3 — because a `next tick` back-edge made the graph cyclic
+and Mermaid broke the cycle wherever it liked — and the entity diagram was a single 13-class
+tangle with a floating note and an orphaned edge label.
+
+So: **render every block and look at it.** The toolchain is 15 seconds to install and needs no
+Chromium download, since a system Chrome already satisfies Puppeteer.
+
+```sh
+export PUPPETEER_SKIP_DOWNLOAD=true
+npm install @mermaid-js/mermaid-cli
+printf '{"executablePath": "%s", "args": ["--no-sandbox"]}' "$(command -v google-chrome)" > pc.json
+
+# parse + render every fenced block; one output file per diagram
+npx mmdc -i docs/DIAGRAMS.md -o out.md -p pc.json -e png -w 1600 --scale 2
+```
+
+Three things to check, in order:
+
+1. **It renders at all.** A syntax error fails the command and names the block.
+2. **The dimensions are sane.** A block that comes back a few hundred pixels tall has collapsed —
+   `direction TB` inside a subgraph is silently ignored when cross-subgraph edges are present, which
+   flattened an `LR` version of the tick into a 3168×104 strip.
+3. **It reads.** Open the PNGs. This is the only step that catches wrong ordering, colliding labels
+   and tangles, and it is the step that is easy to skip.
+
+Known constraints, learned the hard way: a `note` belongs *outside* a class body as
+`note for X "…"`, never inside it; a cyclic flowchart has no defined starting point, so a
+"return to start" edge must be a terminal node rather than a real edge; and a `classDiagram` past
+roughly ten boxes will tangle, which is why section 4 is three diagrams rather than one.
+
+---
+
 1. [The tick](#1-the-tick) — the pipeline, and which phases move money
 2. [Value types and service boundaries](#2-value-types-and-service-boundaries) — the only class diagram that earns its place
 3. [Data layout](#3-data-layout) — why there is almost no object graph to draw
@@ -18,6 +54,8 @@ story ids to [`../stories/`](../stories/).
 §6.1, seventeen steps in five phases, following a **plan → arbitrate → settle** structure. Nothing
 is paid until every claim on a household's income is known, because the choice between paying debt
 service and consuming (§6.8) cannot be made before both amounts exist.
+
+It lays out tall because seventeen sequential steps are tall. Read top to bottom.
 
 **Read the shading carefully.** It is tempting to say "money moves in phase 4", and that is false:
 wages are paid at step 3 in phase 1, and phase 5 settles capital calls, dividends, rebalancing and
@@ -56,8 +94,11 @@ flowchart TD
         S17["17 · <b>Consistency check</b> — abort on violation"]
         S12 --> S13 --> S14 --> S15 --> S16 --> S17
     end
-    P1 --> P2 --> P3 --> P4 --> P5
-    S17 -.->|next tick| S1
+    S3 --> S4
+    S6 --> S7
+    S7 --> S8
+    S11 --> S12
+    S17 --> NEXT["↻ next tick — return to step 1"]
 
     classDef moves fill:#f6d5d0,stroke:#b4553f,color:#3a1a12
     classDef quiet fill:#dfe8f5,stroke:#4a6fa5,color:#12203a
@@ -213,107 +254,99 @@ should catch it.
 
 ## 4. Every entity in the simulation
 
-The domain model: every agent, every real asset, and every claim that connects them. Multiplicities
-are the defaults from §13.
+Every agent, every real asset and every claim that connects them, across **three views**. One
+diagram containing all thirteen entities was drawn first and rejected: it rendered, but as a
+tangle of edges sweeping the full width, with a floating note and an orphaned label. Three
+readable views beat one complete-but-unreadable one.
+
+Multiplicities are the defaults from §13. Full attributes are in the table after the third view.
+
+### 4a · Agents and employment
 
 ```mermaid
-classDiagram
-    direction TB
-
-    class Household {
-        count : 800
-        params : theta phi kappa sigma pi epsilon tau
-        stress and credit record
-        abstainer flag
-    }
-    class Firm {
-        count : 78 across 12 sectors
-        price and capital stock
-        inventory and headcount
-    }
-    class Bank {
-        count : 1
-        reserves and equity
-        also an employer
-    }
-    class State {
-        phase 5 : absent in v1
-    }
-
-    class Dwelling {
-        count : 850
-        quality tier
-        assessed value
-    }
-    class Durable {
-        car phone furniture bicycle clothing
-        generation and age
-    }
-
-    class Position {
-        tier : management 8 percent
-        tier : skilled 32 percent
-        tier : basic 60 percent
-    }
-    class Shareholding {
-        fraction held
-    }
-    class Loan {
-        kind : mortgage consumer firm
-        principal rate term
-        risk weight
-    }
-    class Tenancy {
-        rent and sitting-tenant lag
-    }
-    class Cash {
-        base money, bearer
-        part of M0
-    }
-    class DemandDeposit {
-        reserve-requiring
-    }
-    class TimeDeposit {
-        NO reserve requirement
-        term and break penalty
-    }
-    note for TimeDeposit "Exempt from the reserve inequality. This is what funds lending at full reserve."
-
-    Household "1" --> "1" Position : holds — exactly one, always
-    Firm "1" --> "3..40" Position : offers
-    Bank "1" --> "12" Position : offers
-
-    Household "1" --> "0..*" Shareholding : owns
-    Shareholding "0..*" --> "1" Firm : stake in
-    Shareholding "0..*" --> "1" Bank : stake in
-
-    Household "1" --> "0..*" Dwelling : occupies or lets
-    Household "1" --> "0..*" Durable : holds
-    Bank "1" --> "0..*" Durable : repossessed, resells
-    Bank "1" --> "0..*" Dwelling : repossessed, resells
-
-    Household "1" --> "0..*" Loan : borrower
-    Firm "1" --> "0..*" Loan : borrower
-    Loan "0..*" --> "1" Bank : creditor
-    Loan "0..1" --> "1" Dwelling : secured on
-    Loan "0..1" --> "1" Durable : secured on
-
-    Tenancy "0..*" --> "1" Dwelling : of
-    Household "1" --> "0..*" Tenancy : landlord
-    Household "1" --> "0..1" Tenancy : tenant
-
-    Household "1" --> "1" Cash : holds
-    Firm "1" --> "1" Cash : holds
-    Bank "1" --> "1" Cash : as reserves
-    Household "1" --> "1" DemandDeposit : at
-    Household "1" --> "0..1" TimeDeposit : at
-    Firm "1" --> "1" DemandDeposit : at
-    DemandDeposit "0..*" --> "1" Bank
-    TimeDeposit "0..*" --> "1" Bank
-
-    State ..> Household : taxes and transfers
-    State ..> Bank : issues bonds
+erDiagram
+    HOUSEHOLD ||--|| POSITION : "holds exactly one, always"
+    FIRM      ||--|{ POSITION : "offers 3..40"
+    BANK      ||--|{ POSITION : "offers 12"
+    HOUSEHOLD ||--o{ SHAREHOLDING : owns
+    SHAREHOLDING }o--|| FIRM : "stake in"
+    SHAREHOLDING }o--|| BANK : "stake in"
+    STATE     ||--o{ HOUSEHOLD : "taxes, transfers — phase 5"
 ```
+
+`HOUSEHOLD ||--|| POSITION` is an **identity, not an aspiration**: total positions equal
+`n_households` exactly, and story 09-06's reallocation pool must be empty at the end of every tick.
+There is no unemployment (D20), so demotion between tiers is the model's only income shock.
+
+The bank appears here twice over — as an employer of twelve, and as something owned through the
+same `SHAREHOLDING` register as any firm. It is not a special case.
+
+### 4b · Real assets and the claims on them
+
+```mermaid
+erDiagram
+    HOUSEHOLD ||--o{ DWELLING : "occupies or lets"
+    HOUSEHOLD ||--o{ DURABLE  : holds
+    HOUSEHOLD ||--o{ LOAN     : borrows
+    FIRM      ||--o{ LOAN     : borrows
+    LOAN      }o--|| BANK     : "owed to"
+    LOAN      }o--o| DWELLING : "secured on"
+    LOAN      }o--o| DURABLE  : "secured on"
+    BANK      ||--o{ DWELLING : "repossesses, resells"
+    BANK      ||--o{ DURABLE  : "repossesses, resells"
+    HOUSEHOLD ||--o{ TENANCY  : "landlord of"
+    HOUSEHOLD ||--o| TENANCY  : "tenant under"
+    TENANCY   }o--|| DWELLING : of
+```
+
+The two `BANK` edges to `DWELLING` and `DURABLE` are the repossession path (§5.3.1, story 07-08),
+and they are why a loan must carry its collateral rather than only its balance: risk weight depends
+on current LTV, which depends on what the collateral is currently worth.
+
+A household appears on **both** ends of `TENANCY`. The same population contains landlords and
+tenants, which is what makes the rental market a distributional channel rather than a cost.
+
+### 4c · Money
+
+```mermaid
+erDiagram
+    HOUSEHOLD ||--|| CASH           : holds
+    FIRM      ||--|| CASH           : holds
+    BANK      ||--|| CASH           : "holds as reserves"
+    HOUSEHOLD ||--|| DEMAND_DEPOSIT : at
+    FIRM      ||--|| DEMAND_DEPOSIT : at
+    HOUSEHOLD ||--o| TIME_DEPOSIT   : at
+    DEMAND_DEPOSIT }o--|| BANK      : "liability of — reserve-requiring"
+    TIME_DEPOSIT   }o--|| BANK      : "liability of — NO reserve requirement"
+```
+
+This is the whole of V1: `M0 = household cash + firm cash + bank reserves`, exact to the cent,
+every tick. The three `CASH` edges are the three places base money can sit, and firm cash is in the
+identity because an earlier draft of it omitted them.
+
+**The asymmetry between the two deposit classes is the most consequential thing in this diagram.**
+Demand deposits require reserves; time deposits do not, because the saver has genuinely given up
+the use of the money. That exemption is what allows lending at `reserve_ratio = 1.0` at all —
+without it the full-reserve control run is determined by the size of its opening loan book rather
+than by credit appetite (§7.1.1, story 06-06).
+
+### Entity reference
+
+| Entity | Count | Key fields |
+|---|---|---|
+| `Household` | 800 | θ φ κ σ π ε τ · stress · credit record · abstainer flag |
+| `Firm` | 78 across 12 sectors | price · capital stock · inventory · headcount |
+| `Bank` | 1 | reserves · equity · loan book · also an employer |
+| `State` | 0 in v1 | phase 5 only |
+| `Dwelling` | 850 | quality tier · assessed value |
+| `Durable` | many | car, phone, furniture, bicycle, clothing · generation · age |
+| `Position` | 800 | tier: management 8% / skilled 32% / basic 60% |
+| `Shareholding` | many | fraction held |
+| `Loan` | many | mortgage / consumer / firm · principal · rate · term · risk weight |
+| `Tenancy` | ~320 | rent · sitting-tenant lag |
+| `Cash` | — | base money, bearer, part of `M0` |
+| `DemandDeposit` | — | reserve-requiring |
+| `TimeDeposit` | — | term · break penalty · **no reserve requirement** |
 
 ### The twelve sectors
 
