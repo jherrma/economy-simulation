@@ -10,13 +10,13 @@ As the person writing this up, I want the abstainer and borrower cohorts measure
 
 ## Acceptance criteria
 
-- [ ] Cohorts are **abstainers** (`θ = 0` by construction, 20%) and **borrowers** (everyone else), fixed at initialisation and identical across scenarios for a given seed.
-- [ ] **`share_of_wanted_obtained`** per category: units bought ÷ units wanted. With supply fixed, total real consumption is capped, so the question is who gets it.
-- [ ] **`wait`**: for each durable want, ticks between first wanting and obtaining. Reported as a cohort median, with unfulfilled wants counted at their current age rather than dropped — dropping them would make a cohort that never gets served look patient.
-- [ ] **`tier_mix` by cohort** — the share of each cohort's purchases at each tier. This is the trade-down finding.
-- [ ] **`quality_index`**: units obtained weighted by `value_mult`, so a cohort that holds its unit count by buying worse goods is not recorded as unaffected.
-- [ ] Also per cohort: nominal spend, cash held, loans outstanding, debt service.
-- [ ] A test asserts the two cohorts partition the population exactly and that membership is identical across two scenarios on one seed.
+- [x] Cohorts are **abstainers** (`θ = 0` by construction, 20%) and **borrowers** (everyone else), fixed at initialisation and identical across scenarios for a given seed.
+- [x] **`share_of_wanted_obtained`** per category: units bought ÷ units wanted. With supply fixed, total real consumption is capped, so the question is who gets it.
+- [x] **`wait`**: for each durable want, ticks between first wanting and obtaining. Reported as a cohort median, with unfulfilled wants counted at their current age rather than dropped — dropping them would make a cohort that never gets served look patient.
+- [x] **`tier_mix` by cohort** — the share of each cohort's purchases at each tier. This is the trade-down finding.
+- [x] **`quality_index`**: units obtained weighted by `value_mult`, so a cohort that holds its unit count by buying worse goods is not recorded as unaffected.
+- [x] Also per cohort: nominal spend, cash held, loans outstanding, debt service.
+- [x] A test asserts the two cohorts partition the population exactly and that membership is identical across two scenarios on one seed.
 
 ## Where to start
 
@@ -41,3 +41,19 @@ dotnet test --filter FullyQualifiedName~CohortMetricsTests
 
 The partition test, identical membership across scenarios, and a synthetic run where a cohort's
 unit count is unchanged but its `quality_index` falls.
+
+## Implementation note (2026-09-03)
+
+`share_of_wanted_obtained` is written as its two integers, `wanted` and `obtained`, rather than as
+the ratio: the differencing happens outside the engine, and a ratio with a zero denominator is a
+decision the analysis should make rather than the writer.
+
+The median wait is computed from a **histogram** rather than a sorted list, because it is computed
+every tick inside a run that allocates nothing and a wait is a small non-negative integer. It covers
+durable wants only — food and leisure are met or not within the same tick, so their zeros would
+swamp the number — and it counts wants met this tick at the wait they were met after, together with
+wants still open at their current age.
+
+The tier and the price paid are known only inside the walk: after it, all that survives is that
+*something* was bought. So the walk reports each purchase to the cohort series, through a property
+the simulation sets, left null by tests that drive a walker directly.

@@ -1,6 +1,7 @@
 using EconomySimulation.Engine.Configuration;
 using EconomySimulation.Engine.Credit;
 using EconomySimulation.Engine.Ledger;
+using EconomySimulation.Engine.Output;
 using EconomySimulation.Engine.World;
 using FluentResults;
 
@@ -111,6 +112,13 @@ public sealed class Walker
 
     /// <summary>Set by tests to watch outcomes. Leave null in a run.</summary>
     internal WalkObserver? Observer { get; set; }
+
+    /// <summary>
+    /// Where purchases are reported for the cohort series (07-03). Set by the simulation; null in
+    /// tests that drive a walker directly, which then record nothing. The tier and the price paid
+    /// are known here and nowhere else — after the walk, only that *something* was bought survives.
+    /// </summary>
+    internal CohortMetrics? Cohorts { get; set; }
 
     /// <summary>The order the last tick visited households in, for tests of the shuffle.</summary>
     internal ReadOnlySpan<int> LastOrder => order;
@@ -286,7 +294,18 @@ public sealed class Walker
         {
             if (chosenTier[c] >= 0)
             {
-                market.Sell(c, chosenTier[c]);
+                var tier = chosenTier[c];
+
+                market.Sell(c, tier);
+
+                // Before Acquire, which clears the wait this purchase ended.
+                Cohorts?.RecordPurchase(
+                    CohortMetrics.Of(population, household),
+                    c,
+                    tier,
+                    market.Price(c, tier),
+                    population.Wait[population.AgeIndex(household, c)]);
+
                 population.Acquire(household, c);
             }
         }

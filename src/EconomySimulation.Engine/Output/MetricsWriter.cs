@@ -30,6 +30,9 @@ public sealed class MetricsWriter : IDisposable
 
     private const int BufferBytes = 1 << 16;
 
+    /// <summary>Cached: `Enum.GetValues` allocates, and this is walked once per row.</summary>
+    private static readonly Cohort[] AllCohorts = Enum.GetValues<Cohort>();
+
     private readonly StreamWriter tiers;
     private readonly StreamWriter run;
     private readonly StringBuilder line = new(512);
@@ -219,7 +222,37 @@ public sealed class MetricsWriter : IDisposable
         column("money_created");
         column("money_destroyed");
         column("rationed");
+
+        foreach (var cohort in AllCohorts)
+        {
+            var name = Name(cohort);
+
+            column(name + "_households");
+            column(name + "_cash");
+            column(name + "_loans_outstanding");
+            column(name + "_debt_service");
+            column(name + "_spend");
+            column(name + "_quality");
+            column(name + "_wanted");
+            column(name + "_obtained");
+            column(name + "_wait_median");
+
+            foreach (var category in goods.Categories)
+            {
+                column($"{name}_{category.Name}_wanted");
+                column($"{name}_{category.Name}_obtained");
+                column($"{name}_{category.Name}_spend");
+
+                foreach (var tier in goods.Tiers)
+                {
+                    column($"{name}_{category.Name}_{tier.Name}_units");
+                }
+            }
+        }
     }
+
+    /// <summary>The cohort's name in a column. Lower case, and stable: renaming one breaks every reader.</summary>
+    private static string Name(Cohort cohort) => cohort == Cohort.Abstainer ? "abstainer" : "borrower";
 
     private static void Keys(Action<string> column)
     {
@@ -253,8 +286,6 @@ public sealed class MetricsWriter : IDisposable
 
     private void WriteRunRow(Simulation simulation, TickRecord record)
     {
-        _ = simulation;
-
         Begin(record);
         Field(record.Cpi);
 
@@ -270,6 +301,34 @@ public sealed class MetricsWriter : IDisposable
         Field(record.MoneyCreated);
         Field(record.MoneyDestroyed);
         Field(record.Rationed);
+
+        var cohorts = simulation.Cohorts;
+
+        foreach (var cohort in AllCohorts)
+        {
+            Field(cohorts.Households(cohort));
+            Field(cohorts.Cash(cohort));
+            Field(cohorts.LoansOutstanding(cohort));
+            Field(cohorts.DebtService(cohort));
+            Field(cohorts.Spend(cohort));
+            Field(cohorts.Quality(cohort));
+            Field(cohorts.Wanted(cohort));
+            Field(cohorts.Obtained(cohort));
+            Field(cohorts.WaitMedian(cohort));
+
+            for (var c = 0; c < goods.CategoryCount; c++)
+            {
+                Field(cohorts.Wanted(cohort, c));
+                Field(cohorts.Obtained(cohort, c));
+                Field(cohorts.Spend(cohort, c));
+
+                for (var t = 0; t < goods.TierCount; t++)
+                {
+                    Field(cohorts.Units(cohort, c, t));
+                }
+            }
+        }
+
         End(run, runColumns, "run.csv");
     }
 

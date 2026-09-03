@@ -82,6 +82,28 @@ public sealed class LoanBook
         return total;
     }
 
+    /// <summary>
+    /// What the household still owes in principal: the parts of its live loans that have not been
+    /// paid yet. Over the whole town this sums to the ledger's <c>LoansOutstanding</c> exactly,
+    /// because a repayment releases the claim by the same part it destroys.
+    /// </summary>
+    public Money OutstandingPrincipal(int household)
+    {
+        var total = Money.Zero;
+
+        for (var i = headOf[household]; i != None; i = nextOf[i])
+        {
+            ref var loan = ref loans[i];
+
+            for (var k = loan.Paid; k < loan.Term; k++)
+            {
+                total += loan.PrincipalPart(k);
+            }
+        }
+
+        return total;
+    }
+
     /// <summary>How many live loans the household carries.</summary>
     public int LiveLoans(int household)
     {

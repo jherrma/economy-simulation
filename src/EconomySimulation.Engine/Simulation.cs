@@ -49,6 +49,8 @@ public sealed class Simulation
         Loans = new LoanBook(Population, LoanCapacity(Goods, Population.Count));
         Shopping = new Walker(parameters, Goods, Market, Population, Books, Loans, runSeed);
         Recorded = new TickRecord(Goods);
+        Cohorts = new CohortMetrics(Goods, Population, parameters.Run.Ticks);
+        Shopping.Cohorts = Cohorts;
     }
 
     public SimulationParameters Parameters { get; }
@@ -74,6 +76,9 @@ public sealed class Simulation
     /// the writer. Nothing in the model reads it.
     /// </summary>
     public TickRecord Recorded { get; }
+
+    /// <summary>The abstainer and borrower series for the last tick — the finding itself (07-03).</summary>
+    public CohortMetrics Cohorts { get; }
 
     /// <summary>The last completed tick. −1 before the run starts.</summary>
     public int Tick { get; private set; } = -1;
@@ -147,6 +152,7 @@ public sealed class Simulation
         Market.Restock();
         Books.OpenTick();
         Recorded.Open(tick, Market, Parameters.Run.WarmupTicks);
+        Cohorts.OpenTick();
 
         // Indexed, not foreach: enumerating through the interface boxes an enumerator, and the
         // tick allocates nothing.
@@ -164,6 +170,7 @@ public sealed class Simulation
         }
 
         Recorded.Close(Books, Loans, Shopping.Rationed);
+        Cohorts.Close(Population, Books, Loans);
         Tick = tick;
 
         return Results.Ok;
@@ -226,9 +233,16 @@ public sealed class Simulation
 
         for (var h = 0; h < Population.Count; h++)
         {
+            var cohort = CohortMetrics.Of(Population, h);
+
             for (var c = 0; c < Goods.CategoryCount; c++)
             {
                 Population.RefreshWant(h, c, Goods.Categories[c].Life);
+
+                if (Population.Wanted[Population.AgeIndex(h, c)])
+                {
+                    Cohorts.RecordWant(cohort, c);
+                }
             }
         }
 

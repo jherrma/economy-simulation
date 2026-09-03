@@ -4,6 +4,7 @@ using EconomySimulation.Engine.Credit;
 using EconomySimulation.Engine.Decision;
 using EconomySimulation.Engine.Ledger;
 using EconomySimulation.Engine.World;
+using FluentResults;
 
 namespace EconomySimulation.Tests;
 
@@ -425,16 +426,15 @@ public sealed class WalkTests
     public void AFullTickAllocatesNothing(Rationing rationing)
     {
         var simulation = new Simulation(Defaults with { Prices = Defaults.Prices with { Rationing = rationing } }, runSeed: 12);
+        var tick = 0;
+        Result? measured = null;
 
-        Assert.True(simulation.RunTick(1).IsSuccess);
-        Assert.True(simulation.RunTick(2).IsSuccess);
+        var allocated = Infrastructure.Allocations.Of(
+            () => Assert.True(Results.IsOk(simulation.RunTick(++tick))),
+            () => measured = simulation.RunTick(++tick));
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var result = simulation.RunTick(3);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        Assert.True(result.IsSuccess);
         Assert.Equal(0, allocated);
+        Assert.True(Results.IsOk(measured!));
     }
 
     // ---- the run --------------------------------------------------------------------------------

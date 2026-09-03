@@ -4,6 +4,7 @@ using EconomySimulation.Engine.Credit;
 using EconomySimulation.Engine.Decision;
 using EconomySimulation.Engine.Ledger;
 using EconomySimulation.Engine.World;
+using FluentResults;
 
 namespace EconomySimulation.Tests;
 
@@ -333,25 +334,17 @@ public sealed class FinanceDecisionTests
         var simulation = new Simulation(high, runSeed: 1);
         Assert.True(simulation.Start().IsSuccess);
 
-        // Thirty warm-up ticks: tiered compilation promotes a method after thirty calls, and a
-        // promotion landing inside the measured tick showed up once as eight kilobytes that were
-        // the runtime's, not the model's. Every path with loans live — origination, service,
-        // retirement at twelve months — has run by then.
-        for (var tick = 1; tick <= 30; tick++)
-        {
-            Assert.True(simulation.RunTick(tick).IsSuccess);
-        }
+        var tick = 0;
+        Result? measured = null;
 
+        // The warm-up also has to reach every path with loans live: origination, service, and the
+        // retirement of a twelve-month loan.
+        var allocated = Infrastructure.Allocations.Of(
+            () => Assert.True(Results.IsOk(simulation.RunTick(++tick))),
+            () => measured = simulation.RunTick(++tick));
+
+        Assert.Equal(0, allocated);
+        Assert.True(Results.IsOk(measured!));
         Assert.True(simulation.Loans.LiveCount > 0);
-
-        for (var tick = 31; tick <= 33; tick++)
-        {
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            var result = simulation.RunTick(tick);
-            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-            Assert.True(Results.IsOk(result));
-            Assert.Equal(0, allocated);
-        }
     }
 }
