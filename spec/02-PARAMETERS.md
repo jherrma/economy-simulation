@@ -197,8 +197,16 @@ invalidates the run:
 | `credit_enabled` | **false** | Default off, so the default configuration *is* the baseline |
 | `loan_rate` | 8.0 %/a | German consumer instalment credit, nominal, simple interest |
 | `money_creation` | true | Loans create deposits. `false` funds them from the pool instead, and the difference between the two is the money-creation channel measured directly |
-| `theta_low` | `U(0, 0.2)` | The `credit_low` scenario |
-| `theta_high` | `U(0.4, 0.9)` | The `credit_high` scenario |
+| `theta_min` | 0.0 | Lower bound of the uniform `θ_h` draw |
+| `theta_max` | 0.2 | Upper bound. The default pair is `theta_low`; `θ` is drawn even with credit off, and unused |
+| `theta_low` | `U(0, 0.2)` | The `credit_low` scenario — `theta_min` / `theta_max` |
+| `theta_high` | `U(0.4, 0.9)` | The `credit_high` scenario — `theta_min` / `theta_max` |
+
+`theta_low` and `theta_high` are not separate parameters: they are the two scenario settings of
+`theta_min` / `theta_max`. The default is `theta_low`, because `θ_h` is drawn in every scenario —
+including the baseline, where it is never read (`01-SIMULATION.md` §5, and `spec/stories/01-05`). The
+draw has to happen in the same place in the same stream in every scenario, or the paired comparison
+is between two different random worlds.
 
 Financing multiplies a candidate's cost by `(1 + loan_rate · term / 1200)` — **1.08** over twelve
 months, **1.16** over twenty-four — so a financed candidate's score is the cash score divided by

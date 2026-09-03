@@ -56,6 +56,35 @@ public sealed class SafetySettingsTests
     }
 
     /// <summary>
+    /// The engine disables CS8524 where a switch over a parameter enum would otherwise demand a
+    /// discard arm for values cast in from outside the enum. This asserts what that costs:
+    /// nothing. CS8509 — a *named* value missing — still fires with CS8524 disabled, so adding a
+    /// tier or a rationing rule still breaks the build.
+    ///
+    /// If this ever stops holding, the suppression in Configuration/Sections.cs has to go.
+    /// </summary>
+    [Fact]
+    public void CompileFail_SuppressingCS8524_DoesNotDisarmCS8509()
+    {
+        CompileFail.Produces(
+            "CS8509",
+            """
+            internal enum Tier { Budget, Standard, Premium }
+
+            internal static class Probe
+            {
+            #pragma warning disable CS8524
+                internal static int Multiplier(Tier tier) => tier switch
+                {
+                    Tier.Budget => 60,
+                    Tier.Standard => 100,
+                };
+            #pragma warning restore CS8524
+            }
+            """);
+    }
+
+    /// <summary>
     /// CheckForOverflowUnderflow, at runtime. A wrapped <c>long</c> in a sum of balances would
     /// not crash: it would produce a money stock that is wrong by 2^64 and an economic result
     /// to go with it. This is the one guarantee that cannot be checked by compiling a snippet,

@@ -7,14 +7,13 @@
 
   <ItemGroup>
     <PackageReference Include="FluentResults" Version="4.0.0" />
+    <PackageReference Include="Tomlyn" Version="2.10.1" />
   </ItemGroup>
 
   <!-- The conventions in spec/stories/01-04, enforced by the compiler. ReferenceOutputAssembly
        is false: this is a build-time extension, not something the engine links against. -->
   <ItemGroup>
-    <ProjectReference Include="..\EconomySimulation.Analyzers\EconomySimulation.Analyzers.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\EconomySimulation.Analyzers\EconomySimulation.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>
