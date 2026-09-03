@@ -127,62 +127,12 @@ public readonly record struct Money(long Cents) : IComparable<Money>
     /// </summary>
     public Money[] Allocate(ReadOnlySpan<double> weights)
     {
-        if (weights.Length == 0)
+        var parts = Allocation.LargestRemainder(Cents, weights);
+        var result = new Money[parts.Length];
+
+        for (var i = 0; i < parts.Length; i++)
         {
-            throw new ArgumentException("Allocate needs at least one weight.", nameof(weights));
-        }
-
-        var total = 0.0;
-        foreach (var w in weights)
-        {
-            if (w < 0 || double.IsNaN(w))
-            {
-                throw new ArgumentException(
-                    $"Allocate needs non-negative weights, got {w.ToString(CultureInfo.InvariantCulture)}.",
-                    nameof(weights));
-            }
-
-            total += w;
-        }
-
-        if (total <= 0)
-        {
-            throw new ArgumentException("Allocate needs the weights to sum to more than zero.", nameof(weights));
-        }
-
-        var result = new Money[weights.Length];
-        var fractions = new double[weights.Length];
-        var assigned = 0L;
-
-        for (var i = 0; i < weights.Length; i++)
-        {
-            var exact = Cents * (weights[i] / total);
-            var whole = (long)Math.Truncate(exact);
-            fractions[i] = Math.Abs(exact - whole);
-            result[i] = new Money(whole);
-            assigned = checked(assigned + whole);
-        }
-
-        // Truncation always leaves something over in the direction of the total's own sign.
-        var step = Cents < 0 ? -1L : 1L;
-        var leftover = Math.Abs(Cents - assigned);
-
-        for (var n = 0L; n < leftover; n++)
-        {
-            var best = -1;
-            var bestFraction = double.NegativeInfinity;
-
-            for (var i = 0; i < fractions.Length; i++)
-            {
-                if (fractions[i] > bestFraction)
-                {
-                    bestFraction = fractions[i];
-                    best = i;
-                }
-            }
-
-            result[best] = new Money(result[best].Cents + step);
-            fractions[best] = double.NegativeInfinity;
+            result[i] = new Money(parts[i]);
         }
 
         return result;

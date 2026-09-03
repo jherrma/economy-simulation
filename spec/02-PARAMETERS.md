@@ -110,6 +110,11 @@ Units per tier are the category's capacity split by the **unit** share:
 units(g, t) = round(unit_share_t · capacity_g)
 ```
 
+Implemented by largest remainder rather than by rounding each share on its own. The two agree on
+every value in this table; largest remainder also **guarantees** `Σ_t units(g,t) = capacity_g`,
+which plain rounding does not, and a residue there is a unit of supply appearing from nowhere every
+tick for thirty years.
+
 Splitting units rather than value is what keeps the calibration exact. Total units stay at
 `capacity_g`, so unit demand and unit supply match by construction; and because
 `Σ_t unit_share_t · price_mult_t = 0.24 + 0.40 + 0.36 = 1.000`, the **capacity value is unchanged by
