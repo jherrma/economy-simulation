@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The runner exists to parse arguments and call the engine. It holds no model logic and
+       no analysis: the engine writes CSV and nothing else. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>EconomySimulation.Runner</RootNamespace>
+    <AssemblyName>economy-simulation</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EconomySimulation.Engine\EconomySimulation.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

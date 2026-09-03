@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EconomySimulation.Engine/EconomySimulation.Engine.csproj" />
+    <Project Path="src/EconomySimulation.Runner/EconomySimulation.Runner.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EconomySimulation.Tests/EconomySimulation.Tests.csproj" />
+  </Folder>
+</Solution>
