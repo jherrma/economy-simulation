@@ -11,8 +11,17 @@ assumed.
 
 ## Status
 
-**Specification stage, about to become implementation.** No engine code yet. The language is settled
-(C# on .NET 10).
+**Implementation started.** E1 — Foundations — is complete: the value types, the failure handling
+and the RNG streams, with 84 tests. Nothing simulates anything yet; the next epic is configuration
+and the world.
+
+Build and check:
+
+```sh
+dotnet build -warnaserror && dotnet test
+```
+
+The language is settled (C# on .NET 10).
 
 The repository holds two specifications, and the difference between them matters:
 
@@ -42,6 +51,8 @@ they will be raised. **Nothing in it is scheduled. Do not implement from it.**
 
 ### Also here
 
+- [`src/`](src/) and [`tests/`](tests/) — the engine, the runner, the analysers and the tests.
+- [`docs/REVIEW-CHECKLIST.md`](docs/REVIEW-CHECKLIST.md) — the review items no test can check.
 - [`docs/LANGUAGE-CHOICE.md`](docs/LANGUAGE-CHOICE.md) — how the implementation language was chosen:
   the benchmark, the measurements, and the argument for C#. Settled, and applies to `spec/`.
 - [`bench/`](bench/) — the benchmark sources, in six languages.
