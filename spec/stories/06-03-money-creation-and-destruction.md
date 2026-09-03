@@ -10,13 +10,13 @@ As the model author, I want lending to create money and principal repayment to d
 
 ## Acceptance criteria
 
-- [ ] Origination: `cash_h += principal` and `loans_outstanding += principal`. It is a **creation**, not a transfer from the pool.
-- [ ] Repayment: `cash_h −= instalment`; `loans_outstanding −= principal_part`, and that principal is **destroyed**.
-- [ ] The **interest part is a transfer, not a destruction**. It is pooled across all loans in the tick and paid out to all households pro rata by `income_h`, as bank profit returning as household income.
-- [ ] The dividend distribution uses 01-02's remainder-distributing split, so it sums to the interest collected to the cent.
-- [ ] Abstainers receive the dividend too — they hold bank shares like anyone else. A test asserts this, since it biases mildly **against** the hypothesis and must not be quietly removed.
-- [ ] V1 holds every tick through origination, repayment and distribution.
-- [ ] A test destroys the interest as well as the principal and asserts V1 **fails**, confirming the check catches it.
+- [x] Origination: `cash_h += principal` and `loans_outstanding += principal`. It is a **creation**, not a transfer from the pool.
+- [x] Repayment: `cash_h −= instalment`; `loans_outstanding −= principal_part`, and that principal is **destroyed**.
+- [x] The **interest part is a transfer, not a destruction**. It is pooled across all loans in the tick and paid out to all households pro rata by `income_h`, as bank profit returning as household income.
+- [x] The dividend distribution uses 01-02's remainder-distributing split, so it sums to the interest collected to the cent.
+- [x] Abstainers receive the dividend too — they hold bank shares like anyone else. A test asserts this, since it biases mildly **against** the hypothesis and must not be quietly removed.
+- [x] V1 holds every tick through origination, repayment and distribution.
+- [x] A test destroys the interest as well as the principal and asserts V1 **fails**, confirming the check catches it.
 
 ## Where to start
 
@@ -39,3 +39,9 @@ dotnet test --filter FullyQualifiedName~MoneyCreationTests
 ```
 
 V1 green across a full credit cycle, and the deliberate interest-destruction variant halting.
+
+## Implementation note (2026-09-03)
+
+The interest is pooled in a third money holder, the bank's till (`Account.Bank`), which the check
+requires to be empty at the end of every tick. Origination in these tests is done by hand through
+the ledger and the loan book; the walk's own origination is 06-02.

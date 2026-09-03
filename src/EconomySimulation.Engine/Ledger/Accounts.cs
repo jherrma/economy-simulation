@@ -17,6 +17,14 @@ public enum AccountKind
     /// Its only job is to close the money circuit so conservation is checkable.
     /// </summary>
     Pool,
+
+    /// <summary>
+    /// The bank's till: interest collected in the debt-service step, held for the moment between
+    /// collection and its distribution as the dividend. Money in flight counts (V1), so it is a
+    /// holder like any other — and it must be empty again by the end of every tick, which the
+    /// check asserts. The bank keeps nothing; in a closed economy its income is somebody's income.
+    /// </summary>
+    Bank,
 }
 
 /// <summary>One account: a kind, and which one of that kind.</summary>
@@ -26,8 +34,17 @@ public readonly record struct Account(AccountKind Kind, int Index)
 
     public static Account Pool { get; } = new(AccountKind.Pool, 0);
 
-    public override string ToString() =>
-        Kind == AccountKind.Pool ? "pool" : $"household {Index}";
+    public static Account Bank { get; } = new(AccountKind.Bank, 0);
+
+    // CS8524 only: a new kind of holder must break this build, which is CS8509 and stays armed.
+#pragma warning disable CS8524
+    public override string ToString() => Kind switch
+    {
+        AccountKind.Pool => "pool",
+        AccountKind.Bank => "bank",
+        AccountKind.HouseholdCash => $"household {Index}",
+    };
+#pragma warning restore CS8524
 }
 
 /// <summary>

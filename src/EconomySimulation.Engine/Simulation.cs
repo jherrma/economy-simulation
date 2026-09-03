@@ -45,7 +45,7 @@ public sealed class Simulation
         Books = Ledger.Ledger.Open(
             Population.OpeningCash(parameters.Income.OpeningCashShare),
             OpeningPool(parameters, Population));
-        Loans = new LoanBook(Population.Count, LoanCapacity(Goods, Population.Count));
+        Loans = new LoanBook(Population, LoanCapacity(Goods, Population.Count));
         Shopping = new Walker(parameters, Goods, Market, Population, Books, runSeed);
     }
 
@@ -199,8 +199,13 @@ public sealed class Simulation
         return Results.Ok;
     }
 
-    /// <summary>Step 2 — instalments, before any shopping. Filled in by 06-01.</summary>
-    private static Result DebtService(int tick) => Nothing(tick);
+    /// <summary>Step 2 — every instalment due, before any shopping; principal destroyed, interest back out as the dividend.</summary>
+    private Result DebtService(int tick)
+    {
+        _ = tick;
+
+        return Loans.Service(Books, Parameters.Credit.MoneyCreation);
+    }
 
     /// <summary>Step 3 — wants, in units, never budgets. One unit of a category at most.</summary>
     private Result Wants(int tick)
@@ -236,12 +241,6 @@ public sealed class Simulation
         _ = tick;
         Market.Reprice(Parameters.Prices.K, Parameters.Prices.PriceFloor);
 
-        return Results.Ok;
-    }
-
-    private static Result Nothing(int tick)
-    {
-        _ = tick;
         return Results.Ok;
     }
 

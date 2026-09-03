@@ -17,6 +17,7 @@ public sealed class Ledger
 {
     private readonly Money[] householdCash;
     private readonly Money[] pool = new Money[1];
+    private readonly Money[] bank = new Money[1];
     private readonly Money[][] moneyHolders;
     private readonly Money[] movedByReason = new Money[Enum.GetValues<TransferReason>().Length];
 
@@ -27,7 +28,7 @@ public sealed class Ledger
 
         // The conservation sum walks this, so a new kind of holder is a new entry here and no
         // change at all to the check.
-        moneyHolders = [householdCash, pool];
+        moneyHolders = [householdCash, pool, bank];
 
         M0 = MoneyHeld;
     }
@@ -60,6 +61,9 @@ public sealed class Ledger
     public int HouseholdCount => householdCash.Length;
 
     public Money Pool => pool[0];
+
+    /// <summary>Interest collected and not yet paid out. Non-zero only inside the debt-service step.</summary>
+    public Money Bank => bank[0];
 
     public Money Cash(int household) => householdCash[household];
 
@@ -264,6 +268,15 @@ public sealed class Ledger
                 $"loans outstanding, tick {tick}: expected zero or more, got {LoansOutstanding.ToCsv()}");
         }
 
+        // The bank keeps nothing. Interest sitting here at the end of a tick is interest that was
+        // collected and not returned — money that has left the households and gone nowhere.
+        if (!Bank.IsZero)
+        {
+            return Result.Fail(
+                $"the bank's till, tick {tick}: expected empty at the end of the tick, got "
+                + $"{Bank.ToCsv()} — interest collected and not paid out as the dividend. {Diagnostics()}");
+        }
+
         return Results.Ok;
     }
 
@@ -292,6 +305,7 @@ public sealed class Ledger
     {
         AccountKind.HouseholdCash => householdCash,
         AccountKind.Pool => pool,
+        AccountKind.Bank => bank,
     };
 #pragma warning restore CS8524
 }

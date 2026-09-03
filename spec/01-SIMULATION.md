@@ -205,6 +205,12 @@ interest_part  = interest_total / term
 **destroyed**. The `interest_part` is pooled across all loans and paid out to all households pro
 rata by `income_h` — bank profit returning as household income.
 
+The pooling has a place on the balance sheet: the interest sits in the bank's till between its
+collection and its distribution, the till is a money holder like any other (V1 counts money in
+flight), and it is **empty again before step 3** — the check refuses a tick that ends with anything
+in it. The bank keeps nothing. The dividend is split by 01-02's remainder-distributing rule, so it
+sums to the interest collected to the cent, and abstainers receive their share like anyone else.
+
 ### Step 3 — Wants
 
 For each category, the household wants one unit if `life_g = 1`, or if `age_h,g ≥ life_g`.

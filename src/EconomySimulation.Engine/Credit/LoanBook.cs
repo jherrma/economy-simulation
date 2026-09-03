@@ -1,4 +1,6 @@
+using EconomySimulation.Engine.Ledger;
 using EconomySimulation.Engine.World;
+using FluentResults;
 
 namespace EconomySimulation.Engine.Credit;
 
@@ -16,16 +18,34 @@ public sealed class LoanBook
     private const int None = -1;
 
     private readonly int[] headOf;
+    private readonly double[] dividendWeights;
+    private readonly long[] dividendParts;
+    private readonly double[] dividendFractions;
     private Loan[] loans;
     private int[] nextOf;
     private int freeHead;
 
+    /// <summary>A book for a town of <paramref name="householdCount"/>, with no dividend weights: the service step needs the other constructor.</summary>
     public LoanBook(int householdCount, int initialCapacity)
+        : this(Uniform(householdCount), initialCapacity)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(householdCount);
+    }
+
+    /// <summary>A book whose dividend is paid pro rata by the households' fixed incomes.</summary>
+    public LoanBook(Households population, int initialCapacity)
+        : this(IncomeWeights(population), initialCapacity)
+    {
+    }
+
+    private LoanBook(double[] weights, int initialCapacity)
+    {
         ArgumentOutOfRangeException.ThrowIfLessThan(initialCapacity, 1);
 
-        headOf = new int[householdCount];
+        dividendWeights = weights;
+        dividendParts = new long[weights.Length];
+        dividendFractions = new double[weights.Length];
+
+        headOf = new int[weights.Length];
         Array.Fill(headOf, None);
 
         loans = new Loan[initialCapacity];
@@ -39,6 +59,12 @@ public sealed class LoanBook
 
     /// <summary>Loans originated since the book opened, retired ones included.</summary>
     public int Originated { get; private set; }
+
+    /// <summary>Interest collected in the last debt-service step — and paid straight back out.</summary>
+    public Money LastInterestCollected { get; private set; }
+
+    /// <summary>Principal repaid in the last debt-service step: destroyed, or returned to the pool.</summary>
+    public Money LastPrincipalRepaid { get; private set; }
 
     /// <summary>
     /// The sum of the next instalment on every live loan of the household — what falls due at
@@ -137,6 +163,145 @@ public sealed class LoanBook
         LiveCount--;
 
         return next;
+    }
+
+    // ---- step 2 -------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Step 2 — debt service, before any shopping. Every live loan pays its next instalment out of
+    /// the borrower's cash: the principal part is **destroyed** (or, with `money_creation` off,
+    /// returned to the pool it came from) and the bank's claim shrinks by exactly that; the
+    /// interest part goes to the bank's till. The till is then paid out to every household pro
+    /// rata by income, the remainder-distributing split making the parts sum to what was collected
+    /// to the cent, and the till is empty again before step 3.
+    ///
+    /// Two things here decide the answer rather than break the run. Interest is a **transfer**:
+    /// destroyed along with the principal, the money stock would leak downward at exactly the rate
+    /// households borrow, damping the effect being measured. And abstainers receive the dividend
+    /// like anyone else — they hold bank shares too — which biases mildly *against* the hypothesis
+    /// and is the honest treatment.
+    ///
+    /// Cannot fail for want of cash by construction: the residual test at origination and this
+    /// step's place before the walk make arrears impossible, so a failed transfer here is a bug,
+    /// and the result says which household and why.
+    /// </summary>
+    public Result Service(Ledger.Ledger books, bool moneyCreation)
+    {
+        ArgumentNullException.ThrowIfNull(books);
+
+        if (books.HouseholdCount != headOf.Length)
+        {
+            throw new ArgumentException("The ledger and the loan book describe different towns.", nameof(books));
+        }
+
+        LastInterestCollected = Money.Zero;
+        LastPrincipalRepaid = Money.Zero;
+
+        if (LiveCount == 0)
+        {
+            return Results.Ok;
+        }
+
+        for (var h = 0; h < headOf.Length; h++)
+        {
+            var previous = None;
+            var slot = headOf[h];
+
+            while (slot != None)
+            {
+                ref var loan = ref loans[slot];
+                var principalPart = loan.PrincipalPart(loan.Paid);
+                var interestPart = loan.InterestPart(loan.Paid);
+                var borrower = Account.Household(h);
+
+                var interest = books.Transfer(borrower, Account.Bank, interestPart, TransferReason.InterestDividend);
+
+                if (!Results.IsOk(interest))
+                {
+                    return interest;
+                }
+
+                var principal = moneyCreation
+                    ? books.DestroyMoney(borrower, principalPart, TransferReason.RepaymentPrincipal)
+                    : books.Transfer(borrower, Account.Pool, principalPart, TransferReason.RepaymentPrincipal);
+
+                if (!Results.IsOk(principal))
+                {
+                    return principal;
+                }
+
+                books.ReleaseClaim(principalPart);
+                LastInterestCollected += interestPart;
+                LastPrincipalRepaid += principalPart;
+
+                loan = loan.AfterPayment();
+
+                if (loan.IsRetired)
+                {
+                    slot = Retire(h, previous, slot);
+                    continue;
+                }
+
+                previous = slot;
+                slot = nextOf[slot];
+            }
+        }
+
+        return Distribute(books);
+    }
+
+    /// <summary>The till, to every household pro rata by income, to the cent.</summary>
+    private Result Distribute(Ledger.Ledger books)
+    {
+        var collected = books.Bank;
+
+        if (collected.IsZero)
+        {
+            return Results.Ok;
+        }
+
+        Allocation.LargestRemainderInto(collected.Cents, dividendWeights, dividendParts, dividendFractions);
+
+        for (var h = 0; h < dividendParts.Length; h++)
+        {
+            if (dividendParts[h] == 0)
+            {
+                continue;
+            }
+
+            var paid = books.Transfer(Account.Bank, Account.Household(h), new Money(dividendParts[h]), TransferReason.InterestDividend);
+
+            if (!Results.IsOk(paid))
+            {
+                return paid;
+            }
+        }
+
+        return Results.Ok;
+    }
+
+    private static double[] Uniform(int householdCount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(householdCount);
+
+        var weights = new double[householdCount];
+        Array.Fill(weights, 1.0);
+
+        return weights;
+    }
+
+    private static double[] IncomeWeights(Households population)
+    {
+        ArgumentNullException.ThrowIfNull(population);
+
+        var weights = new double[population.Count];
+
+        for (var h = 0; h < weights.Length; h++)
+        {
+            weights[h] = population.Income[h].Cents;
+        }
+
+        return weights;
     }
 
     private void Grow()
