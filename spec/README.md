@@ -12,6 +12,7 @@ price per tier, and consumer credit that has to be repaid. A few hundred lines.
 | [`01-SIMULATION.md`](01-SIMULATION.md) | The model: entities, the decision rule, the seven-step tick, money, scenarios, the measurement, and what it cannot show |
 | [`02-PARAMETERS.md`](02-PARAMETERS.md) | Every parameter, its default and why. A parameter not in this file does not exist |
 | [`03-VERIFICATION.md`](03-VERIFICATION.md) | The six devices that stand in for a reference implementation, and a table of what a plausible-but-wrong run looks like |
+| [`stories/`](stories/) | The implementation backlog: 33 stories across 9 epics, each with acceptance criteria and an objective pass/fail check |
 
 ## The question
 

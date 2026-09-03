@@ -24,14 +24,16 @@ tier with its own price — and consumer credit that creates money and has to be
 households never borrow, and what happens to *them* is the finding: what they pay, what share of
 what they wanted they got, how long they waited, and **which tier they ended up on**.
 
-Start at [`spec/README.md`](spec/README.md).
+Start at [`spec/README.md`](spec/README.md). The backlog is
+[`spec/stories/`](spec/stories/) — 33 stories across 9 epics.
 
 ### [`draft/`](draft/) — **a first idea, kept for reference**
 
 The project's original attempt: a full stock-flow-consistent model of the whole town — eighty firms
 across twelve sectors, a bank with CRR3 risk weights, a housing market with auction chains, a social
 status treadmill — specified across ~4,600 lines and 71 implementation stories before any code
-existed. Two review rounds found around 45 defects in it.
+existed. Two review rounds found around 45 defects in it. Its backlog is
+[`draft/stories/`](draft/stories/) and is **not** the one to build from.
 
 Most of its content is right, and it is why the project can answer objections rather than only
 produce a number. Its *sequencing* was not: no milestone in it produced a running simulation until

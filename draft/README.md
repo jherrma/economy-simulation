@@ -34,7 +34,7 @@ be raised.
 | [`DIAGRAMS-draft.md`](DIAGRAMS-draft.md) | Four views: the tick pipeline, the value types, the data layout, every entity |
 | [`FOUNDATION-draft.md`](FOUNDATION-draft.md) | Nine structural seams for adding dimensions without rewriting. **Two of them (S2 named RNG streams, S3 the off-switch) are carried into the real spec**; the rest wait |
 | [`MILESTONES-draft.md`](MILESTONES-draft.md) | The nine-milestone build order for the full model |
-| [`stories/`](stories/) | 71 implementation stories across 12 epics, each with acceptance criteria and a pass/fail check |
+| [`stories/`](stories/) | 71 implementation stories across 12 epics, each with acceptance criteria and a pass/fail check. **Not the backlog to build from** — that is [`../spec/stories/`](../spec/stories/), 33 stories for the model that is actually being implemented |
 
 ## What survives into the real spec
 
