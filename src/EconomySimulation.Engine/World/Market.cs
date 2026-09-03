@@ -50,6 +50,13 @@ public sealed class Market
 
     public Money Price(int category, int tier) => prices[goods.Index(category, tier)];
 
+    /// <summary>
+    /// Every posted price, indexed by <see cref="GoodsTable.Index"/>. A span rather than a lookup
+    /// function, because the price index is computed inside the tick and a delegate handed to it
+    /// would be an allocation per tick.
+    /// </summary>
+    public ReadOnlySpan<Money> Prices => prices;
+
     public int Stock(int category, int tier) => stock[goods.Index(category, tier)];
 
     public int Sold(int category, int tier) => sold[goods.Index(category, tier)];

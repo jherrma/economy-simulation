@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using EconomySimulation.Engine.Configuration;
+using EconomySimulation.Engine.World;
 using FluentResults;
 
 namespace EconomySimulation.Engine.Output;
@@ -32,6 +33,7 @@ public sealed class MetricsWriter : IDisposable
     private readonly StreamWriter tiers;
     private readonly StreamWriter run;
     private readonly StringBuilder line = new(512);
+    private readonly GoodsTable goods;
     private readonly string directory;
     private readonly string scenario;
     private readonly int runSeed;
@@ -42,8 +44,9 @@ public sealed class MetricsWriter : IDisposable
     private int ticksWritten;
     private bool finished;
 
-    private MetricsWriter(string directory, string scenario, int runSeed, StreamWriter tiers, StreamWriter run)
+    private MetricsWriter(GoodsTable goods, string directory, string scenario, int runSeed, StreamWriter tiers, StreamWriter run)
     {
+        this.goods = goods;
         this.directory = directory;
         this.scenario = scenario;
         this.runSeed = runSeed;
@@ -61,15 +64,23 @@ public sealed class MetricsWriter : IDisposable
     public int Ticks => ticksWritten;
 
     /// <summary>
-    /// Opens the output directory: the two files, and the effective configuration beside them.
+    /// Opens the output directory for a run: the two files, and the effective configuration beside
+    /// them.
+    ///
+    /// It takes the simulation rather than a configuration and a seed, so that the scenario, the
+    /// seed and the goods table written into the files are the ones the run is actually using.
+    /// Passed separately, a seed can disagree with the run it labels, and nothing downstream would
+    /// ever notice.
     ///
     /// The configuration is written first and unconditionally, so that a run which halts still
     /// leaves behind what it was trying to do.
     /// </summary>
-    public static Result<MetricsWriter> Create(SimulationParameters parameters, int runSeed, string directory)
+    public static Result<MetricsWriter> Create(Simulation simulation, string directory)
     {
-        ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(simulation);
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+
+        var parameters = simulation.Parameters;
 
         try
         {
@@ -90,9 +101,10 @@ public sealed class MetricsWriter : IDisposable
             }
 
             return Result.Ok(new MetricsWriter(
+                simulation.Goods,
                 directory,
                 parameters.Run.Scenario,
-                runSeed,
+                simulation.RunSeed,
                 Open(directory, "tiers.csv"),
                 Open(directory, "run.csv")));
         }
@@ -187,11 +199,19 @@ public sealed class MetricsWriter : IDisposable
         column("sold");
         column("blocked");
         column("unaffordable");
+        column("mix_share");
     }
 
-    private static void RunHeader(Action<string> column)
+    private void RunHeader(Action<string> column)
     {
         Keys(column);
+        column("cpi");
+
+        foreach (var category in goods.Categories)
+        {
+            column("cpi_" + category.Name);
+        }
+
         column("money_stock");
         column("loans_outstanding");
         column("loans_live");
@@ -211,8 +231,6 @@ public sealed class MetricsWriter : IDisposable
 
     private void WriteTierRows(Simulation simulation, TickRecord record)
     {
-        var goods = simulation.Goods;
-
         for (var c = 0; c < goods.CategoryCount; c++)
         {
             for (var t = 0; t < goods.TierCount; t++)
@@ -225,6 +243,7 @@ public sealed class MetricsWriter : IDisposable
                 Field(simulation.Market.Sold(c, t));
                 Field(simulation.Market.Blocked(c, t));
                 Field(simulation.Market.Unaffordable(c, t));
+                Field(PriceIndex.MixShare(simulation.Market, goods, c, t));
                 End(tiers, tierColumns, "tiers.csv");
 
                 TierRows++;
@@ -237,6 +256,13 @@ public sealed class MetricsWriter : IDisposable
         _ = simulation;
 
         Begin(record);
+        Field(record.Cpi);
+
+        for (var c = 0; c < goods.CategoryCount; c++)
+        {
+            Field(record.CategoryIndex(c));
+        }
+
         Field(record.MoneyStock);
         Field(record.LoansOutstanding);
         Field(record.LoansLive);

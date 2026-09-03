@@ -16,6 +16,7 @@ namespace EconomySimulation.Engine.Output;
 public sealed class TickRecord
 {
     private readonly Money[] pricesTraded;
+    private readonly double[] categoryIndices;
 
     public TickRecord(GoodsTable goods)
     {
@@ -23,6 +24,7 @@ public sealed class TickRecord
 
         Goods = goods;
         pricesTraded = new Money[goods.GoodCount];
+        categoryIndices = new double[goods.CategoryCount];
     }
 
     public GoodsTable Goods { get; }
@@ -49,6 +51,16 @@ public sealed class TickRecord
     /// <summary>Loans the pool could not fund, with `money_creation` off.</summary>
     public int Rationed { get; private set; }
 
+    /// <summary>
+    /// The Laspeyres index on the fixed supply basket, at the prices this tick traded at. Exactly
+    /// 1 in the tick that trades at the opening prices, and an output that nothing in the model
+    /// reads (<see cref="PriceIndex"/>).
+    /// </summary>
+    public double Cpi { get; private set; }
+
+    /// <summary>One category's price index, on the same basis.</summary>
+    public double CategoryIndex(int category) => categoryIndices[category];
+
     /// <summary>The price the tick actually traded at, before step 6 moved it.</summary>
     public Money PriceTraded(int category, int tier) => pricesTraded[Goods.Index(category, tier)];
 
@@ -66,6 +78,15 @@ public sealed class TickRecord
             {
                 pricesTraded[Goods.Index(c, t)] = market.Price(c, t);
             }
+        }
+
+        // Computed here rather than at the end of the tick, because it is an index of the prices
+        // the tick *traded at*, which step 6 is about to change.
+        Cpi = PriceIndex.Cpi(Goods, pricesTraded);
+
+        for (var c = 0; c < Goods.CategoryCount; c++)
+        {
+            categoryIndices[c] = PriceIndex.ForCategory(Goods, c, pricesTraded);
         }
     }
 

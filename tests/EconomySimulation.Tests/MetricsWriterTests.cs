@@ -35,7 +35,7 @@ public sealed class MetricsWriterTests
         var simulation = new Simulation(settings, seed);
         Assert.True(simulation.Start().IsSuccess);
 
-        var created = MetricsWriter.Create(settings, seed, directory);
+        var created = MetricsWriter.Create(simulation, directory);
         Assert.True(created.IsSuccess);
 
         using var writer = created.Value;
@@ -66,12 +66,12 @@ public sealed class MetricsWriterTests
             var tiers = Csv.Read(Path.Combine(directory, "tiers.csv"));
             var run = Csv.Read(Path.Combine(directory, "run.csv"));
 
-            foreach (var column in new[] { "scenario", "seed", "tick", "warmup", "category", "tier", "price", "units", "sold", "blocked", "unaffordable" })
+            foreach (var column in new[] { "scenario", "seed", "tick", "warmup", "category", "tier", "price", "units", "sold", "blocked", "unaffordable", "mix_share" })
             {
                 Assert.True(tiers.Has(column), $"tiers.csv has no column '{column}'");
             }
 
-            foreach (var column in new[] { "scenario", "seed", "tick", "warmup", "money_stock", "loans_outstanding", "loans_live", "pool", "money_created", "money_destroyed", "rationed" })
+            foreach (var column in new[] { "scenario", "seed", "tick", "warmup", "cpi", "cpi_food", "cpi_appliances", "money_stock", "loans_outstanding", "loans_live", "pool", "money_created", "money_destroyed", "rationed" })
             {
                 Assert.True(run.Has(column), $"run.csv has no column '{column}'");
             }
@@ -129,7 +129,7 @@ public sealed class MetricsWriterTests
             var simulation = new Simulation(Defaults, runSeed: 1);
             Assert.True(simulation.Start().IsSuccess);
 
-            var created = MetricsWriter.Create(Defaults, 1, directory);
+            var created = MetricsWriter.Create(simulation, directory);
             Assert.True(created.IsSuccess);
 
             using (var writer = created.Value)
@@ -289,7 +289,7 @@ public sealed class MetricsWriterTests
             var simulation = new Simulation(Defaults, runSeed: 1);
             Assert.True(simulation.Start().IsSuccess);
 
-            var created = MetricsWriter.Create(Defaults, 1, directory);
+            var created = MetricsWriter.Create(simulation, directory);
             Assert.True(created.IsSuccess);
 
             using var writer = created.Value;
@@ -320,7 +320,7 @@ public sealed class MetricsWriterTests
             Assert.True(simulation.Start().IsSuccess);
             Assert.True(simulation.RunTick(1).IsSuccess);
 
-            var created = MetricsWriter.Create(Defaults, 1, directory);
+            var created = MetricsWriter.Create(simulation, directory);
             Assert.True(created.IsSuccess);
 
             using var writer = created.Value;

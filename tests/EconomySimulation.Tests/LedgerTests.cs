@@ -227,7 +227,10 @@ public sealed class LedgerTests
     public void NoMonetaryFieldIsADouble()
     {
         string[] monetary = ["cash", "price", "pool", "balance", "principal", "instalment", "income"];
-        string[] dimensionless = ["share", "mult", "rate", "ratio", "factor", "slope", "weight", "sigma", "score", "count"];
+        // "index" and "cpi" join the list for 07-02: a price index is a ratio of two money sums and
+        // is dimensionless by construction, which is exactly why λ is never indexed and why
+        // doubling every nominal quantity doubles the index and changes no decision.
+        string[] dimensionless = ["share", "mult", "rate", "ratio", "factor", "slope", "weight", "sigma", "score", "count", "index", "cpi"];
 
         var offenders = new List<string>();
 
