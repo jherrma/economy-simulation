@@ -116,8 +116,10 @@ public sealed class TickTests
     // ---- the empty run ------------------------------------------------------------------------
 
     /// <summary>
-    /// 360 empty ticks. Not a formality: this is what catches anything that accumulates when it
-    /// should not, and it runs in milliseconds.
+    /// 360 ticks with no walk. Not a formality: this is what catches anything that accumulates
+    /// when it should not, and it runs in milliseconds. Since 04-04 the ticks are not quite empty —
+    /// durables age — so the ages are asserted to have moved by exactly 360 and nothing else to
+    /// have moved at all.
     /// </summary>
     [Fact]
     public void ThreeHundredAndSixtyEmptyTicks_LeaveTheTownExactlyAsItStarted()
@@ -137,8 +139,18 @@ public sealed class TickTests
         Assert.Equal(openingCash, Enumerable.Range(0, simulation.Population.Count).Select(simulation.Books.Cash));
         Assert.Equal(openingPool, simulation.Books.Pool);
         Assert.Equal(openingPrices, Prices(simulation));
-        Assert.Equal(openingAges, simulation.Population.Age);
         Assert.Equal(simulation.Books.M0, simulation.Books.MoneyHeld);
+
+        var population = simulation.Population;
+        for (var h = 0; h < population.Count; h++)
+        {
+            for (var c = 0; c < simulation.Goods.CategoryCount; c++)
+            {
+                var i = population.AgeIndex(h, c);
+                var expected = simulation.Goods.IsDurable(c) ? openingAges[i] + 360 : openingAges[i];
+                Assert.Equal(expected, population.Age[i]);
+            }
+        }
     }
 
     [Fact]

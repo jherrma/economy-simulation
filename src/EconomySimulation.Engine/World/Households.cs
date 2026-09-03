@@ -25,6 +25,8 @@ public sealed class Households
         Theta = new double[count];
         IsAbstainer = new bool[count];
         Age = new int[count * categoryCount];
+        Wanted = new bool[count * categoryCount];
+        Wait = new int[count * categoryCount];
     }
 
     public int Count { get; }
@@ -59,7 +61,72 @@ public sealed class Households
     /// <summary>Ticks since the household's unit of a category was bought, category-major per household.</summary>
     public int[] Age { get; }
 
+    /// <summary>
+    /// Whether the household wants a unit of the category this tick. A bool, not a count: the
+    /// model cannot represent buying *more*, only buying *better*, which is why the tier ladder
+    /// exists. Extra income goes into quality, never into quantity.
+    /// </summary>
+    public bool[] Wanted { get; }
+
+    /// <summary>
+    /// Ticks since the open want first appeared: 0 the tick it appears, +1 every tick it goes
+    /// unmet, back to 0 on purchase. A household priced out of a phone this tick is not out of the
+    /// market; it is still in it next tick, and how long it stays there is the cleanest thing the
+    /// model can say about the timing channel (07-03).
+    /// </summary>
+    public int[] Wait { get; }
+
+    /// <summary>Where (household, category) lives in <see cref="Age"/>, <see cref="Wanted"/> and <see cref="Wait"/>.</summary>
     public int AgeIndex(int household, int category) => (household * CategoryCount) + category;
+
+    /// <summary>
+    /// Step 3 for one household and one category: wanted if `life = 1`, or if the unit held has
+    /// reached the end of its life. An unmet want persists — the unit keeps ageing past its life,
+    /// so the condition stays true until a purchase resets it — and `wait` counts the ticks.
+    /// </summary>
+    public void RefreshWant(int household, int category, int life)
+    {
+        var i = AgeIndex(household, category);
+        var wants = life == 1 || Age[i] >= life;
+
+        Wait[i] = wants && Wanted[i] ? Wait[i] + 1 : 0;
+        Wanted[i] = wants;
+    }
+
+    /// <summary>
+    /// The household now holds a fresh unit of the category: age 0, want met, wait over. The one
+    /// operation the walk performs on a household's holdings.
+    /// </summary>
+    public void Acquire(int household, int category)
+    {
+        var i = AgeIndex(household, category);
+
+        Age[i] = 0;
+        Wanted[i] = false;
+        Wait[i] = 0;
+    }
+
+    /// <summary>
+    /// Step 5: every held durable gets a tick older. Runs after the walk, so a unit bought this
+    /// tick starts at 0 and is not wanted again next tick. Non-durables have no age.
+    /// </summary>
+    public void AgeDurables(GoodsTable goods)
+    {
+        ArgumentNullException.ThrowIfNull(goods);
+
+        for (var c = 0; c < CategoryCount; c++)
+        {
+            if (!goods.IsDurable(c))
+            {
+                continue;
+            }
+
+            for (var h = 0; h < Count; h++)
+            {
+                Age[AgeIndex(h, c)]++;
+            }
+        }
+    }
 
     /// <summary>
     /// A population stated outright rather than drawn: given incomes and taste weights, no
@@ -133,11 +200,21 @@ public sealed class Households
             // durable at zero and the whole town replaces its appliances in the same month for
             // the life of the run. The output is a clean sawtooth with period `life`, it looks
             // exactly like a business cycle, and nothing in this model should produce one.
+            //
+            // Over {1 … life}, not {0 … life − 1}: a unit is wanted when age ≥ life and wants are
+            // asked before ageing, so an age of `life` is due in tick 1 and an age of 1 in tick
+            // `life`. Over {0 … life − 1} nothing at all would be due in tick 1 and the first cohort
+            // would land in tick 2 — a one-tick hole at the start of every durable's series. A
+            // non-durable has no age and stays at 0; the draw still happens, so the stream is the
+            // same length whatever the category's life.
             var ages = RandomStream.ForHousehold(runSeed, h, Purpose.InitialAge);
 
             for (var c = 0; c < goods.CategoryCount; c++)
             {
-                households.Age[households.AgeIndex(h, c)] = ages.NextInt(goods.Categories[c].Life);
+                var life = goods.Categories[c].Life;
+                var drawn = ages.NextInt(life);
+
+                households.Age[households.AgeIndex(h, c)] = life > 1 ? drawn + 1 : 0;
             }
         }
 

@@ -165,14 +165,33 @@ public sealed class Simulation
     /// <summary>Step 2 — instalments, before any shopping. Filled in by 06-01.</summary>
     private static Result DebtService(int tick) => Nothing(tick);
 
-    /// <summary>Step 3 — wants in units. Filled in by 04-04.</summary>
-    private static Result Wants(int tick) => Nothing(tick);
+    /// <summary>Step 3 — wants, in units, never budgets. One unit of a category at most.</summary>
+    private Result Wants(int tick)
+    {
+        _ = tick;
+
+        for (var h = 0; h < Population.Count; h++)
+        {
+            for (var c = 0; c < Goods.CategoryCount; c++)
+            {
+                Population.RefreshWant(h, c, Goods.Categories[c].Life);
+            }
+        }
+
+        return Result.Ok();
+    }
 
     /// <summary>Step 4 — the shopping walk. Filled in by 04-05.</summary>
     private static Result Walk(int tick) => Nothing(tick);
 
-    /// <summary>Step 5 — every held durable gets a tick older. Filled in by 04-04.</summary>
-    private static Result Ageing(int tick) => Nothing(tick);
+    /// <summary>Step 5 — every held durable gets a tick older.</summary>
+    private Result Ageing(int tick)
+    {
+        _ = tick;
+        Population.AgeDurables(Goods);
+
+        return Result.Ok();
+    }
 
     /// <summary>Step 6 — eighteen prices on their own excess demand. Filled in by 05-02.</summary>
     private static Result Repricing(int tick) => Nothing(tick);

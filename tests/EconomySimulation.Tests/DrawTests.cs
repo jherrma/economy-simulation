@@ -243,12 +243,18 @@ public sealed class DrawTests
             var life = goods.Categories[c].Life;
             var histogram = new int[life];
 
+            if (life == 1)
+            {
+                continue; // no age to spread; ANonDurableIsAlwaysDueImmediately covers it
+            }
+
             for (var h = 0; h < population.Count; h++)
             {
                 var age = population.Age[population.AgeIndex(h, c)];
 
-                Assert.InRange(age, 0, life - 1);
-                histogram[age]++;
+                // {1 … life}: an age of `life` is due in tick 1, an age of 1 in tick `life`.
+                Assert.InRange(age, 1, life);
+                histogram[age - 1]++;
             }
 
             var expected = population.Count / (double)life;
@@ -281,8 +287,9 @@ public sealed class DrawTests
 
         for (var h = 0; h < population.Count; h++)
         {
-            // A household with age a needs a replacement when age reaches life, at tick life − a.
-            dueAtTick[life - population.Age[population.AgeIndex(h, appliances)]]++;
+            // Wants are asked before ageing, so a household with age a is due when a + (t − 1) ≥ life:
+            // at tick life − a + 1. Ages run {1 … life}, so every tick from 1 to life gets a cohort.
+            dueAtTick[life - population.Age[population.AgeIndex(h, appliances)] + 1]++;
         }
 
         var expected = population.Count / (double)life;

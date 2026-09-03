@@ -14,7 +14,7 @@ As the model author, I want every per-household attribute drawn at initialisatio
 - [ ] `w_h` drawn the same way with `σ_w`, mean exactly 1.
 - [ ] `abstainer_h` drawn from its own stream, so the abstainer set is **the same households in every scenario for a given seed**. A test runs two scenarios on one seed and asserts the sets are identical.
 - [ ] `θ_h` drawn from its own stream and set to 0 for abstainers in **every** scenario.
-- [ ] **`age_h,g` drawn uniform over `{0 … life_g − 1}`** for every durable, and a test asserts the replacement demand per tick is flat rather than clustered.
+- [ ] **`age_h,g` drawn uniform over `{1 … life_g}`** for every durable, and a test asserts the replacement demand per tick is flat rather than clustered. (Was `{0 … life_g − 1}`; corrected in 04-04. Wants are asked before ageing and a unit is wanted at `age ≥ life`, so an age of `life` is due in tick 1 and an age of 1 in tick `life`. Over `{0 … life − 1}` nothing is due in tick 1 and every durable's series opens with a one-tick hole.)
 - [ ] Households are index-addressed parallel arrays, not objects.
 - [ ] θ is drawn even when `credit_enabled = false`, and doing so changes nothing else (01-05).
 

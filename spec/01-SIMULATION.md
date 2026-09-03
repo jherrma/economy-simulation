@@ -329,9 +329,10 @@ existing draw, and a test asserts exactly that by registering an unused purpose 
 byte-identical output. This costs about thirty lines now and is what makes every later comparison
 between two runs mean something.
 
-Durable ages are drawn **uniformly over each good's life** at initialisation. Without this every
-household replaces its appliances in the same month and the model produces a sawtooth that looks
-like a business cycle and is an artefact of initialisation.
+Durable ages are drawn **uniformly over each good's life** at initialisation — over `{1 … life}`,
+so that with wants asked before ageing the first replacement cohort falls in tick 1 rather than
+tick 2. Without the spread every household replaces its appliances in the same month and the model
+produces a sawtooth that looks like a business cycle and is an artefact of initialisation.
 
 ## 9. Scenarios
 
