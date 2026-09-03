@@ -1,4 +1,5 @@
 using EconomySimulation.Engine.Configuration;
+using EconomySimulation.Engine.Credit;
 using EconomySimulation.Engine.Ledger;
 using EconomySimulation.Engine.World;
 using FluentResults;
@@ -8,14 +9,23 @@ namespace EconomySimulation.Engine.Decision;
 /// <summary>What happened to one candidate for one household.</summary>
 public enum WalkOutcome
 {
-    /// <summary>Paid for, and the category's chosen tier moved up a step.</summary>
+    /// <summary>Paid for in cash, and the category's chosen tier moved up a step.</summary>
     Taken,
+
+    /// <summary>Paid for with a loan for the increment, and the chosen tier moved up a step.</summary>
+    Financed,
 
     /// <summary>Willing and able, and the shelf was empty. Counted as demand.</summary>
     Blocked,
 
-    /// <summary>Willing, and could not pay. Not demand.</summary>
+    /// <summary>Willing, and could neither pay cash nor finance. Not demand.</summary>
     Unaffordable,
+
+    /// <summary>
+    /// Willing, able to finance, and with `money_creation` off the pool could not fund the loan.
+    /// Credit rationing: recorded, not halted. Counted as unaffordable against the tier.
+    /// </summary>
+    Rationed,
 }
 
 /// <summary>For tests: sees every outcome as it happens. Null in a run, so the walk stays allocation-free.</summary>
@@ -46,6 +56,7 @@ public sealed class Walker
     private readonly Market market;
     private readonly Households population;
     private readonly Ledger.Ledger books;
+    private readonly LoanBook loans;
     private readonly int runSeed;
 
     private readonly RandomStream orderStream;
@@ -54,6 +65,7 @@ public sealed class Walker
     private readonly Candidate[] candidates;
     private readonly bool[] visited;
     private readonly int[] chosenTier;
+    private readonly RandomStream[] financeStreams;
 
     public Walker(
         SimulationParameters parameters,
@@ -61,6 +73,7 @@ public sealed class Walker
         Market market,
         Households population,
         Ledger.Ledger books,
+        LoanBook loans,
         int runSeed)
     {
         ArgumentNullException.ThrowIfNull(parameters);
@@ -68,13 +81,25 @@ public sealed class Walker
         ArgumentNullException.ThrowIfNull(market);
         ArgumentNullException.ThrowIfNull(population);
         ArgumentNullException.ThrowIfNull(books);
+        ArgumentNullException.ThrowIfNull(loans);
 
         this.parameters = parameters;
         this.goods = goods;
         this.market = market;
         this.population = population;
         this.books = books;
+        this.loans = loans;
         this.runSeed = runSeed;
+
+        // One finance stream per household, opened once: the θ coin is flipped per candidate
+        // reached, so a household's stream advances only when it actually got as far as the
+        // finance branch. With credit off it is never touched, which is what V5 needs of it.
+        financeStreams = new RandomStream[population.Count];
+
+        for (var h = 0; h < population.Count; h++)
+        {
+            financeStreams[h] = RandomStream.ForHousehold(runSeed, h, Purpose.Finance);
+        }
 
         orderStream = RandomStream.ForTick(runSeed, 0, Purpose.Order);
         order = new int[population.Count];
@@ -90,8 +115,16 @@ public sealed class Walker
     /// <summary>The order the last tick visited households in, for tests of the shuffle.</summary>
     internal ReadOnlySpan<int> LastOrder => order;
 
+    /// <summary>
+    /// Loans the pool could not fund this tick, with `money_creation` off. Credit is then genuinely
+    /// scarce, and who gets it is decided by the random household order — the closest v1 comes to
+    /// a lending constraint. Always zero with creation on.
+    /// </summary>
+    public int Rationed { get; private set; }
+
     public Result Run(int tick)
     {
+        Rationed = 0;
         Order(tick);
 
         for (var i = 0; i < order.Length; i++)
@@ -195,12 +228,20 @@ public sealed class Walker
 
             // Ability before stock. "Blocked" means willing and able with nowhere to go, because
             // that and only that is demand the price should see (05-01); a household that could
-            // not have paid would not have bought from a full shelf either.
+            // not have paid would not have bought from a full shelf either. Cash first; the
+            // finance branch is reached only when cash failed.
+            var finance = false;
+
             if (candidate.DeltaPrice > books.Cash(household))
             {
-                market.RecordUnaffordable(candidate.Category, candidate.Tier);
-                Observer?.Invoke(household, in candidate, WalkOutcome.Unaffordable);
-                continue;
+                if (!CanFinance(household, in candidate, lambda))
+                {
+                    market.RecordUnaffordable(candidate.Category, candidate.Tier);
+                    Observer?.Invoke(household, in candidate, WalkOutcome.Unaffordable);
+                    continue;
+                }
+
+                finance = true;
             }
 
             if (market.Stock(candidate.Category, candidate.Tier) == 0)
@@ -208,6 +249,25 @@ public sealed class Walker
                 market.RecordBlocked(candidate.Category, candidate.Tier);
                 Observer?.Invoke(household, in candidate, WalkOutcome.Blocked);
                 continue;
+            }
+
+            if (finance)
+            {
+                var originated = Originate(household, in candidate, out var funded);
+
+                if (!Results.IsOk(originated))
+                {
+                    return originated;
+                }
+
+                if (!funded)
+                {
+                    // Credit rationing (06-04): the pool could not fund the loan. Recorded, never halted.
+                    market.RecordUnaffordable(candidate.Category, candidate.Tier);
+                    Rationed++;
+                    Observer?.Invoke(household, in candidate, WalkOutcome.Rationed);
+                    continue;
+                }
             }
 
             var paid = Pay(household, candidate.DeltaPrice);
@@ -218,7 +278,7 @@ public sealed class Walker
             }
 
             chosenTier[candidate.Category] = candidate.Tier;
-            Observer?.Invoke(household, in candidate, WalkOutcome.Taken);
+            Observer?.Invoke(household, in candidate, finance ? WalkOutcome.Financed : WalkOutcome.Taken);
         }
 
         // Stock is consumed once per category, at the final tier, and the unit is new.
@@ -254,6 +314,103 @@ public sealed class Walker
         var bufferRatio = books.Cash(household).Cents / (double)income; // months of own income
 
         return bufferRatio > phi ? lambda * (phi / bufferRatio) : lambda;
+    }
+
+    // ---- credit -------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Whether a household that cannot pay cash for the candidate may finance it. Four conditions
+    /// in the spec's order, each reached only if the one before held: the category is financeable
+    /// and credit is on; a draw from the household's finance stream is below `θ_h` (abstainers
+    /// have `θ = 0` and never pass); the **financed score** — the cash score over `finance_mult` —
+    /// still clears the household's λ, so credit never makes anything look cheaper; and the
+    /// instalment fits **this tick** against the residual, income less running debt service less
+    /// the subsistence share. The residual counts loans originated earlier in this same walk.
+    ///
+    /// The one-tick horizon is a behaviour under test, not an assumption: a household short of
+    /// cash looks at the monthly payment while one with cash looks at the price. `full_term` is the
+    /// control, and asks the whole repayable amount to fit the residual instead — the price test a
+    /// cash buyer applies, put to the borrower — under which loan stacking all but disappears.
+    /// </summary>
+    private bool CanFinance(int household, in Candidate candidate, double lambda)
+    {
+        var category = candidate.Category;
+
+        if (!parameters.Credit.CreditEnabled || !goods.IsFinanceable(category) || !(candidate.DeltaPrice > Money.Zero))
+        {
+            return false;
+        }
+
+        if (!(financeStreams[household].NextDouble() < population.Theta[household]))
+        {
+            return false;
+        }
+
+        var term = goods.Categories[category].Term;
+        var rate = parameters.Credit.LoanRate;
+
+        if (candidate.Score / rate.FinanceMultiplier(term) < lambda)
+        {
+            return false;
+        }
+
+        var loan = Loan.Originate(household, category, candidate.DeltaPrice, rate, term);
+        var income = population.Income[household];
+        var residual = income - loans.DebtService(household) - income.Scaled(parameters.Decision.SubsistenceShare);
+
+        // CS8524 only: a new horizon must break this build, which is CS8509 and stays armed.
+#pragma warning disable CS8524
+        var burden = parameters.Decision.AffordabilityHorizon switch
+        {
+            AffordabilityHorizon.Myopic => loan.Instalment(0),
+            AffordabilityHorizon.FullTerm => loan.Principal + loan.InterestTotal,
+        };
+#pragma warning restore CS8524
+
+        return burden <= residual;
+    }
+
+    /// <summary>
+    /// A loan for the increment, never for the whole tier price. With creation on, new money
+    /// appears in the borrower's cash against a claim of the same size; with it off, the principal
+    /// comes out of the pool — and if the pool cannot cover it, `funded` is false: rationed,
+    /// not failed. The increment is then spent into the pool by the caller like any cash purchase.
+    /// </summary>
+    private Result Originate(int household, in Candidate candidate, out bool funded)
+    {
+        var principal = candidate.DeltaPrice;
+        var borrower = Account.Household(household);
+        funded = false;
+
+        if (parameters.Credit.MoneyCreation)
+        {
+            var created = books.CreateMoney(borrower, principal, TransferReason.LoanOrigination);
+
+            if (!Results.IsOk(created))
+            {
+                return created;
+            }
+        }
+        else
+        {
+            if (books.Pool < principal)
+            {
+                return Results.Ok;
+            }
+
+            var drawn = books.Transfer(Account.Pool, borrower, principal, TransferReason.LoanOrigination);
+
+            if (!Results.IsOk(drawn))
+            {
+                return drawn;
+            }
+        }
+
+        books.AddClaim(principal);
+        loans.Add(Loan.Originate(household, candidate.Category, principal, parameters.Credit.LoanRate, goods.Categories[candidate.Category].Term));
+        funded = true;
+
+        return Results.Ok;
     }
 
     private bool Available(in Candidate candidate) =>

@@ -130,10 +130,10 @@ public sealed class Households
 
     /// <summary>
     /// A population stated outright rather than drawn: given incomes and taste weights, no
-    /// abstainers, θ = 0, every durable at age 0. For tests that need a household on exactly €650
-    /// with `w = 1`, which no seed will ever produce.
+    /// abstainers, one θ for all (0 unless given), every durable at age 0. For tests that need a
+    /// household on exactly €650 with `w = 1`, which no seed will ever produce.
     /// </summary>
-    internal static Households Specified(int categoryCount, Money[] incomes, double[] tasteWeights)
+    internal static Households Specified(int categoryCount, Money[] incomes, double[] tasteWeights, double theta = 0.0)
     {
         ArgumentNullException.ThrowIfNull(incomes);
         ArgumentNullException.ThrowIfNull(tasteWeights);
@@ -146,6 +146,7 @@ public sealed class Households
         var households = new Households(incomes.Length, categoryCount);
         incomes.CopyTo(households.Income, 0);
         tasteWeights.CopyTo(households.TasteWeight, 0);
+        Array.Fill(households.Theta, theta);
 
         return households;
     }

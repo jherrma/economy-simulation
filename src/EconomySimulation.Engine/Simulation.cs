@@ -46,7 +46,7 @@ public sealed class Simulation
             Population.OpeningCash(parameters.Income.OpeningCashShare),
             OpeningPool(parameters, Population));
         Loans = new LoanBook(Population, LoanCapacity(Goods, Population.Count));
-        Shopping = new Walker(parameters, Goods, Market, Population, Books, runSeed);
+        Shopping = new Walker(parameters, Goods, Market, Population, Books, Loans, runSeed);
     }
 
     public SimulationParameters Parameters { get; }

@@ -1,5 +1,6 @@
 using EconomySimulation.Engine;
 using EconomySimulation.Engine.Configuration;
+using EconomySimulation.Engine.Credit;
 using EconomySimulation.Engine.Decision;
 using EconomySimulation.Engine.Ledger;
 using EconomySimulation.Engine.World;
@@ -138,7 +139,7 @@ public sealed class WalkTests
         var market = new Market(goods);
         var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
         var books = Ledger.Open([Money.FromEuros(400)], Money.FromEuros(1_000_000));
-        var walker = new Walker(Defaults, goods, market, population, books, runSeed: 1);
+        var walker = new Walker(Defaults, goods, market, population, books, new LoanBook(population.Count, 1), runSeed: 1);
 
         for (var c = 0; c < goods.CategoryCount; c++)
         {
@@ -285,7 +286,7 @@ public sealed class WalkTests
         var market = new Market(goods);
         var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
         var books = Ledger.Open([Money.Zero], Money.FromEuros(1_000_000));
-        var walker = new Walker(Defaults, goods, market, population, books, runSeed: 1);
+        var walker = new Walker(Defaults, goods, market, population, books, new LoanBook(population.Count, 1), runSeed: 1);
         population.RefreshWant(0, Food, 1);
         population.RefreshWant(0, Leisure, 1);
 
@@ -312,7 +313,7 @@ public sealed class WalkTests
 
         var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
         var books = Ledger.Open([Money.FromEuros(1000)], Money.FromEuros(1_000_000));
-        var walker = new Walker(Defaults, goods, market, population, books, runSeed: 1);
+        var walker = new Walker(Defaults, goods, market, population, books, new LoanBook(population.Count, 1), runSeed: 1);
         population.RefreshWant(0, Food, 1);
 
         Assert.True(walker.Run(1).IsSuccess);

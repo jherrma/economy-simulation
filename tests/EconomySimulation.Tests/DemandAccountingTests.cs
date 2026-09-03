@@ -1,5 +1,6 @@
 using EconomySimulation.Engine;
 using EconomySimulation.Engine.Configuration;
+using EconomySimulation.Engine.Credit;
 using EconomySimulation.Engine.Decision;
 using EconomySimulation.Engine.Ledger;
 using EconomySimulation.Engine.World;
@@ -55,7 +56,7 @@ public sealed class DemandAccountingTests
         var market = new Market(Goods);
         var population = Households.Specified(Goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
         var books = Ledger.Open([Money.Zero], Money.FromEuros(1_000_000));
-        var walker = new Walker(Defaults, Goods, market, population, books, runSeed: 1);
+        var walker = new Walker(Defaults, Goods, market, population, books, new LoanBook(population.Count, 1), runSeed: 1);
         population.RefreshWant(0, Food, 1);
 
         var before = market.Demand(Food, Budget);

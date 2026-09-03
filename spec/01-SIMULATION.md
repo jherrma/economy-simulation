@@ -279,7 +279,11 @@ The affordability horizon is **one tick**. A household checks that the instalmen
 not that the loan is wise over its term. That asymmetry is the model's version of the observation
 that a household short of cash looks at the monthly payment while a household with cash looks at the
 price, and it is a behaviour under test, not an assumption to hide: `affordability_horizon` switches
-it to the full term as a control.
+it to the full term as a control. Under `full_term` the household asks the **whole repayable
+amount**, `Δcost_cash · finance_mult(g)`, to fit the residual — the price test a cash buyer applies,
+put to the borrower — so a €540 budget appliance needs a residual of €626.40 and the median
+household finances nothing. Loan stacking all but disappears under it, which is the point of the
+control (defined 2026-09-03, 06-02).
 
 **Rationing is first-come within the random order.** Nobody is favoured by wealth or willingness, so
 any crowding-out that appears is caused by *ability to bid at all*, which is exactly the mechanism
