@@ -333,15 +333,18 @@ public sealed class FinanceDecisionTests
         var simulation = new Simulation(high, runSeed: 1);
         Assert.True(simulation.Start().IsSuccess);
 
-        // Warm-up ticks, so the JIT has seen every path with loans live before anything is measured.
-        for (var tick = 1; tick <= 5; tick++)
+        // Thirty warm-up ticks: tiered compilation promotes a method after thirty calls, and a
+        // promotion landing inside the measured tick showed up once as eight kilobytes that were
+        // the runtime's, not the model's. Every path with loans live — origination, service,
+        // retirement at twelve months — has run by then.
+        for (var tick = 1; tick <= 30; tick++)
         {
             Assert.True(simulation.RunTick(tick).IsSuccess);
         }
 
         Assert.True(simulation.Loans.LiveCount > 0);
 
-        for (var tick = 6; tick <= 8; tick++)
+        for (var tick = 31; tick <= 33; tick++)
         {
             var before = GC.GetAllocatedBytesForCurrentThread();
             var result = simulation.RunTick(tick);
