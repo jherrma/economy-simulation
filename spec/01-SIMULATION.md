@@ -530,6 +530,51 @@ What it is good for is the comparison the headline is actually defined as: **sam
 scenarios, paired by seed**. That is sound, and it is what says whether credit lengthens the
 abstainer's wait or widens the excluded set.
 
+### 10.2 The trajectory is chaotic; the equilibrium is not — found 2026-09-03
+
+Found while building V3 (`spec/stories/08-02`), on `credit_off` and `credit_high`, eight seeds,
+360 ticks.
+
+**One cent decorrelates a run.** Add a single cent to `mean_income` and change nothing else: the run
+is identical for three or four ticks, and then about **48% of every real cell** in a 360-tick run
+differs from the baseline's. Nothing about that is a fault. Money is integer cents, a household
+spends down to nearly nothing every tick, and whether the last increment it reaches for costs one
+cent more than it holds is a genuine knife edge. A cent puts a few households on the other side of
+it; one household landing on budget instead of standard takes the last unit of a rationed shelf from
+someone else; and the difference spreads through the price rule into everything.
+
+Scaling every nominal quantity by `c` does exactly the same thing, for the same reason and to the
+same degree: `round(c · x) ≠ c · round(x)` for about half of all `x`, at `c = 2` as much as at
+`c = 0.5`, so the two runs' household incomes differ by up to half a cent each and the trajectories
+part company within a few ticks.
+
+**What survives is the measured window.** Over ticks 121–360, averaged across the seed set, the
+series that are measured finely enough to compare — those whose window mean varies by less than a
+tenth of a percent from seed to seed — agree to two or three parts in a thousand, and the scaled
+runs agree with the baseline **at least as closely as the one-cent control does**. The equilibrium
+is invariant even though the path to it is not.
+
+Four consequences, and they bind on everything downstream:
+
+1. **No result may be read off a single seed's series.** A tick-by-tick difference between two runs
+   is not a measurement of anything; only a window mean over the seed set is. This is why §9's
+   protocol is what it is.
+2. **Pairing by seed does not cancel trajectory noise.** It cancels the population draw — the same
+   incomes, tastes and initial ages in both arms — which is worth having and is why it is done. It
+   does not make two trajectories comparable tick by tick. Precision comes from the number of seeds.
+3. **Only about a sixth of the recorded series resolve well enough to support a claim** at the
+   tenth-of-a-percent level on eight seeds: 45 of 271. A shelf that sells one unit a fortnight and
+   the open-wait median (§10.1) are not among them. They need either the full thirty seeds or no
+   claim at all, and the gate reports which is which rather than assuming.
+4. **V5's byte-identity is untouched by any of this**, and that is the point of it. It compares two
+   configurations whose inputs are identical to the cent, so no rounding difference ever arises. An
+   off switch has to reproduce the previous version *bit*-identically, because "closely" is not
+   something this model can do.
+
+Re-check by running `dotnet run --project tools/Gates -- neutrality`: it reports the tick at which
+each arm first diverges, the share of cells that differ, and how each arm compares against the
+one-cent control.
+
 ## 11. What this model cannot show
 
 Every one of these must accompany any number that comes out of it.

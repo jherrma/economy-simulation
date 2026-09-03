@@ -327,8 +327,9 @@ public static class ConfigurationLoader
         return money;
     }
 
+    /// <summary>`round(households / life)`. Defined once, on the schema, so the loader and a configuration built in code cannot disagree.</summary>
     internal static int DerivedCapacity(int households, int life) =>
-        life < 1 ? 0 : (int)Math.Round((double)households / life, MidpointRounding.AwayFromZero);
+        SimulationParameters.DerivedCapacity(households, life);
 
     // ---- ranges and cross-parameter checks ---------------------------------------------------
 

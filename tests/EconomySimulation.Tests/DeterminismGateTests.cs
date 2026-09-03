@@ -18,10 +18,11 @@ public sealed class DeterminismGateTests
     /// <summary>
     /// Two hundred households rather than a thousand. The gate's subject is the harness, and a
     /// smaller town exercises every branch of it at a fifth of the cost; the committed gate itself
-    /// runs the real configuration.
+    /// runs the real configuration. Through <see cref="SimulationParameters.WithHouseholds"/>,
+    /// because capacity is `round(households / life)` by definition: a fifth of the town with the
+    /// same shelves is five times the supply, and the run halts on a drained pool around tick 60.
     /// </summary>
-    private static readonly SimulationParameters Small =
-        SimulationParameters.Default with { Run = SimulationParameters.Default.Run with { Households = 200 } };
+    private static readonly SimulationParameters Small = SimulationParameters.Default.WithHouseholds(200);
 
     private static readonly int[] TwoSeeds = [1, 2];
 

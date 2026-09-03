@@ -68,21 +68,68 @@ silently invalidate every stored result.
 ## V3 — Nominal neutrality
 
 Multiply **simultaneously** by any constant `c > 0`: `M0`, all cash, the pool, all opening prices,
-all incomes, `price_floor`, and all outstanding loan principals. Leave `loan_rate`, `λ`, `v_g`,
-`k` and every share alone — they are pure numbers.
+all incomes, `price_floor`, `a_g`, and all outstanding loan principals. Leave `loan_rate`, `λ`,
+`b_g`, `v_g`, `necessity_g`, `k` and every share and multiplier alone — they are pure numbers.
 
-**Nothing real may change.** Units sold per good per tick, `share_of_wanted_obtained`, `wait`, and
-every cohort comparison must be identical; every price and every balance must be exactly `c` times
-what it was.
+Nearly all of those are **derived**, so a gate sets three parameters — `mean_income`, each
+category's `price_ref`, and `price_floor` — and the rest follow. `a_g` follows too, and that is the
+sharpest trap here: `a_g = necessity_g · v_g · mean_income` is a floor in euros per tick and must
+scale, while `b_g` is a coefficient on income and must not. Scaling `b_g` as well produces a
+*near*-neutral result, which is worse than an obviously broken one because it reads as noise.
 
-This holds by construction, and it is worth understanding why rather than trusting it:
-`flow_value` scales with income, `flow_cost` scales with price, so `score` is homogeneous of degree
-zero and λ never needs indexing. Affordability compares two quantities that both scale. This is the
-defect that took the longest to find in the draft model — a value in utility units divided by a cost
-in euros silently pinned the real price level to the utility scale, so doubling all prices halved
-every score while the threshold stood still, and demand collapsed for no economic reason.
+**Nothing real may change.** This holds by construction, and it is worth understanding why rather
+than trusting it: `flow_value` scales with income, `flow_cost` scales with price, so `score` is
+homogeneous of degree zero and λ never needs indexing. Affordability compares two quantities that
+both scale. This is the defect that took the longest to find in the draft model — a value in utility
+units divided by a cost in euros silently pinned the real price level to the utility scale, so
+doubling all prices halved every score while the threshold stood still, and demand collapsed for no
+economic reason.
 
 Run V3 with `c = 2` and `c = 0.5`, both scenarios.
+
+> **Amended 2026-09-03, on evidence.** V3 is **not** a byte comparison, and it cannot be one.
+>
+> Money is integer cents and `round(c · x) ≠ c · round(x)` for about half of all `x` — at `c = 2` as
+> much as at `c = 0.5` — so the two runs' household incomes differ by up to half a cent each. This
+> model amplifies that: a household spends down to nearly nothing every tick, whether the last
+> increment it reaches for costs one cent more than it holds is a genuine knife edge, and one
+> household landing on budget instead of standard takes the last unit of a rationed shelf from
+> someone else. Measured: identical for the first three or four ticks, then about 48% of every real
+> cell over 360 ticks. A control that adds **one cent to `mean_income` and scales nothing** produces
+> the same thing (`01-SIMULATION.md` §10.2). Requiring tick-by-tick identity would be requiring the
+> model not to be what it is, and any tolerance loose enough to permit it would be loose enough to
+> hide the failure V3 exists for.
+>
+> What neutrality says is that the **equilibrium** is unchanged, so that is what is compared: the
+> mean of every series over the measured window, paired by seed, over the seed set. Three rules,
+> and none of them may be relaxed:
+>
+> - **A series is held to nothing until it is measured well enough to be held to something.** Its
+>   window mean varies from seed to seed; that spread is what the series resolves. A shelf selling
+>   one unit a fortnight resolves nothing and the open-wait median resolves a quarter of itself
+>   (§V4). Both are still measured and reported — the gate says which series it tested and which it
+>   could not — but a series is only required to agree when it resolves better than a tenth of a
+>   percent. On eight seeds that is 45 of 271 series, and it includes every price index, every
+>   category's sales and the tier mix.
+> - **The bar is the control, not a number chosen for the purpose.** The one-cent run is the
+>   smallest *real* change this economy can express, and it moves the well-measured series by two or
+>   three parts in a thousand. A scaled run may move a series no more than twice as far as the
+>   control moves that same series — and never more than 0.2% whatever the control says, so a
+>   control that has itself gone wrong cannot license anything.
+> - **Labels and file shapes are exact.** The scenario, the category and the tier are structure, not
+>   measurement. Nothing rounds them and nothing may move them.
+>
+> The parameters the gate *sets* must still scale exactly, and this is checked before anything runs:
+> if `mean_income` had itself been rounded away from `c` times the original, the gate would be
+> measuring its own arithmetic and reporting it as the model's. Derived quantities that cannot scale
+> exactly are named rather than required — `a_g` for clothing is 3575 cents and half of that is not
+> a whole number of cents.
+>
+> **`price_floor` is the likeliest first failure and the hardest to notice.** It is the one nominal
+> parameter that does not look like a price: it is a guard against dividing by zero, it is written
+> once, and at one euro against prices of one to sixteen hundred it never binds — so leaving it in
+> old money changes nothing at all until a scenario prices a shelf near it. It is tested where it
+> binds, which is the only configuration in which the mistake has a consequence.
 
 ## V4 — The null run
 
@@ -105,11 +152,6 @@ seen from the money side, and it is the cheaper of the two to check.
 > of total income per tick**, the pool never falls below zero, and the cash of deciles one to nine
 > shows no trend. A drain above that, or one that is not confined to the top decile, is the failure
 > this gate exists for.
-
-Posted prices under V3 agree to within one cent after scaling, not exactly: cent rounding cannot
-commute with scaling by `c`. The engine carries each price as a factor on its opening price so the
-discrepancy is bounded at half a cent per posting rather than compounding. A knife-edge decision
-flipped by that cent is possible in principle and must be reported by the gate if it occurs.
 
 Supply is fixed, income is fixed, and the money stock is constant, so there is nothing in this model
 that should make the price level move. If it drifts, the price rule is not converging, and any

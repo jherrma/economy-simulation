@@ -31,3 +31,8 @@ jobs:
       # than on the occasions someone remembers to.
       - name: gate — determinism (V2)
         run: dotnet run --project tools/Gates -c Release --no-build -- determinism
+
+      # V3. Longer than V2 — it needs a measured window, so it runs the full 360 ticks on eight
+      # seeds — and about forty seconds.
+      - name: gate — nominal neutrality (V3)
+        run: dotnet run --project tools/Gates -c Release --no-build -- neutrality

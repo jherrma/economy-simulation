@@ -29,6 +29,7 @@ internal static class Program
         var report = name switch
         {
             "determinism" => DeterminismGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
+            "neutrality" => NeutralityGate.Run(SimulationParameters.Default, Runs.WindowSeeds, workspace),
             _ => null,
         };
 
@@ -53,6 +54,7 @@ internal static class Program
         Console.Error.WriteLine("usage: dotnet run --project tools/Gates -- <gate> [--keep]");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  determinism   V2 — the same seed produces the same run, twice and across threads");
+        Console.Error.WriteLine("  neutrality    V3 — multiply every nominal quantity by c and nothing real moves");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  --keep        leave the runs on disk instead of removing them");
 

@@ -27,6 +27,16 @@ public static class Runs
     /// <summary>The four seeds the short gates use. A subset of the campaign's, so a gate failure is reproducible in a full run.</summary>
     public static IReadOnlyList<int> ShortSeeds { get; } = [1, 2, 3, 4];
 
+    /// <summary>
+    /// The seeds the gates that measure rather than compare use.
+    ///
+    /// More than four, because those gates estimate how precisely a series is measured from the
+    /// spread of its window mean across seeds, and a spread taken over four numbers is itself
+    /// worth little. Still a prefix of the campaign's thirty, so any finding here is reproducible
+    /// in a full run.
+    /// </summary>
+    public static IReadOnlyList<int> WindowSeeds { get; } = [1, 2, 3, 4, 5, 6, 7, 8];
+
     /// <summary>The parameters of a short run: the given configuration, over <see cref="ShortTicks"/> ticks.</summary>
     public static SimulationParameters Short(SimulationParameters parameters)
     {

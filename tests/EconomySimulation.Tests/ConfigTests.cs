@@ -416,6 +416,30 @@ public sealed class ConfigTests
         Assert.Equal(1000, Load("[categories.food]\ncapacity = 1000").Categories.Single(c => c.Name == "food").Capacity);
     }
 
+    /// <summary>
+    /// The same identity for a configuration built in code, so that a gate or a test that wants a
+    /// smaller town gets one rather than a town whose shelves were stocked for a larger one.
+    ///
+    /// It matters because the symptom is not obviously a mistake: at a fifth of the households and
+    /// the same capacities, supply is five times demand, prices fall to the floor, households
+    /// cannot spend what they earn, the pool drains and the run halts on its own calibration check
+    /// around tick 60 — which reads as a finding about the parameters.
+    /// </summary>
+    [Fact]
+    public void BuildingAConfigurationInCode_RecomputesCapacityToo()
+    {
+        var smaller = SimulationParameters.Default.WithHouseholds(200);
+
+        Assert.Equal(200, smaller.Run.Households);
+        Assert.Equal(200, smaller.Categories.Single(c => c.Name == "food").Capacity);
+        Assert.Equal(33, smaller.Categories.Single(c => c.Name == "clothing").Capacity);  // 200/6
+        Assert.Equal(2, smaller.Categories.Single(c => c.Name == "appliances").Capacity); // 200/96
+
+        // And it agrees with what the loader would have derived, which is the point of there being
+        // one definition rather than two.
+        Assert.Equal(smaller, Load("[run]\nhouseholds = 200"));
+    }
+
     // ---- the effective configuration is written out -------------------------------------------------
 
     [Fact]

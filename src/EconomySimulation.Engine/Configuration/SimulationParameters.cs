@@ -79,6 +79,34 @@ public sealed record SimulationParameters
         return hash.ToHashCode();
     }
 
+    /// <summary>
+    /// The same configuration for a different number of households, with every capacity recomputed.
+    ///
+    /// `capacity` is `round(households / life)` by definition (`spec/02-PARAMETERS.md` §3.1) — the
+    /// steady-state replacement demand, and the only non-arbitrary way to size it. Changing the
+    /// population without it is not a smaller town: it is a town whose shelves were stocked for a
+    /// different one, and the symptom is not obvious. At a fifth of the households and the same
+    /// shelves, supply is five times demand, every price falls to the floor, households cannot
+    /// spend what they earn, and the pool drains until the run halts on its own calibration check
+    /// around tick 60 — which reads as a result about the parameters rather than as the mistake it
+    /// is. The loader already refuses such a file; this is the same rule for a configuration built
+    /// in code, which the gates and the tests both need.
+    /// </summary>
+    public SimulationParameters WithHouseholds(int households)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(households, 1);
+
+        return this with
+        {
+            Run = Run with { Households = households },
+            Categories = [.. Categories.Select(c => c with { Capacity = DerivedCapacity(households, c.Life) })],
+        };
+    }
+
+    /// <summary>`round(households / life)`, the steady-state replacement demand in units.</summary>
+    public static int DerivedCapacity(int households, int life) =>
+        life < 1 ? 0 : (int)Math.Round((double)households / life, MidpointRounding.AwayFromZero);
+
     // ---- derived money quantities (§7) ---------------------------------------------------
 
     /// <summary>`households × mean_income × opening_cash_share` — €650,000 at the defaults.</summary>
