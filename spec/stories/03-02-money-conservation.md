@@ -18,6 +18,14 @@ As the person who will defend these results, I want `Σ cash + pool == M0 + loan
 - [ ] With `credit_enabled = false`, `loans_outstanding == 0` at every tick.
 - [ ] A deliberately broken build — interest destroyed along with principal — is used once, by hand, to confirm the check actually fires.
 
+      *Finding, recorded during implementation.* **The conservation sum does not catch this bug.**
+      Every operation maintains `Σ cash + pool == M0 + net_created` by construction — destroying
+      money lowers both sides at once — so a destruction that should have been a transfer leaves
+      the sum perfectly balanced and the run completes green. What catches it is the second
+      assertion, that destroyed money is matched by a released claim (`01-SIMULATION.md` §7.1).
+      Had V1 been built as §6 step 7 states it, the one bug this criterion singles out would have
+      passed. The deliberate break is now an automated test rather than a manual exercise.
+
 ## Where to start
 
 Two things make this invariant work, and both are easy to get wrong in ways nothing else notices.

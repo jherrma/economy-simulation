@@ -153,6 +153,11 @@ financing attractive on price, the hypothesis is being assumed rather than teste
 
 Seven steps, in this order. The order matters and is asserted.
 
+Before step 1 the tick **restocks**: every tier's stock is set back to `units(g,t)`. That is what
+"fixed supply per tick" means — unsold premium units do not pile up into a glut, they are simply
+production that was not taken. It is not one of the seven steps because nothing decides and nothing
+moves; it is the definition of the shelf the steps then act on.
+
 ### Step 1 — Income
 
 Each household receives `income_h` from the pool. `income_h` is fixed for the life of the run.
@@ -287,6 +292,31 @@ The switch `money_creation = false` funds loans from the pool instead of creatin
 repaid principal to the pool. The money stock is then constant and credit is pure reallocation.
 **The difference between the two settings is the money-creation channel, measured directly** — and
 it is the cheapest interesting experiment this model can run.
+
+### 7.1 V1 at both settings
+
+The identity in §6 step 7 is the `money_creation = true` form. With creation off, loans exist and no
+money was made, so `Σ cash + pool == M0 + loans_outstanding` is false by exactly the amount lent.
+The form that holds at **both** settings, and is what the engine asserts, is:
+
+```
+Σ cash_h + pool == M0 + net_money_created
+```
+
+with a second assertion tying the two together, which is where the switch is actually policed:
+
+```
+money_creation = true   →  net_money_created == loans_outstanding
+money_creation = false  →  net_money_created == 0
+```
+
+This is strictly stronger than the original, and not by a little. The sum alone catches nothing
+that the operations do not already maintain: destroying money lowers both of its sides at once, so
+**interest destroyed along with principal — the bug §6 step 7 exists to catch — leaves the sum
+perfectly balanced.** It is the second assertion that fails, because money destroyed was not
+matched by a claim released. The same assertion is what catches a loan funded the wrong way: an
+origination modelled as a transfer from the pool builds the `money_creation = false` variant and
+calls it the default, and the money stock alone would never notice.
 
 ## 8. Randomness
 

@@ -9,6 +9,9 @@ namespace EconomySimulation.Engine.World;
 /// must not allocate, and partly because every attribute is then something that can be added later
 /// without disturbing the ones already there — a new array and a new stream, and every existing
 /// draw is exactly where it was.
+///
+/// What a household *is* lives here; what it *holds* lives in the ledger. Cash is a balance, and
+/// balances have exactly one home.
 /// </summary>
 public sealed class Households
 {
@@ -18,7 +21,6 @@ public sealed class Households
         CategoryCount = categoryCount;
 
         Income = new Money[count];
-        Cash = new Money[count];
         TasteWeight = new double[count];
         Theta = new double[count];
         IsAbstainer = new bool[count];
@@ -32,8 +34,6 @@ public sealed class Households
     /// <summary>Fixed nominal income. There are no wages and no firms, so nothing can change it.</summary>
     public Money[] Income { get; }
 
-    public Money[] Cash { get; }
-
     /// <summary>`w_h`, the taste multiplier. Mean exactly 1.</summary>
     public double[] TasteWeight { get; }
 
@@ -42,6 +42,19 @@ public sealed class Households
 
     /// <summary>The measured cohort: households that never borrow. What happens to them is the finding.</summary>
     public bool[] IsAbstainer { get; }
+
+    /// <summary>Opening cash: `income_h · opening_cash_share`, handed to the ledger to hold.</summary>
+    public Money[] OpeningCash(double openingCashShare)
+    {
+        var cash = new Money[Count];
+
+        for (var h = 0; h < Count; h++)
+        {
+            cash[h] = Income[h].Scaled(openingCashShare);
+        }
+
+        return cash;
+    }
 
     /// <summary>Ticks since the household's unit of a category was bought, category-major per household.</summary>
     public int[] Age { get; }
@@ -71,7 +84,6 @@ public sealed class Households
                 .NextLogNormal(1.0, parameters.Income.SigmaIncome);
 
             households.Income[h] = meanIncome.Scaled(income);
-            households.Cash[h] = households.Income[h].Scaled(parameters.Income.OpeningCashShare);
 
             households.TasteWeight[h] = RandomStream
                 .ForHousehold(runSeed, h, Purpose.Willingness)

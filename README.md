@@ -11,10 +11,10 @@ assumed.
 
 ## Status
 
-**Implementation started.** E1 — Foundations — and E2 — Configuration and the world — are complete:
-the value types, the failure handling, the RNG streams, the parameter schema, the loader, the goods
-table and the population, with 175 tests. Nothing simulates anything yet; the next epic is the
-ledger and the opening state, where V1 goes green and stays green.
+**Implementation started.** E1 (Foundations), E2 (Configuration and the world) and E3 (The ledger
+and the opening state) are complete, with 218 tests. **V1 — money conservation — is green and stays
+green**, and a 360-tick run completes with every step of the tick present and doing nothing. The
+next epic is the decision, which is most of the model.
 
 Build and check:
 

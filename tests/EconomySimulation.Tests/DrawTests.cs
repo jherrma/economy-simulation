@@ -69,14 +69,19 @@ public sealed class DrawTests
         Assert.True(incomes[^1] > 1500, $"The richest household earns {incomes[^1]:F2}, so the top of the ladder is empty.");
     }
 
+    /// <summary>
+    /// Opening cash is a month of income. It is computed here and held by the ledger — a balance
+    /// has exactly one home, and 03-01 says which.
+    /// </summary>
     [Fact]
     public void OpeningCashIsOneMonthOfIncome()
     {
         var population = Population(Defaults);
+        var cash = population.OpeningCash(Defaults.Income.OpeningCashShare);
 
         for (var h = 0; h < population.Count; h++)
         {
-            Assert.Equal(population.Income[h], population.Cash[h]);
+            Assert.Equal(population.Income[h], cash[h]);
         }
     }
 
@@ -191,7 +196,6 @@ public sealed class DrawTests
         var on = Population(Defaults with { Credit = Defaults.Credit with { CreditEnabled = true } });
 
         Assert.Equal(off.Income, on.Income);
-        Assert.Equal(off.Cash, on.Cash);
         Assert.Equal(off.TasteWeight, on.TasteWeight);
         Assert.Equal(off.IsAbstainer, on.IsAbstainer);
         Assert.Equal(off.Age, on.Age);

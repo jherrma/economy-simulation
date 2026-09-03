@@ -1,0 +1,21 @@
+# The order of the tick, as a committed fixture. Simulation.StepOrder is compared against it.
+#
+# Adding or reordering a step is a deliberate edit to this file, and needs a reason. Three of the
+# orderings have a failure mode that produces a working run with wrong numbers:
+#
+#   debt service before the walk  — otherwise households spend their way into arrears, which v1
+#                                   has no machinery to handle
+#   ageing after the walk         — otherwise a unit bought this tick is immediately wanted again
+#   repricing after the walk      — otherwise the household visited first faces a different price
+#                                   from the one visited last, and rationing order becomes a price
+#                                   advantage
+#
+# Restocking happens before step 1 and is not a step: nothing decides and nothing moves.
+
+income
+debt_service
+wants
+walk
+ageing
+repricing
+check
