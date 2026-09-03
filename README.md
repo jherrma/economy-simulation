@@ -19,9 +19,10 @@ The repository holds two specifications, and the difference between them matters
 ### [`spec/`](spec/) — **the implementation target**
 
 The smallest model that can test the claim: a thousand households with a fixed monthly income, six
-goods produced in fixed quantity each tick, one adaptive price per good, and consumer credit that
-creates money and has to be repaid. A fifth of households never borrow, and what happens to *them*
-is the finding.
+categories of goods produced in fixed quantity each tick — each in a budget, standard and premium
+tier with its own price — and consumer credit that creates money and has to be repaid. A fifth of
+households never borrow, and what happens to *them* is the finding: what they pay, what share of
+what they wanted they got, how long they waited, and **which tier they ended up on**.
 
 Start at [`spec/README.md`](spec/README.md).
 

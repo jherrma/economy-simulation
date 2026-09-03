@@ -53,7 +53,7 @@ Three assertions, in increasing order of strength:
 1. The same seed, run twice, produces byte-identical output files.
 2. The same seed, run serially and across threads, produces byte-identical output files. Not
    "close" — a floating-point difference here means an accumulation is order-dependent and it will
-   drift over 300 ticks.
+   drift over 360 ticks.
 3. **Registering a new random stream and never drawing from it changes nothing.** A test adds a
    purpose string, consumes no values, and requires byte-identical output.
 
@@ -87,13 +87,22 @@ Run V3 with `c = 2` and `c = 0.5`, both scenarios.
 ## V4 — The null run
 
 With `credit_enabled = false`, prices must be **stationary after the warm-up**: the CPI over ticks
-61–300 has no significant trend, and each good's price is flat to within a tolerance.
+121–360 has no significant trend, and each of the eighteen tier prices is flat to within a tolerance.
+
+**The realised tier mix must also be stationary.** The opening unit shares (40/40/20) are
+deliberately not an equilibrium, and the warm-up exists mainly so relative tier prices can find one.
+A mix still drifting at tick 120 means the measured window is contaminated by the transient, and the
+symptom is easy to miss because the CPI can look flat while the mix underneath it is still moving.
+
+**The pool must have stopped falling.** It drains during the transient by design and carries twelve
+months of income for that reason. A pool still declining at the end of warm-up is the same failure
+seen from the money side, and it is the cheaper of the two to check.
 
 Supply is fixed, income is fixed, and the money stock is constant, so there is nothing in this model
 that should make the price level move. If it drifts, the price rule is not converging, and any
 credit effect measured later would be that drift plus an unknown amount of signal.
 
-Also check the warm-up actually decayed: the first 60 ticks are written and flagged, not discarded,
+Also check the warm-up actually decayed: the first 120 ticks are written and flagged, not discarded,
 so that the transient can be inspected rather than assumed.
 
 ## V5 — Credit-off regression
@@ -116,15 +125,24 @@ contribution cannot be measured.
 
 Cheap assertions that catch the errors the walk is prone to:
 
-- `sold_g ≤ supply_g`, every tick, every good.
-- `D_g = sold_g + blocked_g`, and `unaffordable_g` appears in **neither**. Assert this explicitly:
-  folding unaffordable demand into `D` is the single most likely modelling mistake in the
-  implementation, and it is silent.
-- A household never buys the same good twice in one tick.
-- `blocked_g > 0` implies `stock_g = 0` at the end of the tick.
+- `sold_(g,t) ≤ units_(g,t)`, every tick, every tier.
+- `D_(g,t) = sold_(g,t) + blocked_(g,t)`, and `unaffordable` appears in **neither**. Assert this
+  explicitly: folding unaffordable demand into `D` is the single most likely modelling mistake in
+  the implementation, and it is silent.
+- A household ends the tick holding **at most one unit per category**, and consumes stock at exactly
+  one tier of it.
+- **Increments sum to the tier price.** A household that reaches standard has paid
+  `0.60·P + 0.40·P = 1.00·P`; one that reaches premium has paid `1.80·P`. Assert to the cent — this
+  is what makes the upgrade-candidate model exact rather than approximate.
+- **Upgrade scores are monotone decreasing** within a category: budget > budget→standard >
+  standard→premium, for every household and every price vector. If this ever fails, `value_mult`
+  has been set above `price_mult` somewhere and quality has stopped having diminishing returns.
+- An upgrade is never taken without the step below it.
+- `blocked_(g,t) > 0` implies that tier had no stock at the end of the tick.
 - Every wanted durable that is bought resets `age = 0`; nothing else does.
-- Sum over households of purchases at price `p` equals the pool's increase from goods.
+- Sum over households of what was paid equals the pool's increase from goods.
 - With `credit_enabled = false`: `loans_outstanding == 0` at every tick.
+- `Σ_t units_(g,t) == capacity_g` at initialisation, to within the rounding of the unit split.
 
 ---
 
@@ -143,6 +161,11 @@ series, which is why it needs a named check rather than a reviewer's judgement.
 | The credit effect vanishes entirely | Financed score not checked against λ, or the residual test using income instead of income minus running debt service |
 | Cohort comparison is noisy and inconsistent between seeds | Abstainers not the same households across scenarios, so the comparison is not paired |
 | Results change when thread count changes | A shared generator somewhere. V2 assertion 2 |
+| Every household buys budget everything, premium never sells | Candidates ranked by *total* score per tier instead of *incremental* score. Ratio always favours the cheapest tier; only the increment can justify an upgrade |
+| Nobody ever buys budget; the ladder collapses to standard/premium | The tier below not being required before an upgrade is available |
+| Poor households buy nothing at all, including food | `a_g` missing — value proportional to income makes every good a luxury |
+| The pool drains steadily and the run halts around tick 11 | Opening pool sized at one month instead of twelve. The opening tier mix is not an equilibrium and the transient has to be survivable |
+| Tier shares are constant across every scenario | Tier prices repriced on a category-wide signal instead of per tier, so relative prices cannot move and the mix cannot clear |
 
 ## Running order
 

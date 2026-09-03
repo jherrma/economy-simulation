@@ -13,8 +13,9 @@ Everything in this specification exists to make that question answerable and, cr
 ## 2. The model in one paragraph
 
 A thousand households receive a fixed monthly income. Six categories of goods are produced in
-**fixed quantity** every tick and sold at a single posted price per category. Households decide what
-they want, rank it by value for money, and buy what they are willing to pay for and able to afford.
+**fixed quantity** every tick, each in three quality tiers with its own price. Households decide what
+they want, rank every option by value for money, and buy the best tier they are willing to pay for
+and able to afford.
 A household that wants something it cannot pay for in cash may — with probability `θ` — finance it,
 which creates new money and obliges it to pay instalments out of future income. At the end of the
 tick, any category that sold out raises its price and any category with stock left lowers it. A
@@ -22,8 +23,9 @@ fifth of households have `θ = 0` and never borrow. **What happens to them is th
 
 ## 3. Scope
 
-**In.** Households, six goods, one posted price per good, fixed supply, adaptive pricing, consumer
-credit with repayment, money creation and destruction, rationing when demand exceeds supply.
+**In.** Households, six goods in three quality tiers, one posted price per tier, fixed supply per
+tier, adaptive pricing, consumer credit with repayment, money creation and destruction, rationing
+when demand exceeds supply.
 
 **Deliberately out**, each because it is an objection to answer later rather than a mechanism the
 question needs: firms and wages, supply response, unemployment, default and repossession, housing,
@@ -51,16 +53,34 @@ A household is an index into parallel arrays, not an object.
 
 ### 4.2 Goods
 
-`G` categories, each with a fixed `life_g` (ticks a unit lasts), `supply_g` (units produced per
-tick), a posted `price_g` (the only thing that moves), a value weight `v_g`, a `financeable_g` flag
-and a loan `term_g`. Values in [`02-PARAMETERS.md`](02-PARAMETERS.md).
+Six **categories**, each with a fixed `life_g` (ticks a unit lasts), a `capacity_g` (units produced
+per tick), a value weight `v_g`, a `necessity_g` share, a `financeable_g` flag and a loan `term_g`.
 
-Goods with `life_g = 1` are consumed within the tick and wanted again immediately. Goods with
-`life_g > 1` are durable and wanted only when the household's unit has reached its life.
+Each category is sold in **three quality tiers** — budget, standard, premium — each with its own
+posted price and its own fixed unit supply. A household buys at most **one unit** of a category, and
+which tier it buys is its choice. Tiers are not separate goods: their prices and values are
+multipliers off the category's reference (`02-PARAMETERS.md` §3.2), so the table stays six rows.
 
-Supply is **fixed and does not respond to price**. That is the sharpest possible version of the
-experiment: it isolates the bidding effect with nothing else able to absorb it. Adding a supply
-response is the first thing that would soften the result, and it is a later milestone.
+Categories with `life_g = 1` are consumed within the tick and wanted again immediately. Categories
+with `life_g > 1` are durable and wanted only when the household's unit has reached its life.
+
+Supply is **fixed and does not respond to price**, per tier. That is the sharpest possible version
+of the experiment: it isolates the bidding effect with nothing else able to absorb it. Adding a
+supply response is the first thing that would soften the result, and it is a later milestone.
+
+**Why tiers are in the minimal model at all.** They are the one deliberate complication beyond the
+barest sketch, and they earn it three times over:
+
+1. **Income needs an outlet.** With one quality per category, a household on €3,000 faces exactly
+   the same €650 basket as one on €650, so the top of the distribution accumulates cash that can
+   never be spent, the pool drains without limit, and the run halts for a reason that has nothing to
+   do with credit.
+2. **They create the trade-down margin.** Without tiers, a household priced out of a good can only
+   wait. With them it buys a worse one — which is both what actually happens and a far sharper
+   finding: *credit does not stop the abstainer owning a phone, it moves them to a cheaper phone.*
+3. **They give credit its real job.** Financing is not mainly what lets a household own a thing
+   sooner; it is what lets it own a **better** thing than its cash allows. That mechanism is absent
+   from a single-quality model.
 
 ### 4.3 The seller pool
 
@@ -80,22 +100,54 @@ Everything the household compares is **euros per tick**, so a month of food and 
 that lasts eight years are on the same footing.
 
 ```
-flow_value(h, g) = v_g · income_h · w_h              what a unit is worth to h, per tick
-flow_cost(g)     = price_g / life_g                  what a unit costs, per tick, paid in cash
-flow_cost_fin(g) = (price_g + interest_g) / life_g   … paid on credit
-interest_g       = price_g · loan_rate/100 · term_g/12
-score(h, g)      = flow_value(h, g) / flow_cost(g)   dimensionless
+flow_value(h, g, t) = (a_g + b_g · income_h) · w_h · value_mult_t
+flow_cost(g, t)     = price_(g,t) / life_g
+finance_mult(g)     = 1 + loan_rate · term_g / 1200
 ```
 
-A unit is **worth having** when `score ≥ λ`. λ is a pure number and is never indexed: because
-`flow_value` scales with income and `flow_cost` scales with price, doubling every nominal quantity
-in the model leaves every score unchanged. That is what makes the model nominally neutral, and it
-is checked (`03-VERIFICATION.md`, V3).
+`a_g` is a floor in euros per tick that does **not** scale with income; `b_g · income_h` does. The
+split is neutral at the mean income, so it changes only the income gradient of demand. It is not
+optional: with value strictly proportional to income, a household on €450 scores food below λ and
+buys none, and the poor end of the distribution starves for a reason that no invariant would catch.
 
-Since `interest_g > 0` always, **financing strictly worsens a unit's score**. Credit never makes
-anything look cheaper here. What it does is make reachable a unit the household already wanted.
-If an implementation ever makes financing attractive on price, the hypothesis is being assumed
-rather than tested.
+### 5.1 Candidates are upgrades
+
+A household does not choose a tier and then decide whether to buy. It faces up to **three
+candidates** per wanted category, each with its own incremental value and incremental cost:
+
+| Candidate | Δvalue | Δcost |
+|---|---|---|
+| buy budget | `V · 0.68` | `P · 0.60 / life` |
+| budget → standard | `V · 0.32` | `P · 0.40 / life` |
+| standard → premium | `V · 0.40` | `P · 0.80 / life` |
+
+where `V = (a_g + b_g · income_h) · w_h` and `P = price_ref_g`. An upgrade candidate exists only if
+the one below it was taken. The increments sum exactly to the chosen tier's price, so a household
+that takes all three has paid `1.80 · P` and holds one premium unit.
+
+```
+score = Δvalue / Δcost                     dimensionless
+```
+
+A candidate is **worth taking** when `score ≥ λ`. One rule decides both *whether* to buy and *which
+tier*, which is why the tier ladder is an outcome rather than a second decision procedure.
+
+Because `value_mult` rises more slowly than `price_mult`, each upgrade scores lower than the one
+below it: **diminishing returns to quality fall out of the parameters rather than being imposed.**
+The candidate list for a category is therefore already sorted, and the walk can stop at the first
+candidate below λ.
+
+λ is a pure number and is never indexed: `Δvalue` scales with income, `Δcost` scales with price, so
+doubling every nominal quantity in the model leaves every score unchanged. That is what makes the
+model nominally neutral, and it is checked (`03-VERIFICATION.md`, V3).
+
+### 5.2 Financing
+
+A financed candidate's cost is multiplied by `finance_mult(g)` — 1.08 over twelve months, 1.16 over
+twenty-four — so its score is the cash score divided by that. Since `finance_mult > 1` always,
+**financing strictly worsens a candidate's score**. Credit never makes anything look cheaper here.
+What it does is put within reach a tier that cash could not pay for. If an implementation ever makes
+financing attractive on price, the hypothesis is being assumed rather than tested.
 
 ## 6. The tick
 
@@ -122,32 +174,50 @@ rata by `income_h` — bank profit returning as household income.
 
 ### Step 3 — Wants
 
-For each good, the household wants one unit if `life_g = 1`, or if `age_h,g ≥ life_g`. Otherwise it
-wants nothing. Wants are quantities, not budgets.
+For each category, the household wants one unit if `life_g = 1`, or if `age_h,g ≥ life_g`.
+Otherwise it wants nothing. Wants are quantities, not budgets, and never more than one unit of a
+category per tick — the tier, not the count, is where extra income goes.
 
 ### Step 4 — The shopping walk
 
-Households are visited in a **seeded random order, redrawn every tick**. Within a household, wanted
-goods are ranked by `score` descending, and walked:
+Households are visited in a **seeded random order, redrawn every tick**. Within a household, all
+available candidates across all wanted categories are ranked by `score` descending and walked:
 
-1. If `score < λ`, **stop**. The list is sorted, so nothing further can clear the threshold.
-2. If `stock_g = 0`, record a **blocked** unit and continue to the next good.
-3. If `price_g ≤ cash_h`, buy for cash. `cash_h −= price_g`, `pool += price_g`, `stock_g −= 1`,
-   `age_h,g = 0`.
-4. Otherwise, if `financeable_g`, **and** a draw from the household's finance stream is `< θ_h`,
-   **and** the financed score `flow_value / flow_cost_fin ≥ λ`, **and** the instalment fits:
+1. If `score < λ`, **stop**. Nothing further can clear the threshold.
+2. If the candidate is an upgrade and the tier below it was not taken, skip it — it is not yet
+   available.
+3. If the target tier has no stock, record a **blocked** unit against that tier and continue.
+4. If `Δcost_cash ≤ cash_h`, take it for cash. `cash_h −= Δcost_cash`, `pool += Δcost_cash`, and the
+   category's chosen tier moves up one step.
+5. Otherwise, if `financeable_g`, **and** a draw from the household's finance stream is `< θ_h`,
+   **and** the financed score clears λ, **and** the instalment fits:
 
    ```
-   residual_h = income_h − debt_service_running_h − subsistence_share · income_h
-   instalment_g ≤ residual_h
+   residual_h  = income_h − debt_service_running_h − subsistence_share · income_h
+   instalment  = Δcost_cash · finance_mult(g) / term_g
+   instalment ≤ residual_h
    ```
 
-   then originate the loan and buy. New money appears as `cash_h += price_g` and
-   `loans_outstanding += price_g`, and it is spent into the pool in the same step.
-5. Otherwise record an **unaffordable** unit and continue.
+   then originate a loan for `Δcost_cash` and take the candidate. New money appears as
+   `cash_h += Δcost_cash` and `loans_outstanding += Δcost_cash`, and it is spent into the pool in
+   the same step.
+6. Otherwise record an **unaffordable** unit against that tier and continue.
 
-The budget depletes **sequentially** — each purchase changes what is affordable next. Do not
+At the end of the walk each category the household bought in has exactly one unit at its final tier:
+stock is consumed once, at that tier, and `age_h,g = 0`.
+
+**Increments, not whole units.** A household that takes *buy budget* and then *budget → standard*
+has paid `0.60 · P` and `0.40 · P` and holds one standard unit. Financing an increment and financing
+the whole unit come to identical total interest, because `finance_mult` is uniform, so the
+implementation may treat each candidate as its own small loan. The arithmetic is exact and the
+bookkeeping is simpler.
+
+The budget depletes **sequentially** — each candidate taken changes what is affordable next. Do not
 precompute affordability for the whole list.
+
+This is where the trade-down channel lives. A household that cannot afford the *budget → standard*
+increment in cash, and will not or cannot finance it, keeps the budget unit. It is not excluded from
+the category; it is moved down it.
 
 The affordability horizon is **one tick**. A household checks that the instalment fits *this month*,
 not that the loan is wise over its term. That asymmetry is the model's version of the observation
@@ -166,22 +236,29 @@ Every held durable's `age_h,g` increases by one.
 
 ### Step 6 — Repricing
 
-For each good, demand is what would have sold with unlimited stock:
+For each **tier** of each category — eighteen prices in all — demand is what would have sold with
+unlimited stock:
 
 ```
-D_g = sold_g + blocked_g
+D_(g,t) = sold_(g,t) + blocked_(g,t)
 ```
 
-**`unaffordable_g` is not demand.** Counting it would raise prices on goods nobody can buy. Getting
+**`unaffordable` is not demand.** Counting it would raise prices on goods nobody can buy. Getting
 this wrong is silent: the run works and the price series is meaningless.
 
 ```
-price_g ← price_g · (1 + k · clamp((D_g − supply_g) / supply_g, −1, +1))
-price_g ← max(price_g, price_floor)
+price_(g,t) ← price_(g,t) · (1 + k · clamp((D_(g,t) − units_(g,t)) / units_(g,t), −1, +1))
+price_(g,t) ← max(price_(g,t), price_floor)
 ```
 
 `k` is the adjustment speed. The rule is symmetric: sold out raises the price in proportion to the
 shortage, stock left lowers it in proportion to the surplus.
+
+Each tier reprices on **its own** excess demand, so relative prices within a category move. They must
+be free to: that movement is how the tier mix clears. If premium sits unsold its price falls until
+enough households take the upgrade; if budget sells out its price rises until some households step
+up or drop out. **The realised tier mix is an output of this rule, never a parameter** — pinning it
+would assume the answer, since the question is precisely how credit shifts it.
 
 ### Step 7 — The check
 
@@ -261,7 +338,12 @@ that cannot be argued with.
 - **`wait`**: for each durable want, the number of ticks between first wanting a unit and obtaining
   one. Reported as a cohort median. This is the cleanest available statement of the timing channel —
   the borrower gets it now, the abstainer gets it later or not at all.
-- **`real_units`**: total units obtained, per good and in total.
+- **`tier_mix`**: the share of each cohort's purchases at each tier, per category. **This is the
+  trade-down finding.** If credit moves borrowers up the ladder and abstainers down it, that shows
+  here before it shows anywhere else, and it is a more concrete claim than a price index.
+- **`real_units`**: total units obtained, per category and in total.
+- **`quality_index`**: units obtained weighted by `value_mult`, so a cohort that keeps its unit count
+  by buying worse goods is not recorded as unaffected.
 - **nominal spend**, and the price index faced.
 
 The headline is the difference in the abstainer cohort's `cpi`, `share_of_wanted_obtained` and
@@ -287,7 +369,12 @@ Every one of these must accompany any number that comes out of it.
   that would never have happened. The "never-would-have" channel is absent entirely.
 - **Waiting is not a decision.** A household that cannot buy simply tries again next tick; it does
   not deliberately save toward a target. Thrift is emergent, not chosen.
-- **One price per category**, so quality, brand and second-hand condition do not exist.
+- **Three qualities per category, fixed.** Producers cannot introduce, drop or reposition a tier,
+  so the *supply* of quality is as rigid as the supply of quantity. In reality a shift toward
+  financed premium buying pulls production up-market, which would amplify the trade-down effect on
+  the abstainer. Its absence cuts **against** the hypothesis.
+- **A household buys at most one unit of a category per tick.** Extra income goes into quality, never
+  into quantity, so there is no way to model buying *more* rather than *better*.
 
 ## 12. What comes next, and why not now
 

@@ -4,7 +4,8 @@
 > reference and not scheduled.
 
 The smallest model that can actually test the hypothesis: a thousand households, six goods in fixed
-supply, one adaptive price per good, and consumer credit that has to be repaid. A few hundred lines.
+supply — each in three quality tiers, so that income and credit have somewhere to go — one adaptive
+price per tier, and consumer credit that has to be repaid. A few hundred lines.
 
 | File | What it is |
 |---|---|
@@ -18,9 +19,12 @@ supply, one adaptive price per good, and consumer credit that has to be repaid. 
 > expensive — or harder to get — for B, who never borrows?
 
 A fifth of households never borrow, in any scenario, and are the same households across scenarios
-for a given seed. **What happens to them is the finding.** Three numbers, `credit_high` against
+for a given seed. **What happens to them is the finding.** Four numbers, `credit_high` against
 `credit_off`, paired by seed: the price index they face, the share of what they wanted that they
-actually got, and how long they waited for it.
+actually got, how long they waited for it, and **which quality tier they ended up on**.
+
+The last of those is the sharpest claim the model can make. Credit does not stop the abstainer
+owning a phone; the question is whether it moves them to a worse one.
 
 The result may be null. A null result is publishable and is the reason the model is built to be
 refutable rather than built to demonstrate.
