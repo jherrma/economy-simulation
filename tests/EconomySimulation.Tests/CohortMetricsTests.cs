@@ -263,14 +263,54 @@ public sealed class CohortMetricsTests
         Assert.Equal(4.0, metrics.WaitMedian(Cohort.Abstainer));
     }
 
-    /// <summary>In a run the wait is a real distribution: some durable wants are met at once, others are still open.</summary>
-    [Fact]
-    public void TheWaitIsRecordedThroughARun()
+    /// <summary>
+    /// The rationing is an exclusion, not a queue (`01-SIMULATION.md` §10.1). A household that gets
+    /// served is served the tick it asks — the median wait among wants actually met is zero — while
+    /// the median over every open want sits far above it, held up by a stable population at the
+    /// poor end that is never served at all.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void TheRationingIsAnExclusionRatherThanAQueue(int seed)
     {
-        var simulation = Run(Defaults, seed: 1, ticks: 24);
+        var simulation = Run(Defaults, seed, ticks: 200);
+        var cohorts = simulation.Cohorts;
 
-        Assert.True(simulation.Cohorts.WaitMedian(Cohort.Abstainer) >= 0);
-        Assert.True(simulation.Cohorts.WaitMedian(Cohort.Borrower) >= 0);
+        foreach (var cohort in new[] { Cohort.Abstainer, Cohort.Borrower })
+        {
+            Assert.Equal(0.0, cohorts.WaitMedianMet(cohort));
+            Assert.True(cohorts.WaitMedian(cohort) > 5.0, $"{cohort}: open median {cohorts.WaitMedian(cohort)}");
+        }
+    }
+
+    /// <summary>
+    /// And why a gate may not ask it to be flat: over a stationary stretch of the baseline the open
+    /// median swings several-fold from tick to tick, because it is a flow of fresh wants measured
+    /// against a growing stock of stuck ones. The met median does not move at all.
+    /// </summary>
+    [Fact]
+    public void TheOpenMedianIsNotAStationarySeries()
+    {
+        var simulation = new Simulation(Defaults, runSeed: 1);
+        Assert.True(simulation.Start().IsSuccess);
+
+        var open = new List<double>();
+        var met = new List<double>();
+
+        for (var tick = 1; tick <= 180; tick++)
+        {
+            Assert.True(simulation.RunTick(tick).IsSuccess);
+
+            if (tick > 120)
+            {
+                open.Add(simulation.Cohorts.WaitMedian(Cohort.Abstainer));
+                met.Add(simulation.Cohorts.WaitMedianMet(Cohort.Abstainer));
+            }
+        }
+
+        Assert.True(open.Max() > open.Min() * 2, $"the open median ranged {open.Min()} to {open.Max()} over sixty stationary ticks");
+        Assert.All(met, m => Assert.Equal(0.0, m));
     }
 
     // ---- the file -----------------------------------------------------------------------------
@@ -304,7 +344,7 @@ public sealed class CohortMetricsTests
 
             foreach (var cohort in new[] { "abstainer", "borrower" })
             {
-                foreach (var series in new[] { "households", "cash", "loans_outstanding", "debt_service", "spend", "quality", "wanted", "obtained", "wait_median" })
+                foreach (var series in new[] { "households", "cash", "loans_outstanding", "debt_service", "spend", "quality", "wanted", "obtained", "wait_median", "wait_median_met" })
                 {
                     Assert.True(run.Has($"{cohort}_{series}"), $"run.csv has no column '{cohort}_{series}'");
                 }

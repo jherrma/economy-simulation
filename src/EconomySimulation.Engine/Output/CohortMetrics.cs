@@ -42,7 +42,9 @@ public sealed class CohortMetrics
     private readonly Money[] spend = new Money[Count];
     private readonly double[] quality = new double[Count];
     private readonly double[] waitMedian = new double[Count];
+    private readonly double[] waitMedianMet = new double[Count];
     private readonly int[][] waits;
+    private readonly int[][] waitsMet;
 
     // Per cohort, per category.
     private readonly int[] wanted;
@@ -69,6 +71,7 @@ public sealed class CohortMetrics
         // that allocates nothing, and a wait is a small non-negative integer. The last bucket
         // holds everything at or beyond the run's length, which nothing can exceed.
         waits = [new int[ticks + 2], new int[ticks + 2]];
+        waitsMet = [new int[ticks + 2], new int[ticks + 2]];
 
         for (var h = 0; h < population.Count; h++)
         {
@@ -113,6 +116,21 @@ public sealed class CohortMetrics
     /// </summary>
     public double WaitMedian(Cohort cohort) => waitMedian[(int)cohort];
 
+    /// <summary>
+    /// The median wait over the durable wants the cohort **actually had met** this tick.
+    ///
+    /// It exists because <see cref="WaitMedian"/> cannot be compared across ticks. A stable
+    /// population of households at the poor end never gets served at all (`01-SIMULATION.md`
+    /// §10.1); their wants stay open and age by one every tick, so the median over all open wants
+    /// climbs with the tick number in a perfectly stationary economy. This one does not: it is the
+    /// answer to "how long did a household that got served wait", and it is flat once the
+    /// warm-up is over.
+    ///
+    /// Both are recorded, and neither is enough alone. This one alone would make a cohort that
+    /// never gets served look patient; the other alone would report a trend that is arithmetic.
+    /// </summary>
+    public double WaitMedianMet(Cohort cohort) => waitMedianMet[(int)cohort];
+
     public int Wanted(Cohort cohort, int category) => wanted[At(cohort, category)];
 
     public int Obtained(Cohort cohort, int category) => obtained[At(cohort, category)];
@@ -143,6 +161,7 @@ public sealed class CohortMetrics
         for (var i = 0; i < Count; i++)
         {
             Array.Clear(waits[i]);
+            Array.Clear(waitsMet[i]);
         }
     }
 
@@ -164,7 +183,8 @@ public sealed class CohortMetrics
 
         if (goods.IsDurable(category))
         {
-            RecordWait(cohort, wait);
+            RecordWait(waits[(int)cohort], wait);
+            RecordWait(waitsMet[(int)cohort], wait);
         }
     }
 
@@ -196,7 +216,7 @@ public sealed class CohortMetrics
 
                 if (population.Wanted[i] && goods.IsDurable(c))
                 {
-                    RecordWait((Cohort)cohort, population.Wait[i]);
+                    RecordWait(waits[cohort], population.Wait[i]);
                 }
             }
         }
@@ -204,6 +224,7 @@ public sealed class CohortMetrics
         for (var cohort = 0; cohort < Count; cohort++)
         {
             waitMedian[cohort] = Median(waits[cohort]);
+            waitMedianMet[cohort] = Median(waitsMet[cohort]);
         }
     }
 
@@ -248,12 +269,8 @@ public sealed class CohortMetrics
         return histogram.Length - 1;
     }
 
-    private void RecordWait(Cohort cohort, int wait)
-    {
-        var histogram = waits[(int)cohort];
-
+    private static void RecordWait(int[] histogram, int wait) =>
         histogram[Math.Min(wait, histogram.Length - 1)]++;
-    }
 
     private int At(Cohort cohort, int category) => ((int)cohort * goods.CategoryCount) + category;
 

@@ -359,7 +359,20 @@ public sealed class CandidateTests
         var population = Households.Draw(Defaults, Goods, runSeed: 2);
         Span<Candidate> buffer = stackalloc Candidate[Goods.GoodCount];
 
-        Ladder.Build(Goods, Opening, population, 0, 0, buffer);
+        // Warmed past tiered compilation's promotion threshold before anything is measured: a
+        // promotion landing inside the loop is several kilobytes of the runtime's, not the model's
+        // (Infrastructure/Allocation.cs).
+        for (var i = 0; i < Infrastructure.Allocations.WarmupCalls; i++)
+        {
+            var warm = 0;
+
+            for (var c = 0; c < Goods.CategoryCount; c++)
+            {
+                warm += Ladder.Build(Goods, Opening, population, i, c, buffer[warm..]);
+            }
+
+            _ = Ladder.UnconstrainedTier(buffer[..Goods.TierCount], Lambda);
+        }
 
         var before = GC.GetAllocatedBytesForCurrentThread();
         var taken = 0;

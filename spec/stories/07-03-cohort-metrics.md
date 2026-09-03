@@ -54,6 +54,13 @@ durable wants only — food and leisure are met or not within the same tick, so 
 swamp the number — and it counts wants met this tick at the wait they were met after, together with
 wants still open at their current age.
 
+Two wait medians are recorded, not one. `wait_median` is the story's measure — every durable want
+the cohort faced, unmet ones at their current age. It mixes a flow against a growing stock and is
+neither stationary nor smooth (`01-SIMULATION.md` §10.1), so it is sound for the paired same-tick
+comparison the headline is defined as, and unusable as a stationarity criterion. `wait_median_met`
+covers the wants actually met in the tick; it is zero throughout the baseline, which is the finding
+rather than a defect — the rationing is an exclusion, not a queue. Neither is sufficient alone.
+
 The tier and the price paid are known only inside the walk: after it, all that survives is that
 *something* was bought. So the walk reports each purchase to the cohort series, through a property
 the simulation sets, left null by tests that drive a walker directly.

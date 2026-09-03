@@ -501,6 +501,35 @@ The headline is the difference in the abstainer cohort's `cpi`, `share_of_wanted
 **The result may be null, and a null result is publishable.** If abstainers are no worse off, the
 hypothesis is not supported by this mechanism, and that is a finding about the mechanism.
 
+### 10.1 The rationing is an exclusion, not a queue — found 2026-09-03
+
+Found on the first full 360-tick run with output (E7), `credit_off`, seeds 1 and 2, and unchanged
+from about tick 120 onwards.
+
+Of roughly four thousand durable wants, about 640 are open at any moment and about 460 of those
+have been open for more than fifty ticks. Both counts are **stationary**; the ages of the stuck ones
+are not, since the same households are never served. Those households sit at the poor end of the
+distribution — median income around €400 against a mean of €650 — and the categories are the scarce
+ones, appliances (about 275 open) and electronics (about 155).
+
+The rest are served **at once**. `wait_median_met`, the median wait of the durable wants actually
+met in a tick, is **zero at every tick of the baseline**: a household that gets served is served the
+tick it asks. So the model's rationing is not everyone waiting a little. It is most households
+served immediately and a stable minority excluded outright — which is the sharper of the two losses
+the question is about, and the one the abstainer cohort is there to measure.
+
+**`wait_median` is not a stationary series, and must not be used as one.** It is the median over
+every durable want the cohort faced, unmet ones counted at their current age, which mixes a flow of
+freshly-opened wants against a growing stock of stuck ones. On seed 1 it swings between 19 and 66
+within ticks 121–180 alone, and its mean over that window against ticks 301–360 moves from 41.9 to
+44.1; on seed 2, from 40.6 to 51.7 with a range of 11.5 to 132.5. The drift is mild and the
+tick-to-tick variance is several-fold, so **V4 must not test it for stationarity** and no write-up
+may report its movement as an effect.
+
+What it is good for is the comparison the headline is actually defined as: **same tick, across
+scenarios, paired by seed**. That is sound, and it is what says whether credit lengthens the
+abstainer's wait or widens the excluded set.
+
 ## 11. What this model cannot show
 
 Every one of these must accompany any number that comes out of it.

@@ -236,6 +236,7 @@ public sealed class MetricsWriter : IDisposable
             column(name + "_wanted");
             column(name + "_obtained");
             column(name + "_wait_median");
+            column(name + "_wait_median_met");
 
             foreach (var category in goods.Categories)
             {
@@ -315,6 +316,7 @@ public sealed class MetricsWriter : IDisposable
             Field(cohorts.Wanted(cohort));
             Field(cohorts.Obtained(cohort));
             Field(cohorts.WaitMedian(cohort));
+            Field(cohorts.WaitMedianMet(cohort));
 
             for (var c = 0; c < goods.CategoryCount; c++)
             {

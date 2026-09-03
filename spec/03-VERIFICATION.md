@@ -115,6 +115,12 @@ Supply is fixed, income is fixed, and the money stock is constant, so there is n
 that should make the price level move. If it drifts, the price rule is not converging, and any
 credit effect measured later would be that drift plus an unknown amount of signal.
 
+**`wait_median` is exempt, and must be.** It mixes a flow of freshly-opened wants against a growing
+stock of wants that are never met, so it drifts and swings several-fold from tick to tick in a
+perfectly stationary economy (`01-SIMULATION.md` §10.1). Requiring it to be flat would fail the gate
+on arithmetic. Its stationary counterpart, `wait_median_met`, is the one a stationarity check may
+use — it is zero throughout the baseline, because a household that gets served is served at once.
+
 Also check the warm-up actually decayed: the first 120 ticks are written and flagged, not discarded,
 so that the transient can be inspected rather than assumed.
 
