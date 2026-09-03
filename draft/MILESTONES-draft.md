@@ -7,7 +7,7 @@ last moment at which changing it is cheap.
 So the build order is not the epic order. It is nine milestones, each of which **runs, produces
 output, and passes its own gate**. Each adds exactly one economic dimension to the milestone before
 it, behind a switch that reproduces the previous milestone when turned off
-([`../docs/FOUNDATION.md`](../docs/FOUNDATION.md), S3 / **V7**).
+([`../docs/FOUNDATION.md`](FOUNDATION-draft.md), S3 / **V7**).
 
 That constraint buys three things. Every milestone is a place the project can stop and still have
 something. The difference between consecutive milestones is a *measurement* — the clean, attributed

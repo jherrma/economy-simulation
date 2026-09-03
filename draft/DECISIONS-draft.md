@@ -660,7 +660,7 @@ terminating condition rather than to paper over it.
 
 **Decided:** C#, targeting .NET 10, with `TreatWarningsAsErrors`, `CheckForOverflowUnderflow` and
 `Nullable` all enabled. Full reasoning and measurements in
-[`LANGUAGE-CHOICE.md`](LANGUAGE-CHOICE.md); benchmark sources in `bench/`.
+[`LANGUAGE-CHOICE.md`](../docs/LANGUAGE-CHOICE.md); benchmark sources in `bench/`.
 
 **Why, in short.** The speed question turned out to be binary rather than graded. A benchmark of
 the §6.2 inner loop — the only part of the tick that resists optimisation, and about 95% of its

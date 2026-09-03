@@ -1,54 +1,58 @@
 # economy-simulation
 
-A closed-economy agent-based simulation of a single small town, built to test one question:
+A closed-economy agent-based simulation of a single small town, built to test one claim:
 
-> How does the availability of consumer credit — and the social willingness to use it — affect
-> prices, real consumption, and the distribution of income?
+> If A buys a good on credit because they cannot pay for it now, does the same good become more
+> expensive — or harder to get — for B, who never borrows?
 
-The town has households, about eighty firms across twelve sectors, a bank, and (later) a state. It is closed:
-no trade with the outside world, no migration. Every euro spent is someone's income and every
-loan is someone's asset, which is what makes credit effects visible rather than assumed.
-
-The simulation is run under contrasting settings — high versus low credit appetite, banks that
-create money at a 5:1 ratio versus banks that must hold every deposit in full — and the resulting
-price, consumption and distribution paths are compared. A state that taxes, spends and can issue
-money is specified but deferred to a later phase.
+The town is closed: no trade with the outside world, no migration. Every euro spent is someone's
+income and every loan is someone's asset, which is what makes credit effects visible rather than
+assumed.
 
 ## Status
 
-Specification stage. No engine code yet; the implementation language is settled (C# on .NET 10 —
-see below) and the backlog is sequenced into nine milestones, each of which runs and adds one
-economic dimension. **M2 — 49 of 71 stories — is the first milestone that answers the question
-above.**
+**Specification stage, about to become implementation.** No engine code yet. The language is settled
+(C# on .NET 10).
 
-- [`docs/MODEL.md`](docs/MODEL.md) — full model specification: agents, goods, behaviour,
-  bank lending capacity, scenarios, metrics, and the limits of what the model can show.
-- [`docs/DECISIONS.md`](docs/DECISIONS.md) — design decisions and the reasoning behind them.
-- [`docs/REVIEW-BACKLOG.md`](docs/REVIEW-BACKLOG.md) — known specification defects not yet fixed.
-- [`docs/LANGUAGE-CHOICE.md`](docs/LANGUAGE-CHOICE.md) — how the implementation language was
-  chosen: the benchmark, the measurements, and the argument for C#. Sources in
-  [`bench/`](bench/).
-- [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md) — four views: the tick pipeline, the value types, the
-  data layout, and every entity in the simulation.
-- [`docs/FOUNDATION.md`](docs/FOUNDATION.md) — the nine structural seams that let a dimension be
-  added without rewriting what came before, and what breaks silently without each of them.
-- [`stories/MILESTONES.md`](stories/MILESTONES.md) — the build order: nine milestones, what each
-  adds, the question it can answer, its gate, and what is deliberately wrong at that stage.
-- [`stories/`](stories/) — the implementation backlog: 71 stories across 12 epics, each with
-  acceptance criteria and an objective pass/fail check. Start with
-  [`stories/README.md`](stories/README.md), which sets out the seven verification devices this
-  project relies on in place of an external oracle.
+The repository holds two specifications, and the difference between them matters:
+
+### [`spec/`](spec/) — **the implementation target**
+
+The smallest model that can test the claim: a thousand households with a fixed monthly income, six
+goods produced in fixed quantity each tick, one adaptive price per good, and consumer credit that
+creates money and has to be repaid. A fifth of households never borrow, and what happens to *them*
+is the finding.
+
+Start at [`spec/README.md`](spec/README.md).
+
+### [`draft/`](draft/) — **a first idea, kept for reference**
+
+The project's original attempt: a full stock-flow-consistent model of the whole town — eighty firms
+across twelve sectors, a bank with CRR3 risk weights, a housing market with auction chains, a social
+status treadmill — specified across ~4,600 lines and 71 implementation stories before any code
+existed. Two review rounds found around 45 defects in it.
+
+Most of its content is right, and it is why the project can answer objections rather than only
+produce a number. Its *sequencing* was not: no milestone in it produced a running simulation until
+nearly everything was done. It is now the list of objections to answer next, in roughly the order
+they will be raised. **Nothing in it is scheduled. Do not implement from it.**
+
+### Also here
+
+- [`docs/LANGUAGE-CHOICE.md`](docs/LANGUAGE-CHOICE.md) — how the implementation language was chosen:
+  the benchmark, the measurements, and the argument for C#. Settled, and applies to `spec/`.
+- [`bench/`](bench/) — the benchmark sources, in six languages.
 
 ## Approach
 
-The model is built so that it can refute the hypothesis. Any assumption strong enough to
-produce the expected result on its own is exposed as a switch, and the opposing setting is
-always run as a control. Results are reported with sensitivity ranges, and runs that
-contradict the hypothesis are published alongside those that support it.
+The model is built so that it can refute the claim. Any assumption strong enough to produce the
+expected result on its own is exposed as a switch, and the opposing setting is always run as a
+control. Results are reported with sensitivity ranges, and runs that contradict the hypothesis are
+published alongside those that support it.
 
-Those switches do double duty. Because every dimension can be turned off, and off must reproduce
-the previous milestone byte-for-byte, the difference between two milestones is the measured effect
-of one mechanism rather than the difference between two versions of a program.
+Every mechanism added after v1 arrives behind a switch whose *off* setting reproduces the previous
+version byte-for-byte on the same seeds. The difference it makes is therefore a measurement of that
+one mechanism, not the difference between two versions of a program.
 
 ## Licence
 

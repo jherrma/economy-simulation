@@ -3,8 +3,8 @@
 Four views of the model and the engine. All are Mermaid, so they render on GitHub, in Obsidian and
 in most editors without a toolchain, and they diff as text.
 
-`§` refers to a section of [`MODEL.md`](MODEL.md); `D<n>` to [`DECISIONS.md`](DECISIONS.md);
-story ids to [`../stories/`](../stories/).
+`§` refers to a section of [`MODEL.md`](MODEL-draft.md); `D<n>` to [`DECISIONS.md`](DECISIONS-draft.md);
+story ids to [`../stories/`](stories/).
 
 ## Checking these before committing
 

@@ -1,6 +1,6 @@
 # The foundation — what makes dimensions additive
 
-The engine is built in milestones (see [`../stories/MILESTONES.md`](../stories/MILESTONES.md)).
+The engine is built in milestones (see [`../stories/MILESTONES.md`](MILESTONES-draft.md)).
 Each milestone adds one economic dimension to a simulation that already runs. That strategy only
 works if adding a dimension is genuinely *additive* — if it does not force a rewrite, does not
 silently invalidate the results of every earlier milestone, and does not make the previous

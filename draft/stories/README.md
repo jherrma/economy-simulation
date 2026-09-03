@@ -1,20 +1,20 @@
 # Backlog — economy-simulation engine
 
-Implementation backlog for the model specified in [`../docs/MODEL.md`](../docs/MODEL.md).
-Language decision and its reasoning: [`../docs/LANGUAGE-CHOICE.md`](../docs/LANGUAGE-CHOICE.md).
+Implementation backlog for the model specified in [`../docs/MODEL.md`](../MODEL-draft.md).
+Language decision and its reasoning: [`../docs/LANGUAGE-CHOICE.md`](../../docs/LANGUAGE-CHOICE.md).
 
 **71 stories across 12 epics, built in 9 milestones.** One story per file,
 `<epic>-<story>-<slug>.md`. Every story carries an objective pass/fail check — nothing is "done"
 because it looks done, and every story carries the milestone it belongs to.
 
-**Read [`MILESTONES.md`](MILESTONES.md) first.** The epics are a thematic grouping; the milestones
+**Read [`MILESTONES.md`](../MILESTONES-draft.md) first.** The epics are a thematic grouping; the milestones
 are the build order, and they are what makes the project deliver a running simulation early and one
-economic dimension at a time. [`../docs/FOUNDATION.md`](../docs/FOUNDATION.md) is the other half of
+economic dimension at a time. [`../docs/FOUNDATION.md`](../FOUNDATION-draft.md) is the other half of
 that: the nine structural seams that make adding a dimension additive rather than a rewrite.
 
 `§` always refers to a section of `MODEL.md`. `D<n>` refers to a decision in
-[`../docs/DECISIONS.md`](../docs/DECISIONS.md); `B<n>` to an item in
-[`../docs/REVIEW-BACKLOG.md`](../docs/REVIEW-BACKLOG.md).
+[`../docs/DECISIONS.md`](../DECISIONS-draft.md); `B<n>` to an item in
+[`../docs/REVIEW-BACKLOG.md`](../REVIEW-BACKLOG-draft.md).
 
 ---
 
@@ -32,7 +32,7 @@ load-bearing: do not weaken one to make a story pass.
 | **V3** | **Money neutrality** (§10 item 4) — scale `M0`, cash, deposits, principals, equity, wages and posted prices *simultaneously*; nothing real may change | Nominal illusion hidden in a decision rule. This is the exact defect D26 fixed in the spec, and it must not return in code |
 | **V4** | **The null run** (§10 item 3) — with credit stationary, prices must be constant | Secular drift that would otherwise be misread as a result |
 | **V5** | **Compile-fail tests** — the safety settings are only real if wrong code *fails to build* | Silent erosion of the guarantees D27 was chosen for |
-| **V6** | **The scoring benchmark** ([`../bench/`](../bench/)) as a performance gate | Accidental allocation or an O(n log n) → O(n²) regression in the one loop that matters |
+| **V6** | **The scoring benchmark** ([`../bench/`](../../bench/)) as a performance gate | Accidental allocation or an O(n log n) → O(n²) regression in the one loop that matters |
 | **V7** | **Milestone regression** (01-06) — with a dimension switched off, the engine reproduces the previous milestone byte-for-byte on the same seeds | Anything a new dimension disturbed that it had no business disturbing. It is also the *measurement*: the on-versus-off difference is that dimension's attributed effect |
 
 **V1 is this project's white-furnace test.** It is the analogue of the raytracer's albedo-1.0
@@ -83,7 +83,7 @@ the backlog says no again, because they are the rabbit holes that will present t
 
 ## Build order
 
-The build order is the **milestone** order in [`MILESTONES.md`](MILESTONES.md), not the epic order.
+The build order is the **milestone** order in [`MILESTONES.md`](../MILESTONES-draft.md), not the epic order.
 Nine milestones, each of which runs and passes its own gate, each adding one economic dimension
 behind a switch that reproduces its predecessor when turned off.
 
