@@ -9,6 +9,14 @@ public sealed class WantsTests
 {
     private static readonly SimulationParameters Defaults = SimulationParameters.Default;
 
+    /// <summary>
+    /// Until repricing exists (05-02) the town spends well below its income at opening prices and
+    /// the default twelve-month pool drains at about tick 32. A pool that cannot drain in 360
+    /// ticks keeps the test about what it is about. 05-02 asserts the default pool suffices.
+    /// </summary>
+    private static readonly SimulationParameters LongRun =
+        Defaults with { Money = Defaults.Money with { OpeningPoolMonths = 400 } };
+
     private static readonly GoodsTable Goods = new(Defaults);
 
     private const int Food = 0;
@@ -138,8 +146,8 @@ public sealed class WantsTests
 
     /// <summary>
     /// Ageing runs after the walk: a unit acquired in tick t is at age 0 when ageing runs, age 1
-    /// when the next tick asks, and so not wanted. Acquisition is simulated where the walk will
-    /// sit — just before the ageing step — since there is no walk yet.
+    /// when the next tick asks, and so not wanted. Acquisition is granted to every want just
+    /// before the walk, so the walk finds nothing to do and supply never binds.
     /// </summary>
     [Fact]
     public void AUnitBoughtThisTick_IsNotWantedNextTick()
@@ -150,7 +158,7 @@ public sealed class WantsTests
 
         simulation.StepObserver = step =>
         {
-            if (step != TickStep.Ageing)
+            if (step != TickStep.Walk)
             {
                 return;
             }
@@ -207,7 +215,7 @@ public sealed class WantsTests
     [Fact]
     public void ReplacementDemandIsFlat_AndConvergesToHouseholdsOverLife()
     {
-        var series = WantsPerTick(new Simulation(Defaults, runSeed: 21), ticks: 360);
+        var series = WantsPerTick(new Simulation(LongRun, runSeed: 21), ticks: 360);
         var n = Defaults.Run.Households;
 
         for (var c = 0; c < Goods.CategoryCount; c++)
@@ -272,7 +280,7 @@ public sealed class WantsTests
 
     // ---- helpers --------------------------------------------------------------------------
 
-    /// <summary>Wants per category per tick, with every want met where the walk will sit.</summary>
+    /// <summary>Wants per category per tick, every want granted just before the walk so supply never binds.</summary>
     private static int[][] WantsPerTick(Simulation simulation, int ticks)
     {
         var population = simulation.Population;
@@ -281,7 +289,7 @@ public sealed class WantsTests
 
         simulation.StepObserver = step =>
         {
-            if (step != TickStep.Ageing)
+            if (step != TickStep.Walk)
             {
                 return;
             }

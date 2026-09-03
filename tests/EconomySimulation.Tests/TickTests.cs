@@ -9,6 +9,14 @@ public sealed class TickTests
 {
     private static readonly SimulationParameters Defaults = SimulationParameters.Default;
 
+    /// <summary>
+    /// Until repricing exists (05-02) the town spends well below its income at opening prices and
+    /// the default twelve-month pool drains at about tick 32. A pool that cannot drain in 360
+    /// ticks keeps the test about what it is about. 05-02 asserts the default pool suffices.
+    /// </summary>
+    private static readonly SimulationParameters LongRun =
+        Defaults with { Money = Defaults.Money with { OpeningPoolMonths = 400 } };
+
     // ---- the order --------------------------------------------------------------------------
 
     /// <summary>
@@ -116,18 +124,16 @@ public sealed class TickTests
     // ---- the empty run ------------------------------------------------------------------------
 
     /// <summary>
-    /// 360 ticks with no walk. Not a formality: this is what catches anything that accumulates
-    /// when it should not, and it runs in milliseconds. Since 04-04 the ticks are not quite empty —
-    /// durables age — so the ages are asserted to have moved by exactly 360 and nothing else to
-    /// have moved at all.
+    /// 360 ticks. Not a formality: this is what catches anything that accumulates when it should
+    /// not, and it runs in a second. Written when the ticks were empty; now that they are not,
+    /// what must still hold is that the money stock is exactly M0, prices have not moved (no
+    /// repricing yet), and no age exceeds the opening age plus 360.
     /// </summary>
     [Fact]
-    public void ThreeHundredAndSixtyEmptyTicks_LeaveTheTownExactlyAsItStarted()
+    public void ThreeHundredAndSixtyTicks_ConserveMoneyAndMoveNothingTheyShouldNot()
     {
-        var simulation = new Simulation(Defaults, runSeed: 3);
+        var simulation = new Simulation(LongRun, runSeed: 3);
 
-        var openingCash = Enumerable.Range(0, simulation.Population.Count).Select(simulation.Books.Cash).ToArray();
-        var openingPool = simulation.Books.Pool;
         var openingPrices = Prices(simulation);
         var openingAges = simulation.Population.Age.ToArray();
 
@@ -136,8 +142,6 @@ public sealed class TickTests
         Assert.True(run.IsSuccess, run.IsFailed ? run.Errors[0].Message : "");
         Assert.Equal(360, simulation.Tick);
 
-        Assert.Equal(openingCash, Enumerable.Range(0, simulation.Population.Count).Select(simulation.Books.Cash));
-        Assert.Equal(openingPool, simulation.Books.Pool);
         Assert.Equal(openingPrices, Prices(simulation));
         Assert.Equal(simulation.Books.M0, simulation.Books.MoneyHeld);
 
@@ -147,8 +151,8 @@ public sealed class TickTests
             for (var c = 0; c < simulation.Goods.CategoryCount; c++)
             {
                 var i = population.AgeIndex(h, c);
-                var expected = simulation.Goods.IsDurable(c) ? openingAges[i] + 360 : openingAges[i];
-                Assert.Equal(expected, population.Age[i]);
+                var ceiling = simulation.Goods.IsDurable(c) ? openingAges[i] + 360 : 0;
+                Assert.InRange(population.Age[i], 0, ceiling);
             }
         }
     }

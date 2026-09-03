@@ -24,6 +24,11 @@ public sealed class RandomStream
 
     private RandomStream(ulong seed)
     {
+        Seed(seed);
+    }
+
+    private void Seed(ulong seed)
+    {
         // SplitMix64 expansion: a single seed word into four state words, so that adjacent seeds
         // do not produce correlated streams.
         s0 = SplitMix64(ref seed);
@@ -56,6 +61,19 @@ public sealed class RandomStream
         ArgumentOutOfRangeException.ThrowIfNegative(tick);
 
         return new RandomStream(Derive(runSeed, purpose.Hash, tick, TickDomain));
+    }
+
+    /// <summary>
+    /// Makes this instance the stream <see cref="ForTick"/> would return, without allocating one.
+    /// The walk redraws its household order every tick from a tick-keyed stream, and a tick must
+    /// not allocate; the state after this call is identical to a fresh instance's.
+    /// </summary>
+    public void RestartForTick(int runSeed, int tick, Purpose purpose)
+    {
+        ArgumentNullException.ThrowIfNull(purpose);
+        ArgumentOutOfRangeException.ThrowIfNegative(tick);
+
+        Seed(Derive(runSeed, purpose.Hash, tick, TickDomain));
     }
 
     /// <summary>A raw 64-bit draw.</summary>

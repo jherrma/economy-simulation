@@ -43,7 +43,7 @@ public sealed class Validation
     }
 
     /// <summary>Every problem found, as one failed <see cref="Result"/>, or success.</summary>
-    public Result ToResult() => errors.Count == 0 ? Result.Ok() : Result.Fail(errors);
+    public Result ToResult() => errors.Count == 0 ? Results.Ok : Result.Fail(errors);
 
     /// <summary>
     /// The validated value, or every problem found. <paramref name="value"/> is only called when

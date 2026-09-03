@@ -197,4 +197,57 @@ public sealed class ResultTests
     {
         Assert.Throws<ArgumentException>(() => new Validation().Fail("  ", "something", 1));
     }
+
+    // ---- the shared success -----------------------------------------------------------------
+
+    /// <summary>
+    /// `Results.Ok` is one instance shared by every success in the engine, which is safe only
+    /// while nothing mutates it. FluentResults' `With…` methods mutate in place, so none of them
+    /// may appear in the engine; and `Result.Ok()` may appear only where the shared instance is made.
+    /// </summary>
+    [Fact]
+    public void TheEngineNeverMutatesAResult_AndConstructsSuccessOnlyOnce()
+    {
+        string[] mutators = [".WithError(", ".WithErrors(", ".WithReason(", ".WithReasons(", ".WithSuccess(", ".WithSuccesses(", ".Reasons.Add"];
+        var offenders = new List<string>();
+
+        foreach (var path in Repo.EngineSources())
+        {
+            var lines = File.ReadAllLines(path);
+            var name = Path.GetFileName(path);
+
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var code = lines[i].TrimStart();
+
+                if (code.StartsWith("//", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                // Building a failure is fine: a fresh failure is nobody's shared instance.
+                var buildsAFailure = code.Contains("Result.Fail(", StringComparison.Ordinal);
+
+                if (!buildsAFailure && mutators.Any(m => code.Contains(m, StringComparison.Ordinal)))
+                {
+                    offenders.Add($"{name}:{i + 1}: {code}");
+                }
+
+                if (code.Contains("Result.Ok()", StringComparison.Ordinal) && name != "Results.cs")
+                {
+                    offenders.Add($"{name}:{i + 1}: constructs a success — use Results.Ok");
+                }
+            }
+        }
+
+        Assert.True(offenders.Count == 0, string.Join("; ", offenders));
+    }
+
+    [Fact]
+    public void ResultsIsOk_RecognisesTheSharedInstance_AndAnyOtherSuccess()
+    {
+        Assert.True(Results.IsOk(Results.Ok));
+        Assert.True(Results.IsOk(Result.Ok()));
+        Assert.False(Results.IsOk(Result.Fail("no")));
+    }
 }

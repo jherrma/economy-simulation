@@ -108,7 +108,7 @@ public static class ConfigurationLoader
         {
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "effective-config.toml"), parameters.ToToml());
-            return Result.Ok();
+            return Results.Ok;
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {

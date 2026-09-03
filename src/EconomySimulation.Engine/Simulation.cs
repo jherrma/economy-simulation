@@ -1,4 +1,5 @@
 using EconomySimulation.Engine.Configuration;
+using EconomySimulation.Engine.Decision;
 using EconomySimulation.Engine.Ledger;
 using EconomySimulation.Engine.World;
 using FluentResults;
@@ -43,6 +44,7 @@ public sealed class Simulation
         Books = Ledger.Ledger.Open(
             Population.OpeningCash(parameters.Income.OpeningCashShare),
             OpeningPool(parameters, Population));
+        Shopping = new Walker(parameters, Goods, Market, Population, Books, runSeed);
     }
 
     public SimulationParameters Parameters { get; }
@@ -56,6 +58,8 @@ public sealed class Simulation
     public Market Market { get; }
 
     public Ledger.Ledger Books { get; }
+
+    public Walker Shopping { get; }
 
     /// <summary>The last completed tick. −1 before the run starts.</summary>
     public int Tick { get; private set; } = -1;
@@ -115,7 +119,7 @@ public sealed class Simulation
             }
         }
 
-        return Result.Ok();
+        return Results.Ok;
     }
 
     /// <summary>
@@ -129,20 +133,23 @@ public sealed class Simulation
         Market.Restock();
         Books.OpenTick();
 
-        foreach (var step in StepOrder)
+        // Indexed, not foreach: enumerating through the interface boxes an enumerator, and the
+        // tick allocates nothing.
+        for (var i = 0; i < StepOrder.Count; i++)
         {
+            var step = StepOrder[i];
             StepObserver?.Invoke(step);
 
             var result = Run(step, tick);
 
-            if (result.IsFailed)
+            if (!Results.IsOk(result))
             {
                 return result;
             }
         }
 
         Tick = tick;
-        return Result.Ok();
+        return Results.Ok;
     }
 
     // CS8524 only: adding a step must break this build, which is CS8509 and stays armed.
@@ -159,8 +166,33 @@ public sealed class Simulation
     };
 #pragma warning restore CS8524
 
-    /// <summary>Step 1 — pool to household. Filled in by 03-04's successors.</summary>
-    private static Result Income(int tick) => Nothing(tick);
+    /// <summary>
+    /// Step 1 — each household receives `income_h` from the pool. No story owned this step; it
+    /// is filled in with the walk (04-05) because the walk is the first thing that needs a budget
+    /// to replenish. A pool that cannot pay is the calibration failure §6 step 7 describes, and
+    /// the transfer's own refusal reports it.
+    /// </summary>
+    private Result Income(int tick)
+    {
+        for (var h = 0; h < Population.Count; h++)
+        {
+            var paid = Books.Transfer(Account.Pool, Account.Household(h), Population.Income[h], TransferReason.Income);
+
+            if (!Results.IsOk(paid))
+            {
+                // A fresh error with the transfer's own refusal as its cause; the result is built
+                // once and never mutated afterwards.
+                var error = new Error(
+                    $"income, tick {tick}: the pool cannot pay household {h}. This is a calibration "
+                    + "result, not a bug: income exceeds what the economy can pay. Report it as a "
+                    + "finding about the parameters.").CausedBy(paid.Errors);
+
+                return Result.Fail(error);
+            }
+        }
+
+        return Results.Ok;
+    }
 
     /// <summary>Step 2 — instalments, before any shopping. Filled in by 06-01.</summary>
     private static Result DebtService(int tick) => Nothing(tick);
@@ -178,11 +210,11 @@ public sealed class Simulation
             }
         }
 
-        return Result.Ok();
+        return Results.Ok;
     }
 
-    /// <summary>Step 4 — the shopping walk. Filled in by 04-05.</summary>
-    private static Result Walk(int tick) => Nothing(tick);
+    /// <summary>Step 4 — the shopping walk.</summary>
+    private Result Walk(int tick) => Shopping.Run(tick);
 
     /// <summary>Step 5 — every held durable gets a tick older.</summary>
     private Result Ageing(int tick)
@@ -190,7 +222,7 @@ public sealed class Simulation
         _ = tick;
         Population.AgeDurables(Goods);
 
-        return Result.Ok();
+        return Results.Ok;
     }
 
     /// <summary>Step 6 — eighteen prices on their own excess demand. Filled in by 05-02.</summary>
@@ -199,7 +231,7 @@ public sealed class Simulation
     private static Result Nothing(int tick)
     {
         _ = tick;
-        return Result.Ok();
+        return Results.Ok;
     }
 
     private static Money OpeningPool(SimulationParameters parameters, Households population)

@@ -56,6 +56,31 @@ public sealed class Market
     public int Unaffordable(int category, int tier) => unaffordable[goods.Index(category, tier)];
 
     /// <summary>
+    /// One unit leaves the shelf. Called once per household per category, at the tier the
+    /// household finally lands on: a household that walked budget → standard has consumed one
+    /// standard unit, not one of each.
+    /// </summary>
+    internal void Sell(int category, int tier)
+    {
+        var i = goods.Index(category, tier);
+
+        if (stock[i] <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Selling from an empty shelf ({category}, {tier}) — the walk checked stock before taking.");
+        }
+
+        stock[i]--;
+        sold[i]++;
+    }
+
+    /// <summary>Willing and able, and the shelf was empty. This is demand (05-01).</summary>
+    internal void RecordBlocked(int category, int tier) => blocked[goods.Index(category, tier)]++;
+
+    /// <summary>Willing, and could not pay. This is not demand (05-01).</summary>
+    internal void RecordUnaffordable(int category, int tier) => unaffordable[goods.Index(category, tier)]++;
+
+    /// <summary>
     /// Posts a new price on one shelf. Repricing (05-02) is the only caller in a run; tests use it
     /// to put the shelves into states a run reaches only after many ticks.
     /// </summary>

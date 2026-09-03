@@ -135,6 +135,24 @@ public sealed class OpeningStateTests
     public void StockDoesNotCarryOver()
     {
         var simulation = new Simulation(Defaults, runSeed: 11);
+        var sawAFullShelfDepleted = false;
+
+        // At the walk, every shelf is at its supply again whatever the last tick left on it.
+        simulation.StepObserver = step =>
+        {
+            if (step != TickStep.Walk)
+            {
+                return;
+            }
+
+            for (var c = 0; c < simulation.Goods.CategoryCount; c++)
+            {
+                for (var t = 0; t < simulation.Goods.TierCount; t++)
+                {
+                    Assert.Equal(simulation.Goods.Units(c, t), simulation.Market.Stock(c, t));
+                }
+            }
+        };
 
         for (var tick = 1; tick <= 5; tick++)
         {
@@ -144,10 +162,12 @@ public sealed class OpeningStateTests
             {
                 for (var t = 0; t < simulation.Goods.TierCount; t++)
                 {
-                    Assert.Equal(simulation.Goods.Units(c, t), simulation.Market.Stock(c, t));
+                    sawAFullShelfDepleted |= simulation.Market.Stock(c, t) == 0;
                 }
             }
         }
+
+        Assert.True(sawAFullShelfDepleted, "no shelf ever sold out, so the reset was never exercised");
     }
 
     // ---- the pool has to be big enough --------------------------------------------------------

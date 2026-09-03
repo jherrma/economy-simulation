@@ -188,14 +188,16 @@ category per tick — the tier, not the count, is where extra income goes.
 Households are visited in a **seeded random order, redrawn every tick**. Within a household, all
 available candidates across all wanted categories are ranked by `score` descending and walked:
 
-1. If `score < λ`, **stop**. Nothing further can clear the threshold.
-2. If the candidate is an upgrade and the tier below it was not taken, skip it — it is not yet
-   available.
-3. If the target tier has no stock, record a **blocked** unit against that tier and continue.
-4. If `Δcost_cash ≤ cash_h`, take it for cash. `cash_h −= Δcost_cash`, `pool += Δcost_cash`, and the
-   category's chosen tier moves up one step.
-5. Otherwise, if `financeable_g`, **and** a draw from the household's finance stream is `< θ_h`,
-   **and** the financed score clears λ, **and** the instalment fits:
+1. Take the best-scoring candidate that is **available** — a purchase, or an upgrade whose step
+   below has been taken. If its `score < λ`, **stop**. Nothing further can clear the threshold.
+   (An upgrade becomes available the moment the step below it is taken and is then ranked among
+   what remains. At opening prices the ladder is already sorted so this is the same as one pass
+   down a sorted list; once tiers have repriced independently it need not be — budget above 0.68
+   of standard puts the upgrade above the purchase — and a single pass would skip an upgrade that
+   is both worth taking and affordable for no reason but list position.)
+2. Establish **ability** first. If `Δcost_cash ≤ cash_h`, the household can pay cash. Otherwise,
+   if `financeable_g`, **and** a draw from the household's finance stream is `< θ_h`, **and** the
+   financed score clears λ, **and** the instalment fits:
 
    ```
    residual_h  = income_h − debt_service_running_h − subsistence_share · income_h
@@ -203,13 +205,28 @@ available candidates across all wanted categories are ranked by `score` descendi
    instalment ≤ residual_h
    ```
 
-   then originate a loan for `Δcost_cash` and take the candidate. New money appears as
-   `cash_h += Δcost_cash` and `loans_outstanding += Δcost_cash`, and it is spent into the pool in
-   the same step.
-6. Otherwise record an **unaffordable** unit against that tier and continue.
+   the household can finance. If it can do neither, record an **unaffordable** unit against that
+   tier and continue.
+3. Only then look at the shelf. If the target tier has no stock, record a **blocked** unit against
+   that tier and continue. Ability comes before stock because *blocked* is demand (step 6) and
+   demand is what would have sold with unlimited stock — a household that could not have paid
+   would not have bought from a full shelf either. The earlier ordering counted a broke household
+   at an empty shelf as demand.
+4. Take it. For cash: `cash_h −= Δcost_cash`, `pool += Δcost_cash`. Financed: originate a loan for
+   `Δcost_cash`; new money appears as `cash_h += Δcost_cash` and `loans_outstanding += Δcost_cash`,
+   and it is spent into the pool in the same step. Either way the category's chosen tier moves up
+   one step.
 
 At the end of the walk each category the household bought in has exactly one unit at its final tier:
 stock is consumed once, at that tier, and `age_h,g = 0`.
+
+A consequence worth knowing: because stock is checked step by step and consumed at the final tier,
+a household blocked at *budget* cannot reach *standard* this tick even with the cash for it — the
+upgrade's prerequisite was never taken. It leaves the category empty-handed and its want persists.
+"Step up when budget sells out" therefore works through prices, not within the tick: the budget
+price rises, the increment to standard shrinks, and more of the households that *did* get budget
+upgrade. Whether households should be allowed to buy the next tier directly when the one below is
+sold out is an open modelling question (2026-09-03); v1 implements the ladder as written.
 
 **Increments, not whole units.** A household that takes *buy budget* and then *budget → standard*
 has paid `0.60 · P` and `0.40 · P` and holds one standard unit. Financing an increment and financing

@@ -11,16 +11,36 @@ As the model author, I want households visited in a seeded random order, each wa
 ## Acceptance criteria
 
 - [ ] Household order is a **seeded shuffle, redrawn every tick**, from its own stream.
-- [ ] Candidates across all wanted categories are ranked by `score` descending and walked; the walk **stops at the first candidate below λ**.
-- [ ] An upgrade whose lower step was not taken is skipped, not stopped on.
-- [ ] If the target tier has no stock, record a **blocked** unit against that tier and continue to the next candidate.
-- [ ] If `Δcost ≤ cash_h`, take it: `cash_h` falls, the pool rises, and the category's chosen tier moves up one step.
+- [ ] Candidates across all wanted categories are ranked by `score` descending and walked; the walk **stops at the first candidate below λ**. (Implemented as "best available candidate next": an upgrade joins the ranking when its lower step is taken. Identical to one sorted pass at opening prices; differs only once repricing has inverted a ladder, where a single pass would skip a worthwhile, affordable upgrade on list position alone. `01-SIMULATION.md` §6 step 4 amended.)
+- [ ] An upgrade whose lower step was not taken is not available, and is never stopped on.
+- [ ] If able and the target tier has no stock, record a **blocked** unit against that tier and continue. Ability is established before stock, because blocked is demand and unaffordable is not (05-01); the specification's original order counted a broke household at an empty shelf as demand. Amended.
+- [ ] If `Δcost ≤ cash_h`, the household is able. Take it: `cash_h` falls, the pool rises, and the category's chosen tier moves up one step. A negative increment (a tier repriced below the one under it) is refunded the other way, so the total paid is always the posted price of the tier held.
 - [ ] Otherwise record an **unaffordable** unit against that tier and continue. (Financing is 06-02.)
 - [ ] Stock is consumed **once per category, at the final tier**, and `age_h,g = 0`.
 - [ ] The budget depletes **sequentially** — each candidate taken changes what is affordable next. Affordability is not precomputed for the list.
 - [ ] **First-come rationing within the random order.** A test asserts that over many ticks, the probability of being served is independent of income when supply binds.
 - [ ] **No allocation inside the walk.** A test asserts zero managed allocations for a full tick.
 - [ ] The walk is deterministic under parallelism: households do not share mutable state except stock, which is claimed atomically or the walk is serial.
+
+## Notes from implementation (2026-09-03)
+
+- **Step 1, income, is filled in here.** No story owned it; the walk is the first thing that needs
+  the budget to replenish. A pool that cannot pay is reported as the calibration failure §6 step 7
+  describes.
+- **Zero allocation needed two things beyond the buffers:** the success `Result` is one shared
+  instance (`Results.Ok`) and success is recognised by reference (`Results.IsOk`), because
+  FluentResults allocates a result per `Ok()` and an enumerator per `IsFailed`. Together those were
+  a quarter of a megabyte per tick. The order stream is reseeded in place rather than constructed.
+- **The pool drains at tick 32 at opening prices.** Realised spend is about €226k a tick below
+  income for seed 1 — desired spend is well below income (§3.3) and rationing lowers it further —
+  so with no repricing yet the twelve-month pool is gone by tick 32. The 360-tick tests run with a
+  400-month pool until 05-02, which must show the default pool survives the warm-up.
+- **What tick 1 looks like (seed 1):** budget and standard food both sell out, 145 households are
+  blocked at budget food and get none, and 181 of 200 premium food units go unsold. The same
+  pattern, smaller, in leisure and clothing.
+- **Open question for the author:** a household blocked at budget cannot buy standard the same
+  tick even with the cash (§6, after step 4). At tick 1 that is 145 households without food beside
+  a full premium shelf. v1 implements the ladder as written.
 
 ## Where to start
 

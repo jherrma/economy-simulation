@@ -122,7 +122,7 @@ public sealed class Ledger
         Set(to, Balance(to) + amount);
         movedByReason[(int)reason] += amount;
 
-        return Result.Ok();
+        return Results.Ok;
     }
 
     /// <summary>
@@ -144,7 +144,7 @@ public sealed class Ledger
         Created += amount;
         movedByReason[(int)reason] += amount;
 
-        return Result.Ok();
+        return Results.Ok;
     }
 
     /// <summary>Takes money out of existence, as repaid principal does.</summary>
@@ -169,7 +169,7 @@ public sealed class Ledger
         Destroyed += amount;
         movedByReason[(int)reason] += amount;
 
-        return Result.Ok();
+        return Results.Ok;
     }
 
     /// <summary>Records the bank's claim growing. A claim is not money and moves no balance.</summary>
@@ -264,7 +264,7 @@ public sealed class Ledger
                 $"loans outstanding, tick {tick}: expected zero or more, got {LoansOutstanding.ToCsv()}");
         }
 
-        return Result.Ok();
+        return Results.Ok;
     }
 
     private string Diagnostics()
