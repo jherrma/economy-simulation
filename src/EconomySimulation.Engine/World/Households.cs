@@ -62,6 +62,28 @@ public sealed class Households
     public int AgeIndex(int household, int category) => (household * CategoryCount) + category;
 
     /// <summary>
+    /// A population stated outright rather than drawn: given incomes and taste weights, no
+    /// abstainers, θ = 0, every durable at age 0. For tests that need a household on exactly €650
+    /// with `w = 1`, which no seed will ever produce.
+    /// </summary>
+    internal static Households Specified(int categoryCount, Money[] incomes, double[] tasteWeights)
+    {
+        ArgumentNullException.ThrowIfNull(incomes);
+        ArgumentNullException.ThrowIfNull(tasteWeights);
+
+        if (incomes.Length != tasteWeights.Length)
+        {
+            throw new ArgumentException("One taste weight per income.", nameof(tasteWeights));
+        }
+
+        var households = new Households(incomes.Length, categoryCount);
+        incomes.CopyTo(households.Income, 0);
+        tasteWeights.CopyTo(households.TasteWeight, 0);
+
+        return households;
+    }
+
+    /// <summary>
     /// Draws a population for one seed.
     ///
     /// Every attribute comes from its own named stream, so the abstainer set and the income

@@ -1,0 +1,78 @@
+using EconomySimulation.Engine.World;
+
+namespace EconomySimulation.Engine.Decision;
+
+/// <summary>
+/// The two sides of the decision, as flows (`01-SIMULATION.md` §5).
+///
+/// <code>
+/// flow_value(h, g, t) = (a_g + b_g · income_h) · w_h · value_mult_t
+/// flow_cost(g, t)     = price_(g,t) / life_g
+/// </code>
+///
+/// `a_g` is the Stone-Geary floor: the part of a good's worth that does not scale with income. It
+/// is not a refinement. With value strictly proportional to income every good is a luxury, a
+/// household on €450 scores food at 0.93 and buys none, and no invariant in the project notices
+/// that the poor end of the distribution has stopped eating. The split is neutral at the mean
+/// income by construction, so it changes the income gradient of demand and nothing else.
+///
+/// The tier's value multiplier is applied here, at the point of use, and is never folded into
+/// `v_g`. Eighteen precomputed value weights would be faster to look up and would make the
+/// diminishing-returns property of the upgrade ladder impossible to state, because that property
+/// is about the relationship between the multipliers.
+/// </summary>
+public static class Valuation
+{
+    /// <summary>`V = (a_g + b_g · income_h) · w_h`, before any tier multiplier.</summary>
+    public static Flow BaseValue(Money floor, double incomeSlope, Money incomeOfHousehold, double tasteWeight)
+    {
+        // Cents throughout, then euros once. The floor is exact; the income-linked part is a
+        // product of a pure number and an integer, and the whole thing scales exactly when every
+        // nominal quantity is doubled — which is what nominal neutrality (V3) rests on.
+        var cents = floor.Cents + (incomeSlope * incomeOfHousehold.Cents);
+
+        return new Flow(cents / 100.0) * tasteWeight;
+    }
+
+    /// <summary>The same, read off the world.</summary>
+    public static Flow BaseValue(GoodsTable goods, Households population, int household, int category)
+    {
+        ArgumentNullException.ThrowIfNull(goods);
+        ArgumentNullException.ThrowIfNull(population);
+
+        return BaseValue(
+            goods.Floor(category),
+            goods.IncomeSlope(category),
+            population.Income[household],
+            population.TasteWeight[household]);
+    }
+
+    /// <summary>`flow_value` at a tier: the base value times that tier's value multiplier.</summary>
+    public static Flow FlowValue(GoodsTable goods, Households population, int household, int category, int tier)
+    {
+        ArgumentNullException.ThrowIfNull(goods);
+
+        return BaseValue(goods, population, household, category) * goods.Tiers[tier].ValueMult;
+    }
+
+    /// <summary>`flow_cost = price / life`, per tick. Never the purchase price.</summary>
+    public static Flow FlowCost(Money price, int life) => Flow.Spread(price, life);
+
+    /// <summary>
+    /// `Δvalue / Δcost`, a pure number, compared against λ.
+    ///
+    /// A non-positive cost with a positive value is a step that is better and no dearer — it can
+    /// arise once tiers have repriced independently and a higher tier has fallen to the price of
+    /// the one below it. It scores as infinitely good, which is what it is. A non-positive value
+    /// scores zero: nothing worthless clears λ whatever it costs.
+    /// </summary>
+    public static double Score(Flow deltaValue, Flow deltaCost)
+    {
+        if (!deltaValue.IsPositive)
+        {
+            return 0.0;
+        }
+
+        return deltaCost.IsPositive ? deltaValue / deltaCost : double.PositiveInfinity;
+    }
+}
