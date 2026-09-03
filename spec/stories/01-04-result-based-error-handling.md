@@ -13,6 +13,9 @@ As a maintainer, I want operations that can fail to return a `Result` rather tha
 - [ ] FluentResults is referenced. Methods that can fail return `Result` or `Result<T>`.
 - [ ] **No method in the engine throws** for a domain outcome. Exceptions remain only for genuine programming errors — overflow, index out of range — which are bugs, not outcomes.
 - [ ] An **ignored `Result` is a build error**, via an analyser or a `[MustUseReturnValue]`-style attribute with a test proving it fires.
+      *Resolved as:* an analyser, `ES0001`, in a fourth project — see the amendment on 01-01.
+      C# has no attribute that makes a discarded return value an error, so the alternative was
+      not available.
 - [ ] Failures carry a message naming what was wrong and what was expected. A bare `Result.Fail("error")` is not acceptable and a review checklist item says so.
 - [ ] Multiple validation failures **accumulate into one** failed `Result` rather than returning on the first.
 - [ ] `Result` appears at boundaries only: configuration, loading, file I/O, the consistency check. It does **not** appear inside the shopping walk.

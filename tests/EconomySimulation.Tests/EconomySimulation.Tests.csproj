@@ -17,6 +17,9 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <ProjectReference Include="..\..\src\EconomySimulation.Engine\EconomySimulation.Engine.csproj" />
+    <!-- Referenced as an ordinary assembly, not as an analyser: these tests run it against
+         snippets rather than against themselves. -->
+    <ProjectReference Include="..\..\src\EconomySimulation.Analyzers\EconomySimulation.Analyzers.csproj" />
   </ItemGroup>
 
 </Project>

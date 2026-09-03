@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace EconomySimulation.Tests.Infrastructure;
 
@@ -28,15 +29,17 @@ internal static class CompileFail
             .WithGeneralDiagnosticOption(ReportDiagnostic.Error);
 
     /// <summary>Every diagnostic the compiler produced for <paramref name="source"/>.</summary>
-    internal static ImmutableArray<Diagnostic> Diagnostics(string source)
+    internal static ImmutableArray<Diagnostic> Diagnostics(string source) =>
+        CompilationFor(source).GetDiagnostics();
+
+    /// <summary>The snippet as a compilation, under the engine's own options.</summary>
+    internal static CSharpCompilation CompilationFor(string source)
     {
         var tree = CSharpSyntaxTree.ParseText(
             source,
             new CSharpParseOptions(LanguageVersion.Latest));
 
-        return CSharpCompilation
-            .Create("CompileFailProbe", [tree], References, Options)
-            .GetDiagnostics();
+        return CSharpCompilation.Create("CompileFailProbe", [tree], References, Options);
     }
 
     /// <summary>
@@ -108,5 +111,49 @@ internal static class CompileFail
         }
 
         return [.. references];
+    }
+}
+
+/// <summary>
+/// Runs one of the project's own analysers over a snippet. The analysers exist to turn a
+/// convention into a build error, and this is how that claim is checked — by asking the
+/// compiler what it reported, not by reading the .csproj.
+/// </summary>
+internal static class AnalyzerProbe
+{
+    internal static ImmutableArray<Diagnostic> Run(DiagnosticAnalyzer analyzer, string source)
+    {
+        var compilation = CompileFail.CompilationFor(source);
+
+        return compilation
+            .WithAnalyzers([analyzer])
+            .GetAnalyzerDiagnosticsAsync()
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    internal static void Reports(string expectedId, DiagnosticAnalyzer analyzer, string source)
+    {
+        var diagnostics = Run(analyzer, source);
+
+        Assert.True(
+            diagnostics.Any(d => d.Id == expectedId && d.Severity == DiagnosticSeverity.Error),
+            diagnostics.IsEmpty
+                ? $"Expected {expectedId} as an error, but the analyser reported nothing at all."
+                : $"Expected {expectedId} as an error, got: "
+                  + string.Join(", ", diagnostics.Select(d => $"{d.Id} ({d.Severity})")));
+    }
+
+    internal static void ReportsNothing(DiagnosticAnalyzer analyzer, string source)
+    {
+        // A snippet that does not compile would report nothing for the wrong reason.
+        CompileFail.Compiles(source);
+
+        var diagnostics = Run(analyzer, source);
+
+        Assert.True(
+            diagnostics.IsEmpty,
+            "Expected no diagnostics, got: "
+            + string.Join(", ", diagnostics.Select(d => $"{d.Id}: {d.GetMessage()}")));
     }
 }

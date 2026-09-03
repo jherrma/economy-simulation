@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/EconomySimulation.Analyzers/EconomySimulation.Analyzers.csproj" />
     <Project Path="src/EconomySimulation.Engine/EconomySimulation.Engine.csproj" />
     <Project Path="src/EconomySimulation.Runner/EconomySimulation.Runner.csproj" />
   </Folder>

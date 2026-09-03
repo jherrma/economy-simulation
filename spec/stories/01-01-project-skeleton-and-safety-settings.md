@@ -11,6 +11,10 @@ As a maintainer, I want the solution to refuse to build when code is unsafe, so 
 ## Acceptance criteria
 
 - [ ] A solution with an engine library, a console runner and a test project. Nothing else.
+      *Amended during 01-04:* plus one analyser project. Making an ignored `Result` a build error
+      needs an analyser, and Roslyn only loads those from a separate `netstandard2.0` assembly.
+      It is build tooling — it ships with the compiler, not with the engine — and the rule this
+      criterion exists to protect, that the model does not grow layers, still holds.
 - [ ] `TreatWarningsAsErrors`, `CheckForOverflowUnderflow` and `Nullable enable` in every project.
 - [ ] A **compile-fail test** for each guarantee, proving wrong code does not build:
       adding a rate to a money value (CS0019), assigning a `double` to a money value (CS0029),
