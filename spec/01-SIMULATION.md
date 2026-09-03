@@ -405,6 +405,37 @@ one to nine flat). φ is a calibration lever that also moves the durables' liqui
 lower φ leaves households unable to pay cash for a durable more often — and results should be
 reported with their sensitivity to it.
 
+### 7.3 The money-creation channel is zero by construction — found 2026-09-03
+
+Found when the switch was first tested (06-04). `credit_high` with `money_creation = true` and with
+`money_creation = false`, same seed, are **identical in every quantity a household can see** —
+every price, every balance, every loan, every tick. The story expected the two runs to differ; they
+cannot, and the reason is structural rather than a bug:
+
+- A borrower's cash is the same after origination and purchase whether the principal was created or
+  drawn from the pool. The household side of the walk does not know where the money came from.
+- Income is fixed and the pool pays it either way. The pool has no behaviour (§4.3): it does not
+  spend, lend, price or produce, so a bigger or smaller pool changes nothing downstream.
+- Repayment destroys principal or returns it to the pool; again the household side is identical.
+
+The entire difference between the settings therefore sits in the pool's balance and in the money
+stock, one for one with `loans_outstanding`. The one observable effect the switch can have is
+**rationing** — origination failing because the pool cannot cover the principal — and that needs the
+pool to be below a *single* principal at the moment of the loan, because the principal drawn out is
+spent straight back in by the same purchase. A default pool of twelve months of income never comes
+near it. The tests assert the identity (MoneyCreationSwitchTests) and the rationing case with a
+€400 pool.
+
+What this means for the question: in v1 the price effect of credit is **entirely** the reach-and-
+timing effect — households buying now, and buying better, what cash alone would not have let them
+— and none of it is a money-stock effect. "Credit raises prices because lending creates money" is
+not something this model can support or refute; it is switched off by the passive supply side. The
+switch stays, because the identity is worth asserting every run (it is what V1's second assertion
+polices), and because the moment the pool acquires behaviour — income indexed to the pool, supply
+responding to it, a bank that lends only what it holds — the channel opens and the paired runs will
+start to differ. Until then the "money-creation channel" series (07-02) is the pool difference, and
+should be labelled as such rather than as a price effect.
+
 ## 8. Randomness
 
 Every draw comes from a stream derived as `hash(run_seed, household_id, purpose)`, where `purpose`
