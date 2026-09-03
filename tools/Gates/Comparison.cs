@@ -1,0 +1,178 @@
+using static System.FormattableString;
+
+namespace EconomySimulation.Gates;
+
+/// <summary>Where two runs first stopped agreeing, in terms a person can go and look at.</summary>
+/// <param name="File">The output file, relative to a run's directory.</param>
+/// <param name="Row">The line number in that file, counting the header as line 1.</param>
+/// <param name="Column">The column's name from the header, or a description when there is no header to name it.</param>
+public sealed record Difference(string File, int Row, string Column, string Left, string Right)
+{
+    public override string ToString() =>
+        Invariant($"{File}, line {Row}, column '{Column}': {Left} != {Right}");
+}
+
+/// <summary>
+/// Compares two runs' output directories and reports where they first differ.
+///
+/// **The report is the feature.** A comparison that returns a bare "not equal" is a comparison
+/// nobody can act on: the difference between two 360-tick runs is a hundred thousand numbers, and
+/// finding which one moved by hand is the work this exists to avoid. Naming the file, the line and
+/// the column turns a failed gate into a place to put a breakpoint.
+///
+/// The comparison is byte for byte and there is no tolerance anywhere in it. Every gate that uses
+/// it is asserting that two runs are the *same run*, and a tolerance would let a real difference
+/// hide underneath it — which is exactly the failure V2 exists to catch, because a model that has
+/// become order-dependent drifts slowly at first.
+/// </summary>
+public static class Comparison
+{
+    /// <summary>
+    /// What a run leaves behind, in the order a difference is most usefully reported: the
+    /// aggregates first, the eighteen shelves second, the marker last.
+    /// </summary>
+    public static IReadOnlyList<string> OutputFiles { get; } = ["run.csv", "tiers.csv", "run.done"];
+
+    /// <summary>Those, and the effective configuration — for the gates whose two runs are meant to have identical inputs too.</summary>
+    public static IReadOnlyList<string> OutputAndConfiguration { get; } =
+        ["run.csv", "tiers.csv", "run.done", "effective-config.toml"];
+
+    /// <summary>
+    /// The first difference between two run directories, or null when every listed file is
+    /// identical byte for byte.
+    /// </summary>
+    public static Difference? FirstDifference(string left, string right, IReadOnlyList<string> files)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(left);
+        ArgumentException.ThrowIfNullOrWhiteSpace(right);
+        ArgumentNullException.ThrowIfNull(files);
+
+        foreach (var file in files)
+        {
+            var difference = FirstDifference(left, right, file);
+
+            if (difference is not null)
+            {
+                return difference;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Every seed of two campaigns laid out as <see cref="Runs.Directory"/> names them.</summary>
+    public static Difference? FirstDifference(
+        string left,
+        string right,
+        IReadOnlyList<int> seeds,
+        IReadOnlyList<string> files)
+    {
+        ArgumentNullException.ThrowIfNull(seeds);
+
+        foreach (var seed in seeds)
+        {
+            var difference = FirstDifference(Runs.Directory(left, seed), Runs.Directory(right, seed), files);
+
+            if (difference is not null)
+            {
+                return difference with { File = Invariant($"seed-{seed}/{difference.File}") };
+            }
+        }
+
+        return null;
+    }
+
+    private static Difference? FirstDifference(string left, string right, string file)
+    {
+        var leftPath = Path.Combine(left, file);
+        var rightPath = Path.Combine(right, file);
+
+        if (!File.Exists(leftPath) || !File.Exists(rightPath))
+        {
+            return new Difference(
+                file,
+                0,
+                "(the file itself)",
+                File.Exists(leftPath) ? "present" : "missing",
+                File.Exists(rightPath) ? "present" : "missing");
+        }
+
+        var leftBytes = File.ReadAllBytes(leftPath);
+        var rightBytes = File.ReadAllBytes(rightPath);
+
+        if (leftBytes.AsSpan().SequenceEqual(rightBytes))
+        {
+            return null;
+        }
+
+        var leftLines = File.ReadAllLines(leftPath);
+        var rightLines = File.ReadAllLines(rightPath);
+        var header = Header(file, leftLines);
+
+        for (var line = 0; line < Math.Max(leftLines.Length, rightLines.Length); line++)
+        {
+            if (line >= leftLines.Length || line >= rightLines.Length)
+            {
+                return new Difference(
+                    file,
+                    line + 1,
+                    "(the row itself)",
+                    line < leftLines.Length ? leftLines[line] : "(no such line)",
+                    line < rightLines.Length ? rightLines[line] : "(no such line)");
+            }
+
+            if (string.Equals(leftLines[line], rightLines[line], StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            return FirstField(file, line, header, leftLines[line], rightLines[line]);
+        }
+
+        // Every line matched and the bytes did not: the files differ in line endings or in a final
+        // newline. Reported rather than passed — output has to be identical on every machine, and
+        // a line ending is exactly the kind of difference a platform introduces silently.
+        return new Difference(
+            file,
+            0,
+            "(line endings)",
+            Invariant($"{leftBytes.Length} bytes"),
+            Invariant($"{rightBytes.Length} bytes"));
+    }
+
+    private static Difference FirstField(string file, int line, string[] header, string left, string right)
+    {
+        var leftFields = left.Split(',');
+        var rightFields = right.Split(',');
+
+        for (var field = 0; field < Math.Max(leftFields.Length, rightFields.Length); field++)
+        {
+            var leftField = field < leftFields.Length ? leftFields[field] : "(no such field)";
+            var rightField = field < rightFields.Length ? rightFields[field] : "(no such field)";
+
+            if (!string.Equals(leftField, rightField, StringComparison.Ordinal))
+            {
+                return new Difference(file, line + 1, Name(header, field, left), leftField, rightField);
+            }
+        }
+
+        return new Difference(file, line + 1, "(the whole row)", left, right);
+    }
+
+    /// <summary>A CSV names its own columns; the marker and the configuration are `key = value`, so the key is the name.</summary>
+    private static string[] Header(string file, string[] lines) =>
+        file.EndsWith(".csv", StringComparison.Ordinal) && lines.Length > 0 ? lines[0].Split(',') : [];
+
+    /// <summary>The header's name for that column; failing that, the `key` of a `key = value` line; failing that, its position.</summary>
+    private static string Name(string[] header, int field, string line)
+    {
+        if (field < header.Length)
+        {
+            return header[field];
+        }
+
+        var equals = line.IndexOf('=', StringComparison.Ordinal);
+
+        return field == 0 && equals > 0 ? line[..equals].Trim() : Invariant($"(column {field + 1}, unnamed)");
+    }
+}

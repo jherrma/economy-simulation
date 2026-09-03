@@ -1,0 +1,33 @@
+# Build, tests, and the validation gates.
+#
+# The gates run here rather than only on a laptop because what they protect is comparability across
+# versions: a change that makes this month's model run on a different random world from last
+# month's is invisible in a diff and fatal to every result the project has published.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: build
+        run: dotnet build -c Release -warnaserror
+
+      - name: test
+        run: dotnet test -c Release --no-build
+
+      # V2. Short by design — 48 ticks on four seeds — so that it can run on every push rather
+      # than on the occasions someone remembers to.
+      - name: gate — determinism (V2)
+        run: dotnet run --project tools/Gates -c Release --no-build -- determinism

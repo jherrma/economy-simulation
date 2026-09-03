@@ -20,6 +20,9 @@
     <!-- Referenced as an ordinary assembly, not as an analyser: these tests run it against
          snippets rather than against themselves. -->
     <ProjectReference Include="..\..\src\EconomySimulation.Analyzers\EconomySimulation.Analyzers.csproj" />
+    <!-- The validation gates are programs, and these tests are what says the gates themselves can
+         fail: a comparison that passes because it read the wrong directory is worse than none. -->
+    <ProjectReference Include="..\..\tools\Gates\Gates.csproj" />
   </ItemGroup>
 
 </Project>

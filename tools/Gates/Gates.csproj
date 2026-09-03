@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The validation gates of spec/03-VERIFICATION.md, as a program rather than a test suite.
+
+       They are a program because what they check is *output*: whole runs, written to disk, in the
+       form the campaign will collect and the analysis will read. A gate that checked the model
+       through its object graph would be checking something no result is ever taken from.
+
+       No model logic lives here. A gate that computed anything the engine could have computed
+       would be a second implementation of the model, and the two would drift. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>EconomySimulation.Gates</RootNamespace>
+    <AssemblyName>economy-simulation-gates</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EconomySimulation.Engine\EconomySimulation.Engine.csproj" />
+    <ProjectReference Include="..\..\src\EconomySimulation.Analyzers\EconomySimulation.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>
