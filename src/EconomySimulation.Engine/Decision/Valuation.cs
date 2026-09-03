@@ -59,6 +59,20 @@ public static class Valuation
     public static Flow FlowCost(Money price, int life) => Flow.Spread(price, life);
 
     /// <summary>
+    /// What a financed candidate costs per tick: the cash cost times `finance_mult`, which comes
+    /// from <see cref="Rate"/> — the one place in the engine that turns a rate and a term into a
+    /// multiplier, and the only file allowed to know the divisor.
+    ///
+    /// Since the multiplier exceeds 1 whenever the rate and the term do, **financing strictly
+    /// worsens a candidate's score**. Credit never makes anything look cheaper in this model; what
+    /// it does is put within reach a tier that cash could not pay for. If a change ever makes this
+    /// method return less than its input, the hypothesis is being assumed rather than tested, and
+    /// FlowCostTests says so for every category and every tier.
+    /// </summary>
+    public static Flow FinancedCost(Flow cashCost, Rate loanRate, int termMonths) =>
+        cashCost * loanRate.FinanceMultiplier(termMonths);
+
+    /// <summary>
     /// `Δvalue / Δcost`, a pure number, compared against λ.
     ///
     /// A non-positive cost with a positive value is a step that is better and no dearer — it can
