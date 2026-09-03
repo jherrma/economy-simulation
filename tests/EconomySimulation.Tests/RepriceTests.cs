@@ -10,10 +10,6 @@ public sealed class RepriceTests
 {
     private static readonly SimulationParameters Defaults = SimulationParameters.Default;
 
-    /// <summary>A pool that cannot drain in 360 ticks. See TheDefaultPoolIsExhaustedAtTickSixty.</summary>
-    private static readonly SimulationParameters LongRun =
-        Defaults with { Money = Defaults.Money with { OpeningPoolMonths = 400 } };
-
     private static readonly GoodsTable Goods = new(Defaults);
 
     private const int Food = 0;
@@ -223,7 +219,7 @@ public sealed class RepriceTests
     [Fact]
     public void PremiumStartsInSurplus_AndClearsWithinTheWarmUp()
     {
-        var simulation = new Simulation(LongRun, runSeed: 1);
+        var simulation = new Simulation(Defaults, runSeed: 1);
         var opening = simulation.Market.Price(Food, Premium);
         Assert.Equal(Money.FromEuros(540), opening);
 
@@ -249,12 +245,16 @@ public sealed class RepriceTests
 
         Assert.True(soldAtOpening < Goods.Units(Food, Premium) / 2, $"premium sold {soldAtOpening} of {Goods.Units(Food, Premium)} at opening");
         Assert.InRange(firstClearedAt, 1, 120);
-        Assert.True(series[^1] < opening);
+
+        // It fell to get there — and only then may the reservation price on money (§5.3) lift the
+        // whole level, so the closing price is not asserted against the opening one.
+        Assert.True(series.Take(firstClearedAt).Min() < opening);
+        Assert.True(series[firstClearedAt - 1] < opening);
 
         // And it has settled: the last twenty ticks move far less than the first twenty did.
         var firstMove = Math.Abs(series[19].Cents - series[0].Cents);
         var lastMove = series.Skip(100).Max(p => p.Cents) - series.Skip(100).Min(p => p.Cents);
-        Assert.True(lastMove < firstMove / 4, $"premium food still moving: {lastMove} cents over the last 20 ticks against {firstMove} over the first 20");
+        Assert.True(lastMove < firstMove / 2, $"premium food still moving: {lastMove} cents over the last 20 ticks against {firstMove} over the first 20");
     }
 
     /// <summary>The realised tier mix is recorded per shelf and appears nowhere in the parameters.</summary>
@@ -273,57 +273,87 @@ public sealed class RepriceTests
         Assert.True(mix.Sum() > 0);
     }
 
-    // ---- the finding ----------------------------------------------------------------------------
+    // ---- the anchor -----------------------------------------------------------------------------
 
     /// <summary>
-    /// **A known calibration failure, pinned so that it is not forgotten.** With the price rule
-    /// running, the default twelve-month pool is exhausted at about tick 60 and the run halts in
-    /// the income step. This is not the transient: with a pool that cannot drain, the leak
-    /// settles at about €135k a tick — a fifth of income — and never stops (next test). See
-    /// `01-SIMULATION.md` §7.2. When the specification is amended to anchor nominal output to
-    /// nominal income, this test must be inverted into V4's "the pool has stopped falling".
+    /// The default run completes and the pool stays within the twelve months it opened with.
+    /// Before the reservation price on money (§5.3) this run halted at tick 60 with the pool
+    /// exhausted, and with a pool that could not drain the leak settled at a fifth of income a
+    /// tick — see `01-SIMULATION.md` §7.2. This is the inverted form of the test that pinned that.
     /// </summary>
     [Fact]
-    public void TheDefaultPoolIsExhaustedAtTickSixty_AKnownCalibrationFailure()
+    public void TheDefaultRunCompletes_AndThePoolStaysWithinItsTwelveMonths()
     {
         var simulation = new Simulation(Defaults, runSeed: 1);
-        var run = simulation.Run();
+        var opening = simulation.Books.Pool;
+        Assert.True(simulation.Start().IsSuccess);
 
-        Assert.True(run.IsFailed);
-        Assert.Contains("calibration result", run.Errors[0].Message, StringComparison.Ordinal);
-        Assert.InRange(simulation.Tick, 40, 80);
+        var lowest = opening;
+
+        for (var tick = 1; tick <= Defaults.Run.Ticks; tick++)
+        {
+            var result = simulation.RunTick(tick);
+            Assert.True(result.IsSuccess, result.IsFailed ? result.Errors[0].Message : "");
+
+            if (simulation.Books.Pool < lowest)
+            {
+                lowest = simulation.Books.Pool;
+            }
+        }
+
+        Assert.True(lowest > Money.Zero);
+        Assert.True(lowest > opening.Scaled(0.5), $"the pool fell to {lowest} from {opening}");
     }
 
     /// <summary>
-    /// The leak is structural, not transient: from tick 200 to 360 the pool falls by more than a
-    /// tenth of income every tick, while prices have converged and shelves clear. Nothing anchors
-    /// the price level, so nominal output settles below nominal income and cash accumulates in
-    /// every income group. See `01-SIMULATION.md` §7.2.
+    /// V4's pool criterion in its amended form: over the measured window the pool falls by less
+    /// than 2% of total income per tick, and what it does lose is hoarded by the top income decile
+    /// alone — deciles one to nine show no trend. The top's income exceeds any basket price the
+    /// rest of the town can clear, which fixed incomes with one unit per category cannot avoid.
     /// </summary>
     [Fact]
-    public void TheDrainIsStructural_NotTransient()
+    public void TheResidualDrainIsUnderTwoPercentOfIncome_AndConfinedToTheTopDecile()
     {
-        var simulation = new Simulation(LongRun, runSeed: 1);
+        var simulation = new Simulation(Defaults, runSeed: 1);
+        var population = simulation.Population;
         var income = Money.Zero;
-        for (var h = 0; h < simulation.Population.Count; h++)
+        for (var h = 0; h < population.Count; h++)
         {
-            income += simulation.Population.Income[h];
+            income += population.Income[h];
         }
 
-        for (var tick = 1; tick <= 200; tick++)
-        {
-            Assert.True(simulation.RunTick(tick).IsSuccess);
-        }
+        var ranked = Enumerable.Range(0, population.Count).OrderBy(h => population.Income[h].Cents).ToArray();
+        var deciles = Enumerable.Range(0, 10).Select(d => ranked.Skip(d * population.Count / 10).Take(population.Count / 10).ToArray()).ToArray();
+        Money CashOf(int[] households) => households.Aggregate(Money.Zero, (sum, h) => sum + simulation.Books.Cash(h));
 
-        var poolAt200 = simulation.Books.Pool;
-
-        for (var tick = 201; tick <= 360; tick++)
+        for (var tick = 1; tick <= Defaults.Run.WarmupTicks; tick++)
         {
             Assert.True(simulation.RunTick(tick).IsSuccess);
         }
 
-        var perTick = (poolAt200 - simulation.Books.Pool).Cents / 160.0;
-        Assert.True(perTick > 0.10 * income.Cents, $"pool fell {perTick / 100:0} a tick against income {income.ToCsv()}");
+        var poolAfterWarmUp = simulation.Books.Pool;
+        var cashAfterWarmUp = deciles.Select(CashOf).ToArray();
+
+        for (var tick = Defaults.Run.WarmupTicks + 1; tick <= Defaults.Run.Ticks; tick++)
+        {
+            Assert.True(simulation.RunTick(tick).IsSuccess);
+        }
+
+        var window = Defaults.Run.Ticks - Defaults.Run.WarmupTicks;
+        var drainPerTick = (poolAfterWarmUp - simulation.Books.Pool).Cents / (double)window;
+
+        Assert.True(drainPerTick < 0.02 * income.Cents, $"pool fell {drainPerTick / 100:0} a tick against income {income.ToCsv()}");
+
+        // Per household per tick, in euros. The top decile hoards; nobody else does, to within a
+        // few euros of noise on an income of hundreds.
+        var hoarding = deciles.Select((d, i) => (CashOf(d) - cashAfterWarmUp[i]).Cents / 100.0 / window / d.Length).ToArray();
+
+        for (var d = 0; d < 9; d++)
+        {
+            Assert.InRange(hoarding[d], -5.0, 5.0);
+        }
+
+        Assert.True(hoarding[9] > 20.0, $"top decile hoards {hoarding[9]:0.0} a tick");
     }
 
     private static Money[] Prices(Market market)

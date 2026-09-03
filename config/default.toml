@@ -87,6 +87,7 @@ unit_share = 0.2
 lambda = 1.0
 sigma_w = 0.2
 subsistence_share = 0.55
+buffer_months = 2.0
 affordability_horizon = "myopic"
 
 [credit]

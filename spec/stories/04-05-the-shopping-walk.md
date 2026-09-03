@@ -31,6 +31,8 @@ As the model author, I want households visited in a seeded random order, each wa
   instance (`Results.Ok`) and success is recognised by reference (`Results.IsOk`), because
   FluentResults allocates a result per `Ok()` and an enumerator per `IsFailed`. Together those were
   a quarter of a megabyte per tick. The order stream is reseeded in place rather than constructed.
+- **λ is per household** since §5.3: `λ_h = λ · min(1, φ / b_h)`. `Walker.LambdaFor` computes it at
+  the start of each household's walk; LambdaTests covers it.
 - **The pool drains at tick 32 at opening prices.** Realised spend is about €226k a tick below
   income for seed 1 — desired spend is well below income (§3.3) and rationing lowers it further —
   so with no repricing yet the twelve-month pool is gone by tick 32. The 360-tick tests run with a

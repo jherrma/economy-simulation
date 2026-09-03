@@ -153,6 +153,7 @@ public sealed record SimulationParameters
         Write(toml, "lambda", Decision.Lambda);
         Write(toml, "sigma_w", Decision.SigmaW);
         Write(toml, "subsistence_share", Decision.SubsistenceShare);
+        Write(toml, "buffer_months", Decision.BufferMonths);
         Write(toml, "affordability_horizon", Decision.AffordabilityHorizon.ToTomlValue());
         toml.AppendLine();
 

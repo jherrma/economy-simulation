@@ -206,6 +206,7 @@ invalidates the run:
 | `lambda` (λ) | 1.00 | Take a candidate worth at least what it costs. A pure number, never indexed |
 | `σ_w` | 0.20 | Spread of the household taste multiplier `w_h`, mean exactly 1 |
 | `subsistence_share` | 0.55 | Protected from the credit residual test: `0.55 × 650 = €357.50`, roughly food plus a minimum of leisure |
+| `buffer_months` (φ) | 2.0 | The reservation price on money (`01-SIMULATION.md` §5.3): cash above φ months of own income lowers a household's λ in proportion, `λ_h = λ · min(1, φ / b_h)`. Below φ, λ is unchanged. This is what anchors the price level; 0 switches it off and the pool drains a fifth of income a tick (§7.2). Chosen over 1 and 3 on seeds 1–3: at 1 durables are widely cash-unaffordable, at 3 the pool dips to half and premium is still converging at tick 360 |
 | `affordability_horizon` | `myopic` | The instalment must fit **this tick**. `full_term` is the control |
 
 ## 5. Credit

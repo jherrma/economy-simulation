@@ -110,6 +110,7 @@ public sealed class SchemaTests
         Assert.Equal(SpecFile.Number(spec["lambda"]), Defaults.Decision.Lambda);
         Assert.Equal(SpecFile.Number(spec["σ_w"]), Defaults.Decision.SigmaW);
         Assert.Equal(SpecFile.Number(spec["subsistence_share"]), Defaults.Decision.SubsistenceShare);
+        Assert.Equal(SpecFile.Number(spec["buffer_months"]), Defaults.Decision.BufferMonths);
         Assert.Equal(
             spec["affordability_horizon"],
             Defaults.Decision.AffordabilityHorizon.ToTomlValue());

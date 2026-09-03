@@ -9,14 +9,6 @@ public sealed class WantsTests
 {
     private static readonly SimulationParameters Defaults = SimulationParameters.Default;
 
-    /// <summary>
-    /// Until repricing exists (05-02) the town spends well below its income at opening prices and
-    /// the default twelve-month pool drains at about tick 32. A pool that cannot drain in 360
-    /// ticks keeps the test about what it is about. 05-02 asserts the default pool suffices.
-    /// </summary>
-    private static readonly SimulationParameters LongRun =
-        Defaults with { Money = Defaults.Money with { OpeningPoolMonths = 400 } };
-
     private static readonly GoodsTable Goods = new(Defaults);
 
     private const int Food = 0;
@@ -215,7 +207,9 @@ public sealed class WantsTests
     [Fact]
     public void ReplacementDemandIsFlat_AndConvergesToHouseholdsOverLife()
     {
-        var series = WantsPerTick(new Simulation(LongRun, runSeed: 21), ticks: 360);
+        // Every want is granted before the walk, so nothing is ever bought and income never returns
+        // to the pool: a pool that lasts the run is a condition of the harness, not a calibration.
+        var series = WantsPerTick(new Simulation(Defaults with { Money = Defaults.Money with { OpeningPoolMonths = 400 } }, runSeed: 21), ticks: 360);
         var n = Defaults.Run.Households;
 
         for (var c = 0; c < Goods.CategoryCount; c++)

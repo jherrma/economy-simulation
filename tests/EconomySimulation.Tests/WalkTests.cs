@@ -81,11 +81,15 @@ public sealed class WalkTests
 
     // ---- the rule -----------------------------------------------------------------------------
 
-    /// <summary>Nothing below λ is ever acted on: the walk stops there.</summary>
+    /// <summary>
+    /// Nothing below λ is ever acted on: the walk stops there. With the reservation price on money
+    /// switched off, so that λ_h is λ for everyone; LambdaTests covers the per-household form.
+    /// </summary>
     [Fact]
     public void NoCandidateBelowLambdaIsEverActedOn()
     {
-        var events = Observe(new Simulation(Defaults, runSeed: 1), ticks: 3);
+        var plain = Defaults with { Decision = Defaults.Decision with { BufferMonths = 0.0 } };
+        var events = Observe(new Simulation(plain, runSeed: 1), ticks: 3);
 
         Assert.NotEmpty(events);
         Assert.All(events, e => Assert.True(e.Score >= Defaults.Decision.Lambda, $"{e}"));

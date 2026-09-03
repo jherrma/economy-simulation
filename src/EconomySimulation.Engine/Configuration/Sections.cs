@@ -129,6 +129,14 @@ public sealed record DecisionParameters
     /// <summary>Protected from the credit residual test: 0.55 × 650 = €357.50.</summary>
     public double SubsistenceShare { get; init; } = 0.55;
 
+    /// <summary>
+    /// φ — months of own income a household holds before cash starts lowering its λ:
+    /// `λ_h = λ · min(1, φ / b_h)`, `b_h = cash_h / income_h`. The reservation price on money
+    /// (`01-SIMULATION.md` §5.3). Below φ months λ is unchanged, so nobody skips a meal to build a
+    /// buffer; above it hoarded cash is spent into quality, which is what anchors the price level.
+    /// </summary>
+    public double BufferMonths { get; init; } = 2.0;
+
     /// <summary>Myopic by default: the instalment must fit **this** tick.</summary>
     public AffordabilityHorizon AffordabilityHorizon { get; init; } = AffordabilityHorizon.Myopic;
 }

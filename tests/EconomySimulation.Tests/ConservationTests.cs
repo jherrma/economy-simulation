@@ -15,14 +15,6 @@ public sealed class ConservationTests
 {
     private static readonly SimulationParameters Defaults = SimulationParameters.Default;
 
-    /// <summary>
-    /// Until repricing exists (05-02) the town spends well below its income at opening prices and
-    /// the default twelve-month pool drains at about tick 32. A pool that cannot drain in 360
-    /// ticks keeps the test about what it is about. 05-02 asserts the default pool suffices.
-    /// </summary>
-    private static readonly SimulationParameters LongRun =
-        Defaults with { Money = Defaults.Money with { OpeningPoolMonths = 400 } };
-
     private static Ledger Books(long households = 4, long cashEach = 1_000_00, long pool = 100_000_00)
     {
         var cash = new Money[households];
@@ -44,7 +36,7 @@ public sealed class ConservationTests
     [InlineData(true, false)]
     public void AFullRunKeepsTheIdentity(bool creditEnabled, bool moneyCreation)
     {
-        var parameters = LongRun with
+        var parameters = Defaults with
         {
             Credit = Defaults.Credit with
             {

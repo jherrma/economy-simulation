@@ -25,9 +25,10 @@ As the model author, I want each tier repriced on its own excess demand, so that
 - The persistent-shortage test asserts a monotone 1% rise with no oscillation; "converges" is
   shown by the premium-surplus test, where demand responds. Premium food clears by tick 40 and
   has settled by tick 100 (seed 1).
-- **The default pool does not survive the warm-up, and not because of the transient.** See
-  `01-SIMULATION.md` §7.2. Two tests pin the failure. The premium-clearing test therefore runs on
-  a 400-month pool.
+- **The default pool did not survive the warm-up, and not because of the transient.** See
+  `01-SIMULATION.md` §7.2, resolved by §5.3 (the reservation price on money, `buffer_months`).
+  RepriceTests now asserts the resolved form: a full default run completes, the pool stays within
+  its twelve months, and the residual drain is under 2% of income and confined to the top decile.
 
 ## Where to start
 

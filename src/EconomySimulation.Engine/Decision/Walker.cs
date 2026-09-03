@@ -161,7 +161,7 @@ public sealed class Walker
 
         Array.Clear(visited, 0, count);
 
-        var lambda = parameters.Decision.Lambda;
+        var lambda = LambdaFor(household);
 
         while (true)
         {
@@ -232,6 +232,28 @@ public sealed class Walker
         }
 
         return Results.Ok;
+    }
+
+    /// <summary>
+    /// The household's threshold this tick: `λ · min(1, φ / b_h)`, with `b_h` its cash in months
+    /// of its own income after income and debt service. Cash below φ months leaves λ alone; cash
+    /// above it lowers λ, so a household that has been banking part of its income starts taking
+    /// upgrades it would not otherwise take. Dimensionless throughout, so nominal neutrality holds.
+    /// </summary>
+    private double LambdaFor(int household)
+    {
+        var lambda = parameters.Decision.Lambda;
+        var phi = parameters.Decision.BufferMonths;
+        var income = population.Income[household].Cents;
+
+        if (phi <= 0.0 || income <= 0)
+        {
+            return lambda;
+        }
+
+        var bufferRatio = books.Cash(household).Cents / (double)income; // months of own income
+
+        return bufferRatio > phi ? lambda * (phi / bufferRatio) : lambda;
     }
 
     private bool Available(in Candidate candidate) =>

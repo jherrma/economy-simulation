@@ -149,6 +149,34 @@ twenty-four — so its score is the cash score divided by that. Since `finance_m
 What it does is put within reach a tier that cash could not pay for. If an implementation ever makes
 financing attractive on price, the hypothesis is being assumed rather than tested.
 
+### 5.3 The reservation price on money
+
+λ is not quite a constant. A household holding more than φ months of its own income in cash
+(`buffer_months`, default 2) lowers its threshold in proportion:
+
+```
+b_h = cash_h / income_h                  months of own income, after income and debt service
+λ_h = λ · min(1, φ / b_h)
+```
+
+Below φ months λ is unchanged, so nobody skips a meal to build a buffer. Above it, money the
+household has been banking starts buying quality it would not otherwise have judged worth the
+price. Saving is therefore a reservation price on money, not a pre-commitment, and the ratio is
+dimensionless so nominal neutrality is untouched.
+
+This is the anchor the price level otherwise lacks (§7.2). Without it, a household's tier choice is
+a ratio of income to price that never looks at its cash, one unit per category caps what it can
+spend, and unspent income sits in a balance that affects no decision — so nominal output settles
+wherever the transient leaves it, and the pool drains a fifth of income a tick, forever. With it,
+hoarded cash raises demand on the higher tiers, their prices rise, and spending is pulled back
+toward income from both sides: too little cash makes candidates unaffordable and prices fall, too
+much lowers λ and prices rise.
+
+What it cannot do is make the top spend everything. The richest households earn more than any
+basket price the rest of the town can clear, so a residual of about 1% of income a tick is hoarded
+by the top decile alone; deciles one to nine are flat. That residual is a fact about fixed incomes
+with one unit per category, and V4 is stated with it in mind (`03-VERIFICATION.md`).
+
 ## 6. The tick
 
 Seven steps, in this order. The order matters and is asserted.
@@ -189,7 +217,7 @@ Households are visited in a **seeded random order, redrawn every tick**. Within 
 available candidates across all wanted categories are ranked by `score` descending and walked:
 
 1. Take the best-scoring candidate that is **available** — a purchase, or an upgrade whose step
-   below has been taken. If its `score < λ`, **stop**. Nothing further can clear the threshold.
+   below has been taken. If its `score < λ_h` (§5.3), **stop**. Nothing further can clear the threshold.
    (An upgrade becomes available the moment the step below it is taken and is then ranked among
    what remains. At opening prices the ladder is already sorted so this is the same as one pass
    down a sorted list; once tiers have repriced independently it need not be — budget above 0.68
@@ -336,42 +364,36 @@ origination modelled as a transfer from the pool builds the `money_creation = fa
 calls it the default, and the money stock alone would never notice.
 
 
-### 7.2 The price level is unanchored — a finding, not yet resolved (2026-09-03)
+### 7.2 The price level is unanchored — found 2026-09-03, resolved by §5.3
 
-Found when the reprice rule first ran (E5). With repricing on and every other default, the pool is
-exhausted at about tick 60 and the run halts in the income step. It is **not** the warm-up
-transient. Run with a pool that cannot drain and the town settles by tick 80: prices converge,
-shelves clear, and the pool still falls by about **€135k a tick — a fifth of income — for the rest
-of the run**. Sales run at roughly €515k a tick against €650k of income, and cash accumulates in
-every income group, the bottom half included.
+Found when the reprice rule first ran (E5). With repricing on and every other default of the time,
+the pool was exhausted at about tick 60 and the run halted in the income step. It was **not** the
+warm-up transient: with a pool that could not drain the town settled by tick 80 — prices converged,
+shelves cleared — and the pool still fell by about **€135k a tick, a fifth of income**, for the rest
+of the run, with sales near €515k against €650k of income and cash accumulating in every income
+group, the bottom half included.
 
-The cause is structural. Two facts of the design together leave nominal output free of nominal
-income:
+The cause was structural. The reprice rule sees only unit excess demand, which is zero at any price
+level once every shelf clears, so the §3.2 identity (capacity value equals income) held at opening
+prices only. And a household's tier choice was a ratio of income to price, blind to its cash, with
+one unit per category capping what it could spend, so unspent income had nowhere to go.
 
-1. **The reprice rule sees only unit excess demand.** Once every shelf clears, `D = units` at any
-   price level and the signal is zero. The §3.2 identity — capacity value equals income — holds at
-   *opening* prices only; the moment relative prices move, the value of a cleared market is
-   whatever the transient left it at, and nothing pulls it back.
-2. **A household's tier choice is a ratio of income to price and is blind to its cash.** A
-   household on €3,000 scores premium everything at any cash balance and can spend at most the
-   premium basket; a household on €450 spends its budget basket and banks the rest. With one unit
-   per category and no outlet for accumulated cash, unspent income has nowhere to go but a
-   balance that affects no decision.
+Three resolutions were put to the author: endogenous income (the pool pays out last tick's
+receipts), a cash-sensitive λ, or a price level that responds to the pool. **Income stays fixed;
+the cash-sensitive λ of §5.3 was adopted**, with φ = 2 chosen on three seeds. Measured afterwards,
+default pool of twelve months (€7.8M):
 
-So the pool cannot be stationary, and V4's "the pool must have stopped falling" cannot be met by
-any parameter choice. This is a decision for the author, not the implementer. Candidates, none of
-them adopted:
+| φ | drain, ticks 200–360 | lowest pool below opening | durable candidates unaffordable, per tick |
+|---|---|---|---|
+| off | −€135k/tick | −€47M (halts at tick 60) | — |
+| 1 | −€5k to −€7k | −€1.4M to −€2.2M | ~720 |
+| **2** | **−€7k to −€9k** | **−€2.8M to −€3.3M** | **~320** |
+| 3 | −€9k to −€11k | −€3.9M to −€4.4M | ~270, premium still converging at 360 |
 
-- Make income endogenous — the pool pays out last tick's receipts pro rata — so the identity
-  holds by construction. Contradicts "income_h is fixed for the life of the run".
-- Let cash matter to the decision: a reservation price on money that falls as a buffer is
-  exceeded (the draft's λ derived from buffer months), so hoarded cash is spent into quality.
-- Let the price level respond to the pool — a nominal anchor. Introduces exactly the kind of
-  aggregate feedback the model was kept free of.
-
-Until this is decided, tests that need a full run use a 400-month pool and say so, and two tests
-in RepriceTests pin the failure so it cannot be forgotten. Credit (E6) should not be built on a
-baseline that fails V4.
+The remaining drain is hoarding by the top decile alone (€60–100 per household per tick; deciles
+one to nine flat). φ is a calibration lever that also moves the durables' liquidity channel —
+lower φ leaves households unable to pay cash for a durable more often — and results should be
+reported with their sensitivity to it.
 
 ## 8. Randomness
 

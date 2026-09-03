@@ -9,14 +9,6 @@ public sealed class TickTests
 {
     private static readonly SimulationParameters Defaults = SimulationParameters.Default;
 
-    /// <summary>
-    /// Until repricing exists (05-02) the town spends well below its income at opening prices and
-    /// the default twelve-month pool drains at about tick 32. A pool that cannot drain in 360
-    /// ticks keeps the test about what it is about. 05-02 asserts the default pool suffices.
-    /// </summary>
-    private static readonly SimulationParameters LongRun =
-        Defaults with { Money = Defaults.Money with { OpeningPoolMonths = 400 } };
-
     // ---- the order --------------------------------------------------------------------------
 
     /// <summary>
@@ -132,7 +124,7 @@ public sealed class TickTests
     [Fact]
     public void ThreeHundredAndSixtyTicks_ConserveMoneyAndMoveNothingTheyShouldNot()
     {
-        var simulation = new Simulation(LongRun, runSeed: 3);
+        var simulation = new Simulation(Defaults, runSeed: 3);
 
         var openingAges = simulation.Population.Age.ToArray();
 
@@ -141,7 +133,7 @@ public sealed class TickTests
         Assert.True(run.IsSuccess, run.IsFailed ? run.Errors[0].Message : "");
         Assert.Equal(360, simulation.Tick);
 
-        Assert.All(Prices(simulation), p => Assert.True(p >= LongRun.Prices.PriceFloor));
+        Assert.All(Prices(simulation), p => Assert.True(p >= Defaults.Prices.PriceFloor));
         Assert.Equal(simulation.Books.M0, simulation.Books.MoneyHeld);
 
         var population = simulation.Population;

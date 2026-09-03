@@ -265,6 +265,7 @@ public static class ConfigurationLoader
             Lambda = section.Double("lambda", defaults.Lambda),
             SigmaW = section.Double("sigma_w", defaults.SigmaW),
             SubsistenceShare = section.Double("subsistence_share", defaults.SubsistenceShare),
+            BufferMonths = section.Double("buffer_months", defaults.BufferMonths),
             AffordabilityHorizon = section.Choice(
                 "affordability_horizon",
                 defaults.AffordabilityHorizon.ToTomlValue(),
@@ -354,7 +355,8 @@ public static class ConfigurationLoader
         problems
             .Require(p.Decision.Lambda > 0, "decision.lambda", "more than zero", p.Decision.Lambda)
             .Require(p.Decision.SigmaW > 0, "decision.sigma_w", "more than zero", p.Decision.SigmaW)
-            .Require(Share(p.Decision.SubsistenceShare), "decision.subsistence_share", "a share in [0, 1]", p.Decision.SubsistenceShare);
+            .Require(Share(p.Decision.SubsistenceShare), "decision.subsistence_share", "a share in [0, 1]", p.Decision.SubsistenceShare)
+            .Require(p.Decision.BufferMonths >= 0.0 && double.IsFinite(p.Decision.BufferMonths), "decision.buffer_months", "zero or more months (zero switches the buffer rule off)", p.Decision.BufferMonths);
 
         problems
             .Require(p.Credit.LoanRate.PercentPerAnnum >= 0, "credit.loan_rate", "zero or more per cent per annum", p.Credit.LoanRate.PercentPerAnnum)

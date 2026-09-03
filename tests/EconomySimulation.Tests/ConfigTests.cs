@@ -217,6 +217,7 @@ public sealed class ConfigTests
     [InlineData("[decision]\nlambda = 0.0", "decision.lambda")]
     [InlineData("[decision]\nsigma_w = 0.0", "decision.sigma_w")]
     [InlineData("[decision]\nsubsistence_share = 1.2", "decision.subsistence_share")]
+    [InlineData("[decision]\nbuffer_months = -1", "decision.buffer_months")]
     [InlineData("[credit]\nloan_rate = -1.0", "credit.loan_rate")]
     [InlineData("[credit]\ntheta_min = 0.9\ntheta_max = 0.1", "credit.theta_min")]
     [InlineData("[prices]\nk = 0.0", "prices.k")]

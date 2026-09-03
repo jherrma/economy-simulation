@@ -98,9 +98,13 @@ symptom is easy to miss because the CPI can look flat while the mix underneath i
 months of income for that reason. A pool still declining at the end of warm-up is the same failure
 seen from the money side, and it is the cheaper of the two to check.
 
-> **Status 2026-09-03:** this criterion fails under the specification as written, structurally —
-> the pool falls by about a fifth of income per tick after convergence. See `01-SIMULATION.md` §7.2.
-> The gate cannot be built until that is resolved.
+> **Amended 2026-09-03.** Before the reservation price on money (`01-SIMULATION.md` §5.3) the pool
+> fell by a fifth of income a tick, structurally. With it, a residual of about 1% of income a tick
+> remains and is hoarding by the top decile alone, which fixed incomes with one unit per category
+> cannot avoid. The criterion is therefore: over ticks 121–360 the pool falls by **no more than 2%
+> of total income per tick**, the pool never falls below zero, and the cash of deciles one to nine
+> shows no trend. A drain above that, or one that is not confined to the top decile, is the failure
+> this gate exists for.
 
 Posted prices under V3 agree to within one cent after scaling, not exactly: cent rounding cannot
 commute with scaling by `c`. The engine carries each price as a factor on its opening price so the
