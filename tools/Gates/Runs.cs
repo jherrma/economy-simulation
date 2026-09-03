@@ -37,6 +37,17 @@ public static class Runs
     /// </summary>
     public static IReadOnlyList<int> WindowSeeds { get; } = [1, 2, 3, 4, 5, 6, 7, 8];
 
+    /// <summary>
+    /// Every seed of the campaign: `1 … seeds`. V4 runs over all of them, because a baseline that
+    /// sits still on four seeds and drifts on the fifth is a baseline that drifts.
+    /// </summary>
+    public static IReadOnlyList<int> CampaignSeeds(SimulationParameters parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+
+        return [.. Enumerable.Range(1, parameters.Run.Seeds)];
+    }
+
     /// <summary>The parameters of a short run: the given configuration, over <see cref="ShortTicks"/> ticks.</summary>
     public static SimulationParameters Short(SimulationParameters parameters)
     {

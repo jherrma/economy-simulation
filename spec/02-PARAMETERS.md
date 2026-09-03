@@ -13,8 +13,8 @@ configuration is the baseline and a scenario file only ever names what it change
 |---|---|---|
 | `households` | 1000 | Large enough for cohort statistics, small enough to run in a second |
 | `abstainer_share` | 0.20 | The measured cohort. `θ = 0` for these households in every scenario |
-| `ticks` | 360 | One tick = one month; 30 years |
-| `warmup_ticks` | 120 | Written to output but flagged, never silently discarded. Long because the opening tier prices are deliberately not an equilibrium (§3.3) |
+| `ticks` | 600 | One tick = one month; 50 years, of which the last 30 are measured |
+| `warmup_ticks` | 240 | Written to output but flagged, never silently discarded. Long because the opening tier prices are deliberately not an equilibrium (§3.3), and **set on the null run's evidence**, not chosen: relative prices take about eight times as long to converge as the price level (`01-SIMULATION.md` §10.3) |
 | `seeds` | 30 | The same 30 in every scenario, compared **paired** |
 | `scenario` | `"credit_off"` | A label for the output only — no part of the model reads it, and setting it changes no draw. Every CSV row carries it, so the files of hundreds of runs concatenate without ambiguity (`spec/stories/07-01`) |
 
@@ -142,8 +142,14 @@ premium shelf; budget prices rise where budget demand exceeds its 40%. The mix t
 one the price mechanism finds, and *pinning it by choosing the unit shares to match opening demand
 would be assuming the answer*, since the whole question is how credit shifts that mix.
 
-Two consequences: `warmup_ticks` is 120 rather than 60, and the pool carries twelve months of income
-rather than one (§7), because the transient drains it before it converges.
+Two consequences: `warmup_ticks` is 240 rather than 60, and the pool carries twenty-four months of
+income rather than one (§7), because the transient drains it before it converges.
+
+The 240 is measured rather than argued. V4 reports the tick each series settles at, and the answer is
+that the CPI settles in about thirty ticks while **relative** prices take eight times as long: the
+leisure budget shelf opens at €120 and converges to €108.3 with a time constant near seventy ticks.
+At tick 120 it is still 4.5% above where it is going, which showed up over the old measured window as
+a drift of −4.1% at thirteen standard errors across thirty seeds. See `01-SIMULATION.md` §10.3.
 
 ### 3.4 The calibration, in full
 
@@ -264,8 +270,8 @@ trade-down channel.
 | Quantity | Value | Derivation |
 |---|---|---|
 | Opening household cash | 650,000 € | `households × mean_income × opening_cash_share` |
-| Opening pool | 7,800,000 € | **Twelve** months of total income. The warm-up transient (§3.3) drains it while prices find the tier mix; one month would halt the run around tick 11 |
-| **`M0`** | **8,450,000 €** | The sum. Fixed for the run; only lending and repayment change the money stock |
+| Opening pool | 15,600,000 € | **Twenty-four** months of total income. The warm-up transient (§3.3) drains it while prices find the tier mix, and the residual drain of §V4 continues for the whole run; one month would halt the run around tick 11, twelve months around tick 700 |
+| **`M0`** | **16,250,000 €** | The sum. Fixed for the run; only lending and repayment change the money stock |
 
 The pool has no behaviour and its size is not economically meaningful — it is a buffer that makes
 the transient survivable. Its **trajectory** is meaningful, and is a required diagnostic: a pool

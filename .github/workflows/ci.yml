@@ -36,3 +36,8 @@ jobs:
       # seeds — and about forty seconds.
       - name: gate — nominal neutrality (V3)
         run: dotnet run --project tools/Gates -c Release --no-build -- neutrality
+
+      # V4. The full seed set, because a baseline that sits still on four seeds and drifts on the
+      # fifth is a baseline that drifts. About twenty seconds.
+      - name: gate — the null run (V4)
+        run: dotnet run --project tools/Gates -c Release --no-build -- nullrun

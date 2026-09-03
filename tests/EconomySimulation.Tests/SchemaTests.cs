@@ -162,8 +162,8 @@ public sealed class SchemaTests
 
         // And the arithmetic, in case the file and the code agree on a wrong sum.
         Assert.Equal(Money.FromEuros(650_000), Defaults.OpeningHouseholdCash);
-        Assert.Equal(Money.FromEuros(7_800_000), Defaults.OpeningPool);
-        Assert.Equal(Money.FromEuros(8_450_000), Defaults.M0);
+        Assert.Equal(Money.FromEuros(15_600_000), Defaults.OpeningPool);
+        Assert.Equal(Money.FromEuros(16_250_000), Defaults.M0);
         Assert.Equal(Defaults.OpeningHouseholdCash + Defaults.OpeningPool, Defaults.M0);
     }
 

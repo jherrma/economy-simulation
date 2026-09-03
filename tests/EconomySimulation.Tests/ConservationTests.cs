@@ -49,7 +49,7 @@ public sealed class ConservationTests
         var run = simulation.Run();
 
         Assert.True(run.IsSuccess, run.IsFailed ? run.Errors[0].Message : "");
-        Assert.Equal(360, simulation.Tick);
+        Assert.Equal(parameters.Run.Ticks, simulation.Tick);
     }
 
     [Fact]

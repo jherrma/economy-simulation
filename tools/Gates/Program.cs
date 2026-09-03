@@ -30,6 +30,7 @@ internal static class Program
         {
             "determinism" => DeterminismGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "neutrality" => NeutralityGate.Run(SimulationParameters.Default, Runs.WindowSeeds, workspace),
+            "nullrun" => NullRunGate.Run(SimulationParameters.Default, Runs.CampaignSeeds(SimulationParameters.Default), workspace),
             _ => null,
         };
 
@@ -55,6 +56,7 @@ internal static class Program
         Console.Error.WriteLine();
         Console.Error.WriteLine("  determinism   V2 — the same seed produces the same run, twice and across threads");
         Console.Error.WriteLine("  neutrality    V3 — multiply every nominal quantity by c and nothing real moves");
+        Console.Error.WriteLine("  nullrun       V4 — the creditless baseline sits still after the warm-up");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  --keep        leave the runs on disk instead of removing them");
 

@@ -109,7 +109,7 @@ Run V3 with `c = 2` and `c = 0.5`, both scenarios.
 >   one unit a fortnight resolves nothing and the open-wait median resolves a quarter of itself
 >   (§V4). Both are still measured and reported — the gate says which series it tested and which it
 >   could not — but a series is only required to agree when it resolves better than a tenth of a
->   percent. On eight seeds that is 45 of 271 series, and it includes every price index, every
+>   percent. On eight seeds that is 43 of 271 series, and it includes every price index, every
 >   category's sales and the tier mix.
 > - **The bar is the control, not a number chosen for the purpose.** The one-cent run is the
 >   smallest *real* change this economy can express, and it moves the well-measured series by two or
@@ -133,38 +133,76 @@ Run V3 with `c = 2` and `c = 0.5`, both scenarios.
 
 ## V4 — The null run
 
-With `credit_enabled = false`, prices must be **stationary after the warm-up**: the CPI over ticks
-121–360 has no significant trend, and each of the eighteen tier prices is flat to within a tolerance.
+With `credit_enabled = false`, prices must be **stationary after the warm-up**: the CPI over the
+measured window has no significant trend, and no tier price drifts.
 
 **The realised tier mix must also be stationary.** The opening unit shares (40/40/20) are
 deliberately not an equilibrium, and the warm-up exists mainly so relative tier prices can find one.
-A mix still drifting at tick 120 means the measured window is contaminated by the transient, and the
-symptom is easy to miss because the CPI can look flat while the mix underneath it is still moving.
+A mix still drifting at the end of warm-up means the measured window is contaminated by the
+transient, and the symptom is easy to miss because the CPI can look flat while the mix underneath it
+is still moving.
 
-**The pool must have stopped falling.** It drains during the transient by design and carries twelve
-months of income for that reason. A pool still declining at the end of warm-up is the same failure
-seen from the money side, and it is the cheaper of the two to check.
-
-> **Amended 2026-09-03.** Before the reservation price on money (`01-SIMULATION.md` §5.3) the pool
-> fell by a fifth of income a tick, structurally. With it, a residual of about 1% of income a tick
-> remains and is hoarding by the top decile alone, which fixed incomes with one unit per category
-> cannot avoid. The criterion is therefore: over ticks 121–360 the pool falls by **no more than 2%
-> of total income per tick**, the pool never falls below zero, and the cash of deciles one to nine
-> shows no trend. A drain above that, or one that is not confined to the top decile, is the failure
-> this gate exists for.
+**The pool must have stopped falling.** It drains during the transient by design and carries
+twenty-four months of income for that reason. A pool still declining at the end of warm-up is the
+same failure seen from the money side, and it is the cheaper of the two to check.
 
 Supply is fixed, income is fixed, and the money stock is constant, so there is nothing in this model
 that should make the price level move. If it drifts, the price rule is not converging, and any
 credit effect measured later would be that drift plus an unknown amount of signal.
+
+Also check the warm-up actually decayed: the warm-up ticks are written and flagged, not discarded,
+so that the transient can be inspected rather than assumed.
+
+> **Amended 2026-09-03.** Before the reservation price on money (`01-SIMULATION.md` §5.3) the pool
+> fell by a fifth of income a tick, structurally. With it, a residual of about 1% of income a tick
+> remains and is hoarding by the top decile alone, which fixed incomes with one unit per category
+> cannot avoid. The criterion is therefore: over the measured window the pool falls by **no more
+> than 2% of total income per tick**, the pool never falls below zero, and the cash of deciles one
+> to nine shows no trend. A drain above that, or one that is not confined to the top decile, is the
+> failure this gate exists for. Measured on the current defaults, the worst of thirty seeds sits at
+> **1.94%** — inside the bound and not far inside it.
+
+> **Amended 2026-09-03, on evidence: stationarity is measured across seeds, not within a run.**
+>
+> A single seed's price series wanders and does not stop. The repricing rule moves a shelf by up to
+> `k` a tick on its own excess demand, and on a thin shelf — appliances produce ten units a tick,
+> two of them premium — a demand of nought or four against a stock of two is an ordinary tick, so
+> the price takes a five per cent step in an arbitrary direction. Over a measured window that is a
+> random walk with a spread of tens of per cent, and it is **not drift**: it averages to nothing
+> across seeds and it is what §10.2 says the paired comparison has to live with. Secular drift does
+> not average away, because a rule that is not converging pushes every seed the same way. So V4 is
+> run over the **full seed set** and tests the mean.
+>
+> Three rules follow, and they are the same three V3 arrived at independently:
+>
+> - **Each series is held to the looser of a stated floor and what the seed set can resolve** —
+>   three standard errors of its own drift across seeds. The floor is 1% of the level over the
+>   window for a price, 2% for a mix share or for the lower deciles' cash. A bound below the
+>   standard error asks thirty seeds to measure something they cannot.
+> - **The band is checked on the CPI and nowhere else.** A trend test alone passes an oscillation,
+>   which has no trend at all, and an oscillating price rule is what a badly chosen `k` produces.
+>   But a single shelf's band cannot tell oscillation from ordinary wandering: on the defaults a
+>   shelf's band runs to 27% while the CPI's is 2%, and at `k = 0.9` the CPI's is 120%. The bound is
+>   20% on the CPI — an order of magnitude above the one and six times below the other. *(The
+>   obvious alternative, the lag-one autocorrelation of price changes, was tried and rejected on
+>   measurement: at `k = 0.9` the rule saturates its own clamp for runs of ticks, so successive
+>   changes become **more** persistent, not less. It fires on the baseline and not on the failure.)*
+> - **The settling tick is reported, never failed on.** Whether the measured window is inside a
+>   transient is answered by the drift tests, which have the seed set behind them; the settling tick
+>   is the number that says what to raise `warmup_ticks` *to*. It is also the less trustworthy of
+>   the two, because the thinnest shelves have no identified level at all and their settling tick
+>   moves with the length of the run (§10.3).
+>
+> This gate is what set `warmup_ticks = 240`, `ticks = 600` and `opening_pool_months = 24`. At the
+> previous values it failed, on a −4.1% drift in the leisure budget price at thirteen standard
+> errors — see `01-SIMULATION.md` §10.3, which is the whole point of running V4 before anything is
+> compared to the baseline.
 
 **`wait_median` is exempt, and must be.** It mixes a flow of freshly-opened wants against a growing
 stock of wants that are never met, so it drifts and swings several-fold from tick to tick in a
 perfectly stationary economy (`01-SIMULATION.md` §10.1). Requiring it to be flat would fail the gate
 on arithmetic. Its stationary counterpart, `wait_median_met`, is the one a stationarity check may
 use — it is zero throughout the baseline, because a household that gets served is served at once.
-
-Also check the warm-up actually decayed: the first 120 ticks are written and flagged, not discarded,
-so that the transient can be inspected rather than assumed.
 
 ## V5 — Credit-off regression
 

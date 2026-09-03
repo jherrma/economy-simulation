@@ -116,13 +116,13 @@ public sealed class TickTests
     // ---- the empty run ------------------------------------------------------------------------
 
     /// <summary>
-    /// 360 ticks. Not a formality: this is what catches anything that accumulates when it should
+    /// A whole run. Not a formality: this is what catches anything that accumulates when it should
     /// not, and it runs in a second. Written when the ticks were empty; now that they are not,
     /// what must still hold is that the money stock is exactly M0, every price is at or above the
-    /// floor, and no age exceeds the opening age plus 360.
+    /// floor, and no age exceeds the opening age plus the length of the run.
     /// </summary>
     [Fact]
-    public void ThreeHundredAndSixtyTicks_ConserveMoneyAndMoveNothingTheyShouldNot()
+    public void AWholeRun_ConservesMoneyAndMovesNothingItShouldNot()
     {
         var simulation = new Simulation(Defaults, runSeed: 3);
 
@@ -131,7 +131,7 @@ public sealed class TickTests
         var run = simulation.Run();
 
         Assert.True(run.IsSuccess, run.IsFailed ? run.Errors[0].Message : "");
-        Assert.Equal(360, simulation.Tick);
+        Assert.Equal(Defaults.Run.Ticks, simulation.Tick);
 
         Assert.All(Prices(simulation), p => Assert.True(p >= Defaults.Prices.PriceFloor));
         Assert.Equal(simulation.Books.M0, simulation.Books.MoneyHeld);
@@ -142,7 +142,7 @@ public sealed class TickTests
             for (var c = 0; c < simulation.Goods.CategoryCount; c++)
             {
                 var i = population.AgeIndex(h, c);
-                var ceiling = simulation.Goods.IsDurable(c) ? openingAges[i] + 360 : 0;
+                var ceiling = simulation.Goods.IsDurable(c) ? openingAges[i] + Defaults.Run.Ticks : 0;
                 Assert.InRange(population.Age[i], 0, ceiling);
             }
         }

@@ -114,15 +114,16 @@ public sealed record SimulationParameters
         Income.MeanIncome.Scaled(Income.OpeningCashShare) * Run.Households;
 
     /// <summary>
-    /// Twelve months of total income. The pool has no behaviour and its size is not economically
-    /// meaningful; it is a buffer that makes the warm-up transient survivable. One month would
-    /// halt the run around tick 11.
+    /// Twenty-four months of total income. The pool has no behaviour and its size is not
+    /// economically meaningful; it is a buffer that makes the warm-up transient survivable, and
+    /// then the residual drain of §V4 survivable for six hundred ticks. One month would halt the
+    /// run around tick 11, and twelve around tick 700.
     /// </summary>
     public Money OpeningPool =>
         Income.MeanIncome * Run.Households * Money.OpeningPoolMonths;
 
     /// <summary>
-    /// M0 — €8,450,000 at the defaults. Fixed for the run; only lending and repayment change the
+    /// M0 — €16,250,000 at the defaults. Fixed for the run; only lending and repayment change the
     /// money stock, and V1 is the assertion that says so every tick.
     /// </summary>
     public Money M0 => OpeningHouseholdCash + OpeningPool;

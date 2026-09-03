@@ -24,7 +24,7 @@ public sealed class OpeningStateTests
     }
 
     [Fact]
-    public void TheOpeningPoolIsTwelveMonthsOfTotalIncome()
+    public void TheOpeningPoolIsTheConfiguredMonthsOfTotalIncome()
     {
         var totalIncome = Money.Zero;
         for (var h = 0; h < Opening.Population.Count; h++)
@@ -32,15 +32,15 @@ public sealed class OpeningStateTests
             totalIncome += Opening.Population.Income[h];
         }
 
-        Assert.Equal(totalIncome * 12, Opening.Books.Pool);
+        Assert.Equal(totalIncome * Defaults.Money.OpeningPoolMonths, Opening.Books.Pool);
     }
 
     /// <summary>
     /// M0 is computed from the balances that exist, never configured.
     ///
-    /// Against the specification's €8,450,000 it can only agree statistically, and the tolerance
+    /// Against the specification's €16,250,000 it can only agree statistically, and the tolerance
     /// is derived rather than guessed. The specification's figure is `households × mean_income ×
-    /// 13`, computed at the *mean*; a run holds the *draws*. The relative standard error of the
+    /// 25`, computed at the *mean*; a run holds the *draws*. The relative standard error of the
     /// mean of N lognormal incomes is `sqrt(exp(σ²) − 1) / sqrt(N)`, which at σ = 0.35 and
     /// N = 1000 is 1.14 per cent — so a single seed sitting one per cent away from the nominal
     /// figure is the expected behaviour, not a discrepancy.
@@ -52,7 +52,7 @@ public sealed class OpeningStateTests
     public void M0IsComputedAndMatchesTheSpecification()
     {
         Assert.Equal(Opening.Books.MoneyHeld, Opening.Books.M0);
-        Assert.Equal(Money.FromEuros(8_450_000), Defaults.M0);
+        Assert.Equal(Money.FromEuros(16_250_000), Defaults.M0);
 
         const double relativeStandardError = 0.0114;
         var nominal = (double)Defaults.M0.Cents;
@@ -70,7 +70,7 @@ public sealed class OpeningStateTests
         Assert.True(
             Math.Abs(acrossSeeds - nominal) / nominal < 0.005,
             $"Averaged over {Defaults.Run.Seeds} seeds, M0 is {Math.Abs(acrossSeeds - nominal) / nominal:P3} "
-            + "from the specification's 8,450,000.");
+            + "from the specification's 16,250,000.");
     }
 
     [Fact]

@@ -391,7 +391,7 @@ one unit per category capping what it could spend, so unspent income had nowhere
 Three resolutions were put to the author: endogenous income (the pool pays out last tick's
 receipts), a cash-sensitive λ, or a price level that responds to the pool. **Income stays fixed;
 the cash-sensitive λ of §5.3 was adopted**, with φ = 2 chosen on three seeds. Measured afterwards,
-default pool of twelve months (€7.8M):
+default pool of twelve months (€7.8M — the default at the time; it is twenty-four months now, §10.3):
 
 | φ | drain, ticks 200–360 | lowest pool below opening | durable candidates unaffordable, per tick |
 |---|---|---|---|
@@ -422,8 +422,7 @@ The entire difference between the settings therefore sits in the pool's balance 
 stock, one for one with `loans_outstanding`. The one observable effect the switch can have is
 **rationing** — origination failing because the pool cannot cover the principal — and that needs the
 pool to be below a *single* principal at the moment of the loan, because the principal drawn out is
-spent straight back in by the same purchase. A default pool of twelve months of income never comes
-near it. The tests assert the identity (MoneyCreationSwitchTests) and the rationing case with a
+spent straight back in by the same purchase. The default pool never comes near it. The tests assert the identity (MoneyCreationSwitchTests) and the rationing case with a
 €400 pool.
 
 What this means for the question: in v1 the price effect of credit is **entirely** the reach-and-
@@ -533,7 +532,7 @@ abstainer's wait or widens the excluded set.
 ### 10.2 The trajectory is chaotic; the equilibrium is not — found 2026-09-03
 
 Found while building V3 (`spec/stories/08-02`), on `credit_off` and `credit_high`, eight seeds,
-360 ticks.
+360 ticks — before §10.3 lengthened the run.
 
 **One cent decorrelates a run.** Add a single cent to `mean_income` and change nothing else: the run
 is identical for three or four ticks, and then about **48% of every real cell** in a 360-tick run
@@ -548,7 +547,7 @@ same degree: `round(c · x) ≠ c · round(x)` for about half of all `x`, at `c 
 `c = 0.5`, so the two runs' household incomes differ by up to half a cent each and the trajectories
 part company within a few ticks.
 
-**What survives is the measured window.** Over ticks 121–360, averaged across the seed set, the
+**What survives is the measured window.** Over the ticks past the warm-up, averaged across the seed set, the
 series that are measured finely enough to compare — those whose window mean varies by less than a
 tenth of a percent from seed to seed — agree to two or three parts in a thousand, and the scaled
 runs agree with the baseline **at least as closely as the one-cent control does**. The equilibrium
@@ -563,7 +562,7 @@ Four consequences, and they bind on everything downstream:
    incomes, tastes and initial ages in both arms — which is worth having and is why it is done. It
    does not make two trajectories comparable tick by tick. Precision comes from the number of seeds.
 3. **Only about a sixth of the recorded series resolve well enough to support a claim** at the
-   tenth-of-a-percent level on eight seeds: 45 of 271. A shelf that sells one unit a fortnight and
+   tenth-of-a-percent level on eight seeds: 43 of 271. A shelf that sells one unit a fortnight and
    the open-wait median (§10.1) are not among them. They need either the full thirty seeds or no
    claim at all, and the gate reports which is which rather than assuming.
 4. **V5's byte-identity is untouched by any of this**, and that is the point of it. It compares two
@@ -574,6 +573,54 @@ Four consequences, and they bind on everything downstream:
 Re-check by running `dotnet run --project tools/Gates -- neutrality`: it reports the tick at which
 each arm first diverges, the share of cells that differ, and how each arm compares against the
 one-cent control.
+
+### 10.3 Relative prices converge eight times slower than the level — found 2026-09-03
+
+Found by V4 (`spec/stories/08-03`), `credit_off`, thirty seeds, on runs of 360 and 720 ticks.
+
+The CPI settles in about **thirty** ticks. Individual tier prices take **two hundred and forty or
+more**, and the two facts sit on top of each other so neatly that the second was invisible until the
+gate looked for it. Leisure's budget shelf, mean over thirty seeds:
+
+| tick | 1 | 60 | 120 | 180 | 240 | 300 | 360 | 720 |
+|---|---|---|---|---|---|---|---|---|
+| price | 120.00 | 117.15 | 113.31 | 110.55 | 109.04 | 108.36 | 108.37 | 108.30 |
+
+An exponential approach to €108.30 with a time constant near seventy ticks. At tick 120 — the end of
+the warm-up as it then was — it is still **4.5% above where it is going**. Food's budget shelf does
+the same thing upwards, 180.00 → 212.99 at tick 120 → 219.5 at rest.
+
+Over the old measured window of ticks 121–360 that showed as a secular drift in the leisure budget
+price of **−4.09%, with a spread of 1.72% across thirty seeds** — thirteen standard errors, and not
+something that averages away. A credit effect measured against that baseline would have been drift
+plus signal, which is precisely what V4 exists to prevent.
+
+**Why it hid.** The CPI is a unit-weighted index and the moves offset inside it: food and the
+durables rise while leisure falls, so the level is flat by tick 30 while the relative prices
+underneath it are still finding each other for another two hundred ticks. V4 anticipated exactly
+this shape of failure and named the tier *mix* as the place to look for it; here it was in the
+prices, and the mix was the quieter of the two.
+
+**Parameters changed on this evidence**, not on judgement:
+
+| | was | is | because |
+|---|---|---|---|
+| `warmup_ticks` | 120 | 240 | the transient is over by then and not before |
+| `ticks` | 360 | 600 | so the measured window is still thirty years |
+| `opening_pool_months` | 12 | 24 | the residual drain of about 1.9% of a tick's income per tick empties a twelve-month pool around tick 700; the worst of thirty seeds halted at 697 |
+
+**A second finding, and it limits what may be claimed.** The thinnest shelves have no identified
+price level at all. Appliances produce ten units a tick, two of them premium, so a demand of nought
+or four against a stock of two is an ordinary tick and the price takes a five per cent step in an
+arbitrary direction. Its thirty-tick smoothed price still wanders several per cent after six hundred
+ticks, and the tick at which it "settles" moves with the length of the run rather than with the
+economy — 350 in a 360-tick run, 637 in a 720-tick one. That is a statement about the measurement,
+not about the model. **No claim may be made about a single thin shelf's price level**; what those
+shelves support is a distribution across seeds, and the gate holds each series only to what its own
+spread across seeds can resolve.
+
+Re-check with `dotnet run --project tools/Gates -- nullrun`, which reports every drift, every
+settling tick, and the seed spread behind both.
 
 ## 11. What this model cannot show
 

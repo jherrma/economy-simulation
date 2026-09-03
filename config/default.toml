@@ -5,8 +5,8 @@
 [run]
 households = 1000
 abstainer_share = 0.2
-ticks = 360
-warmup_ticks = 120
+ticks = 600
+warmup_ticks = 240
 seeds = 30
 scenario = "credit_off"
 
@@ -104,4 +104,4 @@ price_floor = 1.00
 rationing = "random"
 
 [money]
-opening_pool_months = 12
+opening_pool_months = 24

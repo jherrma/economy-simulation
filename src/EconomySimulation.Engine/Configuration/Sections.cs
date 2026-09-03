@@ -9,14 +9,21 @@ public sealed record RunParameters
     /// <summary>The measured cohort. θ = 0 for these households in every scenario.</summary>
     public double AbstainerShare { get; init; } = 0.20;
 
-    /// <summary>One tick is one month; thirty years.</summary>
-    public int Ticks { get; init; } = 360;
+    /// <summary>One tick is one month; fifty years, of which the last thirty are measured.</summary>
+    public int Ticks { get; init; } = 600;
 
     /// <summary>
     /// Written to output but flagged, never silently discarded. Long, because the opening tier
     /// prices are deliberately not an equilibrium.
+    ///
+    /// Two hundred and forty rather than a hundred and twenty **on the null run's evidence**
+    /// (`01-SIMULATION.md` §10.3). The price *level* settles in about thirty ticks; **relative**
+    /// prices take eight times as long. Leisure's budget shelf opens at €120 and converges to
+    /// €108.3 with a time constant near seventy ticks, so at tick 120 it is still four and a half
+    /// per cent above where it is going — a drift that sat inside the old measured window at
+    /// thirteen standard errors and would have been read as a result.
     /// </summary>
-    public int WarmupTicks { get; init; } = 120;
+    public int WarmupTicks { get; init; } = 240;
 
     /// <summary>The same thirty in every scenario, compared paired.</summary>
     public int Seeds { get; init; } = 30;
@@ -195,10 +202,17 @@ public sealed record PriceParameters
 public sealed record MoneyParameters
 {
     /// <summary>
-    /// Twelve months of total income in the pool. The warm-up transient drains it while prices
+    /// Twenty-four months of total income in the pool. The warm-up transient drains it while prices
     /// find the tier mix; one month would halt the run around tick 11.
+    ///
+    /// Twenty-four rather than twelve because the run is now six hundred ticks and the drain does
+    /// not stop: a residual of about 1.9% of one tick's income per tick continues for the whole run
+    /// and is hoarding by the top decile alone (`03-VERIFICATION.md` §V4). Twelve months buys about
+    /// seven hundred ticks; the worst of thirty seeds halted at tick 697. The pool has no behaviour,
+    /// so enlarging the buffer changes nothing in the economy — only whether the run reaches its
+    /// end.
     /// </summary>
-    public int OpeningPoolMonths { get; init; } = 12;
+    public int OpeningPoolMonths { get; init; } = 24;
 }
 
 /// <summary>Whether a financed instalment has to fit this tick or the whole term.</summary>
