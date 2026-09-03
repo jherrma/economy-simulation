@@ -51,7 +51,10 @@ category, and the tier is its choice.
 | Appliances | 96 | 10 | 800 € | 0.016 | 0.45 | **yes** | 24 |
 
 `capacity` is `round(households / life)` — **the steady-state replacement demand in units**, the
-only non-arbitrary way to size it. `price_ref` is the standard tier's opening price; the other two
+only non-arbitrary way to size it. It is therefore **derived, not chosen**: a configuration that
+omits it gets it computed, and a configuration that states it must state the value the identity
+gives, or the run is rejected. This is what lets `households` be changed in a scenario without
+six other numbers having to be recomputed by hand. `price_ref` is the standard tier's opening price; the other two
 are derived from it.
 
 `necessity_g` splits `v_g` into a part that does not scale with income and a part that does:

@@ -24,6 +24,30 @@ public readonly record struct Money(long Cents) : IComparable<Money>
     /// <summary>Whole euros. The only convenient constructor, and it takes an integer.</summary>
     public static Money FromEuros(long euros) => new(checked(euros * 100L));
 
+    /// <summary>
+    /// Euros from a configuration file, exactly.
+    ///
+    /// This is a boundary conversion, not an arithmetic one: <see cref="decimal"/> represents the
+    /// two-decimal amounts a person writes in a TOML file without error, so nothing is rounded
+    /// away that was ever there. It is deliberately not a conversion operator, and there is still
+    /// no way in from <see cref="double"/> — a computed fraction has to go through
+    /// <see cref="Scaled"/>, where the rounding is visible.
+    /// </summary>
+    public static Money FromEuros(decimal euros)
+    {
+        var cents = euros * 100m;
+
+        if (cents != decimal.Truncate(cents))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(euros),
+                euros,
+                "An amount of money has at most two decimal places; there is no fraction of a cent.");
+        }
+
+        return new Money(checked((long)cents));
+    }
+
     public bool IsZero => Cents == 0;
 
     public bool IsNegative => Cents < 0;

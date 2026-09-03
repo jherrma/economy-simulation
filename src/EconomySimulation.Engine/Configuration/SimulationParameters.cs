@@ -37,6 +37,48 @@ public sealed record SimulationParameters
     /// <summary>The specification's defaults, in full.</summary>
     public static SimulationParameters Default { get; } = new();
 
+    /// <summary>
+    /// Two configurations are equal when they name the same parameters, not when they happen to
+    /// share a list object. A record's generated equality compares <see cref="IReadOnlyList{T}"/>
+    /// by reference, which would make a loaded configuration unequal to the defaults it was
+    /// loaded from — and every test that compares two configurations would then pass or fail for
+    /// reasons that have nothing to do with the parameters.
+    /// </summary>
+    public bool Equals(SimulationParameters? other) =>
+        other is not null
+        && Run == other.Run
+        && Income == other.Income
+        && Categories.SequenceEqual(other.Categories)
+        && Tiers.SequenceEqual(other.Tiers)
+        && Decision == other.Decision
+        && Credit == other.Credit
+        && Prices == other.Prices
+        && Money == other.Money;
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+
+        hash.Add(Run);
+        hash.Add(Income);
+        foreach (var category in Categories)
+        {
+            hash.Add(category);
+        }
+
+        foreach (var tier in Tiers)
+        {
+            hash.Add(tier);
+        }
+
+        hash.Add(Decision);
+        hash.Add(Credit);
+        hash.Add(Prices);
+        hash.Add(Money);
+
+        return hash.ToHashCode();
+    }
+
     // ---- derived money quantities (§7) ---------------------------------------------------
 
     /// <summary>`households × mean_income × opening_cash_share` — €650,000 at the defaults.</summary>

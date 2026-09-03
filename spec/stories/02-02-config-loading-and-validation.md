@@ -14,7 +14,17 @@ As a maintainer, I want a configuration file loaded into the schema with every p
 - [ ] **All** validation failures are collected and reported together, each naming the key, what was wrong and what was expected.
 - [ ] An **absent** key is filled from its default and the run proceeds. An **unknown** key is an error — a misspelled key that is silently ignored produces a run at defaults that looks exactly like the run that was asked for.
 - [ ] Range checks: shares in `[0,1]`, counts positive, `life ≥ 1`, `term ≥ 1`, `σ > 0`.
-- [ ] Cross-parameter checks a single-key check cannot catch: tier unit shares summing to 1; **`value_mult` strictly below `price_mult` for every tier above budget**, since quality must have diminishing returns; `warmup_ticks < ticks`.
+- [ ] Cross-parameter checks a single-key check cannot catch: tier unit shares summing to 1;
+      **the incremental value-for-money ratio strictly decreasing up the ladder**, since quality
+      must have diminishing returns; `warmup_ticks < ticks`.
+
+      *Corrected during implementation.* This criterion first read "`value_mult` strictly below
+      `price_mult` for every tier above budget", which the specification's own defaults fail:
+      standard is the reference tier, where both multipliers are 1.00 by construction. The
+      property actually being protected is the one `02-PARAMETERS.md` §3.2 states —
+      `value_mult` rises more slowly than `price_mult` — and its testable form is that
+      `Δvalue / Δprice` falls at every step: 1.133, then 0.800, then 0.500. That is stronger
+      than the original wording, and it is the thing the inverted-ladder failure would break.
 - [ ] The **effective configuration**, after defaults are applied, is written beside the run output.
 
 ## Where to start
