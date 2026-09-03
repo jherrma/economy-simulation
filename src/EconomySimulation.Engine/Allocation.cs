@@ -25,6 +25,35 @@ internal static class Allocation
             throw new ArgumentException("An allocation needs at least one weight.", nameof(weights));
         }
 
+        var parts = new long[weights.Length];
+        var fractions = new double[weights.Length];
+
+        LargestRemainderInto(total, weights, parts, fractions);
+
+        return parts;
+    }
+
+    /// <summary>
+    /// <see cref="LargestRemainder"/> into buffers the caller owns, so that the interest dividend
+    /// — split across a thousand households every tick — allocates nothing. <paramref name="fractions"/>
+    /// is scratch space; its contents on return mean nothing.
+    /// </summary>
+    internal static void LargestRemainderInto(
+        long total,
+        ReadOnlySpan<double> weights,
+        Span<long> parts,
+        Span<double> fractions)
+    {
+        if (weights.Length == 0)
+        {
+            throw new ArgumentException("An allocation needs at least one weight.", nameof(weights));
+        }
+
+        if (parts.Length != weights.Length || fractions.Length != weights.Length)
+        {
+            throw new ArgumentException("One part and one scratch fraction per weight.", nameof(parts));
+        }
+
         var weightTotal = 0.0;
         foreach (var weight in weights)
         {
@@ -45,8 +74,6 @@ internal static class Allocation
                 nameof(weights));
         }
 
-        var parts = new long[weights.Length];
-        var fractions = new double[weights.Length];
         var assigned = 0L;
 
         for (var i = 0; i < weights.Length; i++)
@@ -80,7 +107,5 @@ internal static class Allocation
             parts[best] += step;
             fractions[best] = double.NegativeInfinity;
         }
-
-        return parts;
     }
 }

@@ -1,4 +1,5 @@
 using EconomySimulation.Engine.Configuration;
+using EconomySimulation.Engine.Credit;
 using EconomySimulation.Engine.Decision;
 using EconomySimulation.Engine.Ledger;
 using EconomySimulation.Engine.World;
@@ -44,6 +45,7 @@ public sealed class Simulation
         Books = Ledger.Ledger.Open(
             Population.OpeningCash(parameters.Income.OpeningCashShare),
             OpeningPool(parameters, Population));
+        Loans = new LoanBook(Population.Count, LoanCapacity(Goods, Population.Count));
         Shopping = new Walker(parameters, Goods, Market, Population, Books, runSeed);
     }
 
@@ -60,6 +62,9 @@ public sealed class Simulation
     public Ledger.Ledger Books { get; }
 
     public Walker Shopping { get; }
+
+    /// <summary>Every live loan. Empty for the whole run with credit off.</summary>
+    public LoanBook Loans { get; }
 
     /// <summary>The last completed tick. −1 before the run starts.</summary>
     public int Tick { get; private set; } = -1;
@@ -238,6 +243,25 @@ public sealed class Simulation
     {
         _ = tick;
         return Results.Ok;
+    }
+
+    /// <summary>
+    /// One slot per tier per financeable category per household: the most a household can hold
+    /// while no loan's term exceeds its good's life, so the book never grows in a default run.
+    /// </summary>
+    private static int LoanCapacity(GoodsTable goods, int households)
+    {
+        var financeable = 0;
+
+        for (var c = 0; c < goods.CategoryCount; c++)
+        {
+            if (goods.IsFinanceable(c))
+            {
+                financeable++;
+            }
+        }
+
+        return Math.Max(1, households * financeable * goods.TierCount);
     }
 
     private static Money OpeningPool(SimulationParameters parameters, Households population)

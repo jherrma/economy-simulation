@@ -10,13 +10,13 @@ As the model author, I want a loan to be a principal, a term and a fixed instalm
 
 ## Acceptance criteria
 
-- [ ] Simple interest: `interest_total = principal · loan_rate/100 · term/12`; `instalment = (principal + interest_total) / term`.
-- [ ] The split per instalment is `principal/term` and `interest_total/term`, and the two sum to the instalment **to the cent** using 01-02's remainder-distributing split.
-- [ ] A loan is a flat record in an array — principal, remaining term, instalment, principal part, interest part. Households do not own object graphs.
-- [ ] `debt_service_h` is the **sum of instalments on live loans, computed** each tick, never stored.
-- [ ] A loan with zero remaining term is retired and stops being counted.
-- [ ] A test amortises a €900 loan over 24 months at 8% and asserts the principal parts sum exactly to €900 and the interest parts to €144.
-- [ ] Accrual and payment are not both treated as interest — there is one interest figure per instalment and it is the one above.
+- [x] Simple interest: `interest_total = principal · loan_rate/100 · term/12`; `instalment = (principal + interest_total) / term`.
+- [x] The split per instalment is `principal/term` and `interest_total/term`, and the two sum to the instalment **to the cent** using 01-02's remainder-distributing split.
+- [x] A loan is a flat record in an array — principal, remaining term, instalment, principal part, interest part. Households do not own object graphs.
+- [x] `debt_service_h` is the **sum of instalments on live loans, computed** each tick, never stored.
+- [x] A loan with zero remaining term is retired and stops being counted.
+- [x] A test amortises a €900 loan over 24 months at 8% and asserts the principal parts sum exactly to €900 and the interest parts to €144.
+- [x] Accrual and payment are not both treated as interest — there is one interest figure per instalment and it is the one above.
 
 ## Where to start
 
@@ -39,3 +39,12 @@ dotnet test --filter FullyQualifiedName~LoanScheduleTests
 ```
 
 The €900 amortisation summing exactly, and a retired loan disappearing from `debt_service`.
+
+## Implementation note (2026-09-03)
+
+The record stores principal, total interest, term and instalments paid; the principal part and
+interest part are *computed* as the k-th part of the remainder-distributing split rather than
+stored. A single stored part paid `term` times cannot sum to the principal when `principal / term`
+is not whole cents, and the story's exact-sum criterion outranks its "flat record holds the parts"
+wording. Consequence: instalments on one loan differ by up to two cents across the term, the first
+ones carrying the odd cents. `debt_service_h` counts each live loan at its *next* instalment.

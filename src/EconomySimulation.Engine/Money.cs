@@ -117,6 +117,24 @@ public readonly record struct Money(long Cents) : IComparable<Money>
     }
 
     /// <summary>
+    /// Part <paramref name="index"/> of <see cref="Split"/>, without building the array: the same
+    /// share, the same cent-at-a-time remainder to the earliest parts. A loan's k-th instalment is
+    /// this, and the walk asks for it inside a loop that must not allocate. A test holds the two
+    /// to the same answer.
+    /// </summary>
+    public Money Share(int parts, int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(parts, 1);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, parts);
+
+        var share = Math.DivRem(Cents, parts, out var remainder);
+        var step = Cents < 0 ? -1L : 1L;
+
+        return new Money(index < Math.Abs(remainder) ? share + step : share);
+    }
+
+    /// <summary>
     /// Divides this amount in the given proportions so that the parts sum exactly to it.
     ///
     /// Each part is floored, and the cents left over go to the parts with the largest discarded
