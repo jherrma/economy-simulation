@@ -8,6 +8,7 @@ abstainer_share = 0.2
 ticks = 360
 warmup_ticks = 120
 seeds = 30
+scenario = "credit_off"
 
 [income]
 mean_income = 650.00

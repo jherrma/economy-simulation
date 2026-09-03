@@ -2,6 +2,7 @@ using EconomySimulation.Engine.Configuration;
 using EconomySimulation.Engine.Credit;
 using EconomySimulation.Engine.Decision;
 using EconomySimulation.Engine.Ledger;
+using EconomySimulation.Engine.Output;
 using EconomySimulation.Engine.World;
 using FluentResults;
 
@@ -47,6 +48,7 @@ public sealed class Simulation
             OpeningPool(parameters, Population));
         Loans = new LoanBook(Population, LoanCapacity(Goods, Population.Count));
         Shopping = new Walker(parameters, Goods, Market, Population, Books, Loans, runSeed);
+        Recorded = new TickRecord(Goods);
     }
 
     public SimulationParameters Parameters { get; }
@@ -65,6 +67,13 @@ public sealed class Simulation
 
     /// <summary>Every live loan. Empty for the whole run with credit off.</summary>
     public LoanBook Loans { get; }
+
+    /// <summary>
+    /// What the last tick recorded. Filled at the two moments the answers are still true — the
+    /// prices before step 6 moves them, the aggregates after step 7 has passed — and read only by
+    /// the writer. Nothing in the model reads it.
+    /// </summary>
+    public TickRecord Recorded { get; }
 
     /// <summary>The last completed tick. −1 before the run starts.</summary>
     public int Tick { get; private set; } = -1;
@@ -137,6 +146,7 @@ public sealed class Simulation
     {
         Market.Restock();
         Books.OpenTick();
+        Recorded.Open(tick, Market, Parameters.Run.WarmupTicks);
 
         // Indexed, not foreach: enumerating through the interface boxes an enumerator, and the
         // tick allocates nothing.
@@ -153,7 +163,9 @@ public sealed class Simulation
             }
         }
 
+        Recorded.Close(Books, Loans, Shopping.Rationed);
         Tick = tick;
+
         return Results.Ok;
     }
 

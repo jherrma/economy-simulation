@@ -16,6 +16,7 @@ configuration is the baseline and a scenario file only ever names what it change
 | `ticks` | 360 | One tick = one month; 30 years |
 | `warmup_ticks` | 120 | Written to output but flagged, never silently discarded. Long because the opening tier prices are deliberately not an equilibrium (§3.3) |
 | `seeds` | 30 | The same 30 in every scenario, compared **paired** |
+| `scenario` | `"credit_off"` | A label for the output only — no part of the model reads it, and setting it changes no draw. Every CSV row carries it, so the files of hundreds of runs concatenate without ambiguity (`spec/stories/07-01`) |
 
 ## 2. Income
 

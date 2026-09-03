@@ -20,6 +20,16 @@ public sealed record RunParameters
 
     /// <summary>The same thirty in every scenario, compared paired.</summary>
     public int Seeds { get; init; } = 30;
+
+    /// <summary>
+    /// What to call this run in the output. A label and nothing else: no part of the model reads
+    /// it, and setting it does not change a single draw.
+    ///
+    /// It exists because E9 concatenates the files of hundreds of runs, and a row that cannot say
+    /// which scenario it came from is a row that will be averaged into the wrong one. The default
+    /// is the baseline's name, because the default configuration *is* the baseline.
+    /// </summary>
+    public string Scenario { get; init; } = "credit_off";
 }
 
 /// <summary>§2.</summary>

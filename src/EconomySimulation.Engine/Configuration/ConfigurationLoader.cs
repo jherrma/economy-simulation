@@ -138,6 +138,7 @@ public static class ConfigurationLoader
             Ticks = section.Int("ticks", defaults.Ticks),
             WarmupTicks = section.Int("warmup_ticks", defaults.WarmupTicks),
             Seeds = section.Int("seeds", defaults.Seeds),
+            Scenario = section.Text("scenario", defaults.Scenario),
         };
 
         section.RejectUnknownKeys();
@@ -355,6 +356,11 @@ public static class ConfigurationLoader
         problems
             .Require(p.Decision.Lambda > 0, "decision.lambda", "more than zero", p.Decision.Lambda)
             .Require(p.Decision.SigmaW > 0, "decision.sigma_w", "more than zero", p.Decision.SigmaW)
+            .Require(
+                p.Run.Scenario.Length > 0 && p.Run.Scenario.AsSpan().IndexOfAny(",\"\r\n") < 0,
+                "run.scenario",
+                "a non-empty label with no comma, quote or line break — it is written into every CSV row",
+                p.Run.Scenario)
             .Require(Share(p.Decision.SubsistenceShare), "decision.subsistence_share", "a share in [0, 1]", p.Decision.SubsistenceShare)
             .Require(p.Decision.BufferMonths >= 0.0 && double.IsFinite(p.Decision.BufferMonths), "decision.buffer_months", "zero or more months (zero switches the buffer rule off)", p.Decision.BufferMonths);
 

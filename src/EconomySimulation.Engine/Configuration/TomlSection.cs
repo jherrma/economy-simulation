@@ -56,6 +56,14 @@ internal sealed class TomlSection
             _ => Reject<Money>(key, "an amount in euros", raw),
         });
 
+    /// <summary>A free string, for a label rather than a choice out of a known set.</summary>
+    internal string Text(string key, string fallback) =>
+        Read(key, fallback, raw => raw switch
+        {
+            string s => s,
+            _ => Reject<string>(key, "a string", raw),
+        });
+
     internal string Choice(string key, string fallback, IReadOnlyList<string> allowed) =>
         Read(key, fallback, raw => raw switch
         {
