@@ -56,6 +56,17 @@ public sealed class Market
     public int Unaffordable(int category, int tier) => unaffordable[goods.Index(category, tier)];
 
     /// <summary>
+    /// Posts a new price on one shelf. Repricing (05-02) is the only caller in a run; tests use it
+    /// to put the shelves into states a run reaches only after many ticks.
+    /// </summary>
+    internal void SetPrice(int category, int tier, Money price)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(price.Cents, 0);
+
+        prices[goods.Index(category, tier)] = price;
+    }
+
+    /// <summary>
     /// Sets every shelf back to `units(g,t)` and clears the tick's demand counters.
     ///
     /// This is what "fixed supply per tick" means. Unsold premium units do not pile up into a

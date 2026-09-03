@@ -13,9 +13,9 @@ As the model author, I want each wanted category to offer up to three incrementa
 - [ ] Three candidates per wanted category, per `01-SIMULATION.md` §5.1: buy budget (`Δvalue = V·0.68`, `Δcost = P·0.60/life`), budget → standard (`V·0.32`, `P·0.40/life`), standard → premium (`V·0.40`, `P·0.80/life`).
 - [ ] `score = Δvalue / Δcost`, dimensionless. A candidate is taken when `score ≥ λ`.
 - [ ] An upgrade candidate is **unavailable unless the step below it was taken**.
-- [ ] **Upgrade scores are monotone decreasing** within a category — budget > budget→standard > standard→premium — for every household and every price vector. A property test asserts it over randomised prices and incomes.
+- [ ] **Upgrade scores are monotone decreasing** within a category — budget > budget→standard > standard→premium — for every household and every reference price, while tier prices stand in their opening ratios. A property test asserts it over randomised prices and incomes. (Once tiers have repriced independently the ordering can invert — budget above 0.68 of standard does it — so the walk must not assume a sorted ladder; a test documents the inversion.)
 - [ ] The uniform multipliers on the base score are **1.133 / 0.800 / 0.500** at default tier parameters, and a test derives them from the multipliers rather than hard-coding them.
-- [ ] **Increments sum exactly to the tier price**: `0.60·P + 0.40·P = 1.00·P`, and `+ 0.80·P = 1.80·P`. A test asserts this to the cent using 01-02's remainder-distributing split.
+- [ ] **Increments sum exactly to the tier price**: `0.60·P + 0.40·P = 1.00·P`, and `+ 0.80·P = 1.80·P`. A test asserts this to the cent. (Implementation note: increments are differences of the posted tier prices, `price_t − price_(t−1)`, so they telescope to the tier price by construction and no split is needed; at opening prices they equal the multiples above.)
 - [ ] A test reproduces the median household's tier choices from `02-PARAMETERS.md` §3.4 exactly.
 - [ ] No allocation: candidates are a fixed-size stack buffer, at most eighteen per household per tick.
 

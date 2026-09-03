@@ -172,17 +172,25 @@ Read at the median (€650, `w = 1`), by candidate:
 
 | Category | base score | budget | → standard | → premium | chosen |
 |---|---|---|---|---|---|
-| Food | 1.343 | 1.522 | **1.074** | 0.672 | standard |
+| Food | 1.343 | 1.522 | **1.075** | 0.672 | standard |
 | Leisure | 1.300 | 1.473 | **1.040** | 0.650 | standard |
 | Consumer electronics | 1.248 | **1.414** | 0.998 | 0.624 | budget |
 | Appliances | 1.248 | **1.414** | 0.998 | 0.624 | budget |
-| Hobby items | 1.144 | **1.296** | 0.915 | 0.572 | budget |
-| Clothing | 1.073 | **1.216** | 0.858 | 0.537 | budget |
+| Hobby items | 1.144 | **1.297** | 0.915 | 0.572 | budget |
+| Clothing | 1.073 | **1.216** | 0.858 | 0.536 | budget |
 
 Three design requirements are encoded here, and a parameter change that breaks any of them
 invalidates the run:
 
-1. **Essentials outrank durables** at every income. Nobody buys a phone before food.
+1. **Essentials outrank durables where the budget binds.** At the median and below, food's base
+   score is above every durable's. It is *not* true at every income: because food's value is
+   mostly floor (`necessity = 0.70`) it grows slowly with income, while a durable's grows fast,
+   so the base scores cross — electronics overtakes food at about €770, appliances and hobby
+   items at about €870, clothing near €1,970. Roughly a quarter of households sit above the first
+   crossing. For them the walk can take a durable increment before food, and if cash then falls
+   short of food's budget increment the household skips a month of food; food's `unaffordable`
+   counter is where that would show. (Corrected 2026-09-03 while implementing 04-03: the original
+   text claimed the ordering at every income, and CandidateTests showed it fails from €766 upward.)
 2. **The median sits mid-ladder**, with upgrades to standard hovering around 1.00 for the durables.
    That is where the model is most responsive: a small price move flips a tier choice, which is
    exactly the margin credit is expected to act on.
