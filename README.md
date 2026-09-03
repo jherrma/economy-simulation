@@ -11,9 +11,10 @@ assumed.
 
 ## Status
 
-**Implementation started.** E1 — Foundations — is complete: the value types, the failure handling
-and the RNG streams, with 84 tests. Nothing simulates anything yet; the next epic is configuration
-and the world.
+**Implementation started.** E1 — Foundations — and E2 — Configuration and the world — are complete:
+the value types, the failure handling, the RNG streams, the parameter schema, the loader, the goods
+table and the population, with 175 tests. Nothing simulates anything yet; the next epic is the
+ledger and the opening state, where V1 goes green and stays green.
 
 Build and check:
 

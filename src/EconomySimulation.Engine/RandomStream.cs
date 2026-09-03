@@ -114,6 +114,38 @@ public sealed class RandomStream
     }
 
     /// <summary>
+    /// A draw from the standard normal, by Box-Muller.
+    ///
+    /// Box-Muller produces two independent variates at a time and this returns one, discarding
+    /// the other. Caching the spare would save a transform and make the stream's output depend on
+    /// how many normals had been asked for earlier — still deterministic, but deterministic in a
+    /// way that couples one caller to another. Nothing in this model is short of random numbers.
+    /// </summary>
+    public double NextStandardNormal()
+    {
+        // NextDouble is in [0, 1); log(0) is not a number this model can use.
+        double uniform;
+        do
+        {
+            uniform = NextDouble();
+        }
+        while (uniform <= 0.0);
+
+        return Math.Sqrt(-2.0 * Math.Log(uniform)) * Math.Cos(2.0 * Math.PI * NextDouble());
+    }
+
+    /// <summary>
+    /// A draw from the lognormal with the given mean and log-spread.
+    ///
+    /// The `− σ²/2` is the whole point: without it the mean of the draws is `mean · exp(σ²/2)`,
+    /// which at σ = 0.35 is 6.3 per cent too high. That is not a rounding error — it is the town
+    /// earning six per cent more than the goods table was calibrated to supply, and the symptom
+    /// is a pool that drains and a model that looks like it has an inflation problem.
+    /// </summary>
+    public double NextLogNormal(double mean, double sigma) =>
+        mean * Math.Exp((sigma * NextStandardNormal()) - (sigma * sigma / 2.0));
+
+    /// <summary>
     /// Fisher-Yates, in place. Used for the one thing in this model that is legitimately
     /// order-dependent: who shops first, and therefore who gets the last unit.
     /// </summary>

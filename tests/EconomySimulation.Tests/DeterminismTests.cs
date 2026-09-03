@@ -71,6 +71,27 @@ public sealed class DeterminismTests
     }
 
     /// <summary>
+    /// The derived draws are pinned along with the raw ones. A different Box-Muller branch, or a
+    /// cached spare variate, would leave every other test in this file green and every result in
+    /// the project different.
+    /// </summary>
+    [Fact]
+    public void TheNormalDrawsArePinnedToo()
+    {
+        var normal = RandomStream.ForHousehold(Seed, 7, Purpose.Income);
+
+        Assert.Equal(
+            [0.33879146955393624, 0.04495530533860843, 0.5760647983778809],
+            Enumerable.Range(0, 3).Select(_ => normal.NextStandardNormal()));
+
+        var lognormal = RandomStream.ForHousehold(Seed, 7, Purpose.Income);
+
+        Assert.Equal(
+            [688.3513407175398, 621.0780259905545],
+            Enumerable.Range(0, 2).Select(_ => lognormal.NextLogNormal(650.0, 0.35)));
+    }
+
+    /// <summary>
     /// The purpose hash is written out rather than taken from string.GetHashCode, which is
     /// randomised per process. Had it not been, every run of this model would be irreproducible
     /// across processes and nothing in the program would have said so.
