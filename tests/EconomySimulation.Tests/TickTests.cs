@@ -126,15 +126,14 @@ public sealed class TickTests
     /// <summary>
     /// 360 ticks. Not a formality: this is what catches anything that accumulates when it should
     /// not, and it runs in a second. Written when the ticks were empty; now that they are not,
-    /// what must still hold is that the money stock is exactly M0, prices have not moved (no
-    /// repricing yet), and no age exceeds the opening age plus 360.
+    /// what must still hold is that the money stock is exactly M0, every price is at or above the
+    /// floor, and no age exceeds the opening age plus 360.
     /// </summary>
     [Fact]
     public void ThreeHundredAndSixtyTicks_ConserveMoneyAndMoveNothingTheyShouldNot()
     {
         var simulation = new Simulation(LongRun, runSeed: 3);
 
-        var openingPrices = Prices(simulation);
         var openingAges = simulation.Population.Age.ToArray();
 
         var run = simulation.Run();
@@ -142,7 +141,7 @@ public sealed class TickTests
         Assert.True(run.IsSuccess, run.IsFailed ? run.Errors[0].Message : "");
         Assert.Equal(360, simulation.Tick);
 
-        Assert.Equal(openingPrices, Prices(simulation));
+        Assert.All(Prices(simulation), p => Assert.True(p >= LongRun.Prices.PriceFloor));
         Assert.Equal(simulation.Books.M0, simulation.Books.MoneyHeld);
 
         var population = simulation.Population;

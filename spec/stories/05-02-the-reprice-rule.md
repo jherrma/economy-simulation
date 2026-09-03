@@ -18,6 +18,17 @@ As the model author, I want each tier repriced on its own excess demand, so that
 - [ ] A test starts premium in heavy surplus, as at `t = 0`, and asserts its price falls until households take the upgrade and the shelf clears.
 - [ ] The realised tier mix is **recorded, never configured**.
 
+## Notes from implementation (2026-09-03)
+
+- Prices are carried as a dimensionless factor on the opening price and rounded to the cent from
+  there each tick, so rounding does not compound and V3 holds to within a cent per price.
+- The persistent-shortage test asserts a monotone 1% rise with no oscillation; "converges" is
+  shown by the premium-surplus test, where demand responds. Premium food clears by tick 40 and
+  has settled by tick 100 (seed 1).
+- **The default pool does not survive the warm-up, and not because of the transient.** See
+  `01-SIMULATION.md` §7.2. Two tests pin the failure. The premium-clearing test therefore runs on
+  a 400-month pool.
+
 ## Where to start
 
 The symmetry of the rule is what makes it converge. A fixed "sold out, raise by 2%" step with no

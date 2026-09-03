@@ -335,6 +335,44 @@ matched by a claim released. The same assertion is what catches a loan funded th
 origination modelled as a transfer from the pool builds the `money_creation = false` variant and
 calls it the default, and the money stock alone would never notice.
 
+
+### 7.2 The price level is unanchored — a finding, not yet resolved (2026-09-03)
+
+Found when the reprice rule first ran (E5). With repricing on and every other default, the pool is
+exhausted at about tick 60 and the run halts in the income step. It is **not** the warm-up
+transient. Run with a pool that cannot drain and the town settles by tick 80: prices converge,
+shelves clear, and the pool still falls by about **€135k a tick — a fifth of income — for the rest
+of the run**. Sales run at roughly €515k a tick against €650k of income, and cash accumulates in
+every income group, the bottom half included.
+
+The cause is structural. Two facts of the design together leave nominal output free of nominal
+income:
+
+1. **The reprice rule sees only unit excess demand.** Once every shelf clears, `D = units` at any
+   price level and the signal is zero. The §3.2 identity — capacity value equals income — holds at
+   *opening* prices only; the moment relative prices move, the value of a cleared market is
+   whatever the transient left it at, and nothing pulls it back.
+2. **A household's tier choice is a ratio of income to price and is blind to its cash.** A
+   household on €3,000 scores premium everything at any cash balance and can spend at most the
+   premium basket; a household on €450 spends its budget basket and banks the rest. With one unit
+   per category and no outlet for accumulated cash, unspent income has nowhere to go but a
+   balance that affects no decision.
+
+So the pool cannot be stationary, and V4's "the pool must have stopped falling" cannot be met by
+any parameter choice. This is a decision for the author, not the implementer. Candidates, none of
+them adopted:
+
+- Make income endogenous — the pool pays out last tick's receipts pro rata — so the identity
+  holds by construction. Contradicts "income_h is fixed for the life of the run".
+- Let cash matter to the decision: a reservation price on money that falls as a buffer is
+  exceeded (the draft's λ derived from buffer months), so hoarded cash is spent into quality.
+- Let the price level respond to the pool — a nominal anchor. Introduces exactly the kind of
+  aggregate feedback the model was kept free of.
+
+Until this is decided, tests that need a full run use a 400-month pool and say so, and two tests
+in RepriceTests pin the failure so it cannot be forgotten. Credit (E6) should not be built on a
+baseline that fails V4.
+
 ## 8. Randomness
 
 Every draw comes from a stream derived as `hash(run_seed, household_id, purpose)`, where `purpose`

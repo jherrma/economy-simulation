@@ -98,6 +98,15 @@ symptom is easy to miss because the CPI can look flat while the mix underneath i
 months of income for that reason. A pool still declining at the end of warm-up is the same failure
 seen from the money side, and it is the cheaper of the two to check.
 
+> **Status 2026-09-03:** this criterion fails under the specification as written, structurally —
+> the pool falls by about a fifth of income per tick after convergence. See `01-SIMULATION.md` §7.2.
+> The gate cannot be built until that is resolved.
+
+Posted prices under V3 agree to within one cent after scaling, not exactly: cent rounding cannot
+commute with scaling by `c`. The engine carries each price as a factor on its opening price so the
+discrepancy is bounded at half a cent per posting rather than compounding. A knife-edge decision
+flipped by that cent is possible in principle and must be reported by the gate if it occurs.
+
 Supply is fixed, income is fixed, and the money stock is constant, so there is nothing in this model
 that should make the price level move. If it drifts, the price rule is not converging, and any
 credit effect measured later would be that drift plus an unknown amount of signal.

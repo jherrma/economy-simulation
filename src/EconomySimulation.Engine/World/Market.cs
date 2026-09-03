@@ -16,6 +16,7 @@ public sealed class Market
     private readonly int[] sold;
     private readonly int[] blocked;
     private readonly int[] unaffordable;
+    private readonly double[] priceFactor;
 
     public Market(GoodsTable goods)
     {
@@ -28,6 +29,7 @@ public sealed class Market
         sold = new int[goods.GoodCount];
         blocked = new int[goods.GoodCount];
         unaffordable = new int[goods.GoodCount];
+        priceFactor = new double[goods.GoodCount];
 
         // Opening prices are price_ref · price_mult, and none of them is tuned. At t = 0 the
         // premium tiers sit in heavy surplus, because supply is 40/40/20 while most households
@@ -39,6 +41,7 @@ public sealed class Market
             for (var t = 0; t < goods.TierCount; t++)
             {
                 prices[goods.Index(c, t)] = goods.OpeningPrice(c, t);
+                priceFactor[goods.Index(c, t)] = 1.0;
             }
         }
 
@@ -54,6 +57,69 @@ public sealed class Market
     public int Blocked(int category, int tier) => blocked[goods.Index(category, tier)];
 
     public int Unaffordable(int category, int tier) => unaffordable[goods.Index(category, tier)];
+
+    /// <summary>
+    /// What would have sold with unlimited stock: `sold + blocked`. **`unaffordable` is not
+    /// demand.** Counting it raises prices on goods nobody can buy, which makes more households
+    /// unable to buy them; leaving `blocked` out means demand can never exceed supply and prices
+    /// only ever fall. Both failures produce a clean series that looks like a finding (05-01).
+    /// </summary>
+    public int Demand(int category, int tier) => sold[goods.Index(category, tier)] + blocked[goods.Index(category, tier)];
+
+    /// <summary>
+    /// Step 6 — every shelf reprices on its own excess demand, and only its own:
+    ///
+    /// <code>
+    /// price ← price · (1 + k · clamp((D − units) / units, −1, +1)),  then max(price, price_floor)
+    /// </code>
+    ///
+    /// The posted price is carried as a dimensionless factor on the opening price and rounded to
+    /// the cent from there each tick, rather than rounded and re-rounded in place. Cent rounding
+    /// cannot commute with scaling every nominal quantity by `c` (V3), but this way the discrepancy
+    /// is bounded at half a cent per posting instead of compounding over 360 ticks. New prices
+    /// apply from the next tick: this runs after the walk and before the check, and prices are
+    /// constant through a walk (TickStep).
+    ///
+    /// Each tier moving on its own signal is what lets relative tier prices move, and that
+    /// movement is the trade-down channel. A category-wide signal would freeze the tier mix at
+    /// the unit shares and answer the question by assumption.
+    /// </summary>
+    public void Reprice(
+        double k,
+        Money floor)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(k);
+
+        for (var c = 0; c < goods.CategoryCount; c++)
+        {
+
+            for (var t = 0; t < goods.TierCount; t++)
+            {
+                var i = goods.Index(c, t);
+                var units = goods.Units(c, t);
+                var opening = goods.OpeningPrice(c, t);
+
+                // A shelf with no supply has no signal; its price stands.
+                if (units == 0)
+                {
+                    continue;
+                }
+
+                var excess = Math.Clamp((Demand(c, t) - units) / (double)units, -1.0, 1.0);
+                priceFactor[i] *= 1.0 + (k * excess);
+
+                var posted = opening.Scaled(priceFactor[i]);
+
+                if (posted < floor)
+                {
+                    posted = floor;
+                    priceFactor[i] = floor.Cents / (double)opening.Cents;
+                }
+
+                prices[i] = posted;
+            }
+        }
+    }
 
     /// <summary>
     /// One unit leaves the shelf. Called once per household per category, at the tier the
@@ -89,6 +155,7 @@ public sealed class Market
         ArgumentOutOfRangeException.ThrowIfLessThan(price.Cents, 0);
 
         prices[goods.Index(category, tier)] = price;
+        priceFactor[goods.Index(category, tier)] = price.Cents / (double)goods.OpeningPrice(category, tier).Cents;
     }
 
     /// <summary>

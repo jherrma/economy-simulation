@@ -183,13 +183,14 @@ public sealed class WalkTests
         Assert.Equal(takenTotal, simulation.Books.MovedFor(TransferReason.Purchase));
         Assert.Equal(poolBefore - incomeTotal + takenTotal, simulation.Books.Pool);
 
-        // And the sum of increments is the sum of posted prices of the units that left the shelves.
+        // And the sum of increments is the sum of the prices posted during the walk — tick 1's are
+        // the opening prices; repricing has since moved them — of the units that left the shelves.
         var soldValue = Money.Zero;
         for (var c = 0; c < simulation.Goods.CategoryCount; c++)
         {
             for (var t = 0; t < simulation.Goods.TierCount; t++)
             {
-                soldValue += simulation.Market.Price(c, t) * simulation.Market.Sold(c, t);
+                soldValue += simulation.Goods.OpeningPrice(c, t) * simulation.Market.Sold(c, t);
             }
         }
 

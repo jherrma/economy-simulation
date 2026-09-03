@@ -225,8 +225,14 @@ public sealed class Simulation
         return Results.Ok;
     }
 
-    /// <summary>Step 6 — eighteen prices on their own excess demand. Filled in by 05-02.</summary>
-    private static Result Repricing(int tick) => Nothing(tick);
+    /// <summary>Step 6 — eighteen prices, each on its own excess demand, applying from the next tick.</summary>
+    private Result Repricing(int tick)
+    {
+        _ = tick;
+        Market.Reprice(Parameters.Prices.K, Parameters.Prices.PriceFloor);
+
+        return Results.Ok;
+    }
 
     private static Result Nothing(int tick)
     {

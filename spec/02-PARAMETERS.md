@@ -126,7 +126,9 @@ households × mean_income                         =  650,000 €     ✓
 ```
 
 That identity is the reason the pool does not drain in equilibrium: whenever the market clears at
-any tier mix, nominal output equals nominal income.
+any tier mix, nominal output equals nominal income — **at opening prices**. Once tiers have
+repriced independently the identity no longer holds, and nothing restores it; see
+`01-SIMULATION.md` §7.2 (2026-09-03).
 
 ### 3.3 The opening tier mix is not an equilibrium
 
