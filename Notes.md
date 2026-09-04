@@ -1,11 +1,20 @@
 # Notes
 
+**State — 2026-09-04.** Epics E0–E8 of 9 are built: the engine, the output writer, the cohort
+metrics and the four validation gates (V2 determinism, V3 neutrality, V4 null run, V5 credit-off
+regression), all green, 423 tests passing, spec and engine at `6163635`. **E9 — the scenario
+definitions and the campaign runner — is not built yet**, so no campaign has been run: every number
+below comes from `tools/Gates … pilot`, a power probe that runs the two arms over the campaign's own
+30 paired seeds at the campaign's own parameters (600 ticks, measured window from tick 241,
+`credit_off` against `credit_high`, θ ~ U(0.4, 0.9)). Only three of the five scenarios of §9 have
+been touched at all.
+
 A rough model of what the simulation has said so far — kept for angles, not for accuracy. Every
 number here is measured and every one is provisional; `spec/01-SIMULATION.md` §7.1–§10.4 carries the
 evidence and the caveats. Short entries on purpose: each is meant to be picked up and turned into a
 paragraph or a new question, not cited.
 
-## What the model says about the question
+## What the model says about the question — 2026-09-04
 
 **The claim survives, but not as inflation.** The general price level moves +0.55% under
 `credit_high`; electronics move +11.0% and appliances +7.5%. The externality is a *relative* price
@@ -33,7 +42,7 @@ and does not save it.
 and the harm shrinks monotonically, from −26.0% to −9.6% on B's appliance access. A cheap-money
 angle sits here: the externality is a function of how cheap borrowing is, not of whether it exists.
 
-## Angles that came out of the measurement itself
+## Angles that came out of the measurement itself — 2026-09-04
 
 **Aggregates hide distributional harm — and can reverse its sign.** Pooled across categories, the
 abstainers' *premium* share rises 2.1% under credit, reading as trading up. Within category it is a
@@ -63,7 +72,7 @@ market, who holds purchasing power decides who consumes, and credit is a way of 
 principal, which is ~15% effective APR over the 24-month term. The gap between the quoted and the
 effective number is itself the BNPL story in miniature.
 
-## What the model cannot say (and where a critic will push)
+## What the model cannot say (and where a critic will push) — 2026-09-04
 
 **Supply is fixed by construction.** So the "credit funds additional output" reply cannot even be
 stated inside this model, let alone tested. The result is conditional on inelastic supply and must
@@ -81,7 +90,7 @@ argued yet.
 1.43 and B's share obtained 0.78 to 0.49. Every number must be reported as a *difference* with a
 band; no baseline level here is calibrated against anything real.
 
-## Open, untested, worth doing
+## Open, untested, worth doing — as of 2026-09-04
 
 - `credit_low` against `credit_high`: is the harm monotone in credit appetite, or is there a
   threshold? A threshold would be a much better story than a slope.
@@ -95,3 +104,10 @@ band; no baseline level here is calibrated against anything real.
 - Untested: whether the harm concentrates on the poorest abstainers or spreads evenly across the
   cohort. §10.1 says the excluded households sit at the poor end (median income ~€400 against a mean
   of €650), so this is likely the strongest version of the finding and it is not yet measured.
+
+---
+
+*Convention: entries are dated because they age. A finding here is true of the model as it stood on
+that date and at those parameters, and E9 or a recalibration can move any of them. New findings get
+a new dated block rather than an edit to an old one, so a claim that changed its mind stays
+visible.*
