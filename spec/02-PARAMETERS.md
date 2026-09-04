@@ -206,12 +206,128 @@ invalidates the run:
 3. **The premium step never clears at the median** (0.54–0.67), so premium is bought by the upper
    part of the distribution and by anyone credit lifts there.
 
+### 3.5 Archetypes — added 2026-09-04
+
+The population is drawn into named **archetypes** (`01-SIMULATION.md` §5.4). Each carries a
+population `share` and, per category, a relative taste weight `w` and a quality steepness `kappa`.
+
+**The default table is a single type with every `w` and every `kappa` at 1.0.** That is v1 exactly,
+so the default configuration is still the baseline and the byte-for-byte rule needs no switch. The
+table below is the `typed` table: it lives in a scenario file, not in the defaults.
+
+#### Parameters
+
+| Parameter | Default | Why |
+|---|---|---|
+| `archetypes.<name>.share` | one type at 1.0 | Population share. The shares must sum to 1.0 or the run is rejected |
+| `archetypes.<name>.w.<category>` | 1.0 | Relative taste weight. **Absent means 1.0**, so a type names only the categories it differs in (§2 of `01-SIMULATION.md` on absent-versus-unknown: an absent key defaults, an unknown key is an error) |
+| `archetypes.<name>.kappa.<category>` | 1.0 | Quality steepness, applied as `value_mult(tier)^kappa`. Absent means 1.0 |
+| `sigma_idio` | **0.0** | Spread of the per-household, per-category residual `ε`. Zero by default, so taste is perfectly correlated across categories exactly as in v1. Raising it walks that correlation toward zero and is the sweep for "does it matter that the same households want everything" |
+
+`w` is authored as a **relative** weight and normalised by the loader; see the identity below.
+`kappa` is authored as an absolute and is not normalised.
+
+#### The `typed` table
+
+Four types, chosen to span the two axes that matter — how much of the budget a category gets, and
+how far up its tiers the household goes — while staying few enough to argue about one at a time.
+
+| | share | Food | Leisure | Clothing | Hobby | Electronics | Appliances |
+|---|---|---|---|---|---|---|---|
+| **`prudent`** `w` | 0.30 | 0.90 | 0.80 | 0.85 | 0.75 | 0.80 | 0.90 |
+| `kappa` | | 0.85 | 0.85 | 0.85 | 0.85 | 0.85 | 0.85 |
+| **`health_conscious`** `w` | 0.20 | 1.20 | 1.00 | 1.00 | 0.90 | 0.85 | 1.05 |
+| `kappa` | | **1.25** | 0.95 | 0.95 | 0.95 | 0.95 | 1.10 |
+| **`gadget`** `w` | 0.20 | 0.95 | 1.15 | 1.05 | **1.55** | **1.60** | 1.00 |
+| `kappa` | | 0.95 | 1.05 | 0.95 | 1.20 | **1.25** | 0.95 |
+| **`family_practical`** `w` | 0.30 | 1.05 | 1.00 | 1.15 | 0.95 | 1.00 | 1.10 |
+| `kappa` | | 0.90 | 0.90 | 0.95 | 0.90 | 0.90 | 0.90 |
+
+Read the two rows of a type together — that is the point of the split:
+
+- **`prudent`** wants less of everything and, more sharply, cares less about quality everywhere
+  (`kappa = 0.85`): a fridge is a fridge. It is not the poor type — income is drawn independently —
+  it is the type for whom the budget tier is genuinely good enough.
+- **`health_conscious`** is the case that motivated the split. `w_food = 1.20` is modest; the
+  `kappa_food = 1.25` is what does the work: it buys the best food, not more food. Its kitchen
+  follows (`kappa` 1.10 on appliances) and its electronics do not.
+- **`gadget`** wants far more hobby and electronics (`w` 1.55, 1.60) *and* wants them good
+  (`kappa` 1.20, 1.25). It is the type credit is most useful to, and the one whose bidding the
+  abstainer feels, because both of its categories are financeable.
+- **`family_practical`** wants more clothing and appliances — more wear, more washing — and wants
+  them **durable rather than fine**, which is `kappa = 0.90` on both. It is the counterweight to
+  `gadget`: high demand that does not chase the premium tier.
+
+`kappa` is nowhere above **1.25**, against the bound of 1.3245 derived in `01-SIMULATION.md` §5.4.
+That is deliberate headroom, not a coincidence: at 1.3245 the candidate ladder inverts and the
+model's diminishing returns to quality stop being a consequence of the parameters.
+
+#### The taste identity, and what the loader does with it
+
+For every category, the share-weighted mean of `w` must be 1: the table redistributes a category's
+demand across the population, it does not change how much of it there is. `v_g` (§3.1) is the
+parameter for that.
+
+The authored weights above do not satisfy the identity exactly, and they are not meant to — writing
+a table that does by hand is a pointless arithmetic exercise that hides the intent. **The loader
+divides each column by its share-weighted mean** and records the result in the effective
+configuration, which is what the campaign manifest hashes (09-02). The column scales and the
+normalised table:
+
+```
+column scale     Food 1.0150   Leisure 0.9700   Clothing 1.0100
+                 Hobby 1.0000  Electronics 1.0300   Appliances 1.0100
+```
+
+| normalised `w` | Food | Leisure | Clothing | Hobby | Electronics | Appliances |
+|---|---|---|---|---|---|---|
+| `prudent` | 0.8867 | 0.8247 | 0.8416 | 0.7500 | 0.7767 | 0.8911 |
+| `health_conscious` | 1.1823 | 1.0309 | 0.9901 | 0.9000 | 0.8252 | 1.0396 |
+| `gadget` | 0.9360 | 1.1856 | 1.0396 | 1.5500 | 1.5534 | 0.9901 |
+| `family_practical` | 1.0345 | 1.0309 | 1.1386 | 0.9500 | 0.9709 | 1.0891 |
+| **share-weighted mean** | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+
+`kappa` gets no such treatment. Its population means under this table are Food 0.965, Leisure 0.925,
+Clothing 0.920, Hobby 0.955, Electronics 0.965, Appliances 0.935 — below 1 throughout, because three
+of the four types are less quality-driven than v1's implicit average household. **This table is
+therefore a different baseline economy**, and its credit arms must be compared against a
+`credit_off` carrying the same table. Comparing a typed treatment arm against the untyped baseline
+measures the table and the credit together and attributes both to credit.
+
+#### This table is a hypothesis, and it is swept, not fitted
+
+The four types are an arguable reading of how consumption differs across a population, not a
+measured one, and nothing in this repository can calibrate them. They inherit the rule that governs
+the tier mix (`stories/README.md`): **a table adjusted until the headline came out better would turn
+this model from evidence into an illustration.** The defence is the same one used for `k` and
+`loan_rate` in §10.4 — report the effect across a band of tables and show that its sign and rough
+size do not depend on which one was picked. A table under which the effect vanishes is a result
+about the population and gets published as one.
+
+#### Configuration shape
+
+```toml
+[archetypes.prudent]
+share = 0.30
+w     = { food = 0.90, leisure = 0.80, clothing = 0.85, hobby = 0.75, electronics = 0.80, appliances = 0.90 }
+kappa = { food = 0.85, leisure = 0.85, clothing = 0.85, hobby = 0.85, electronics = 0.85, appliances = 0.85 }
+
+[archetypes.health_conscious]
+share = 0.20
+w     = { food = 1.20, appliances = 1.05, hobby = 0.90, electronics = 0.85 }
+kappa = { food = 1.25, appliances = 1.10, leisure = 0.95, clothing = 0.95, hobby = 0.95, electronics = 0.95 }
+```
+
+`health_conscious` shows the absent-means-1.0 rule doing its job: leisure and clothing are omitted
+from `w` because it is average in both, and the file stays a statement of what makes the type
+different. A misspelt category is an error, not a silent 1.0.
+
 ## 4. The decision
 
 | Parameter | Default | Why |
 |---|---|---|
 | `lambda` (λ) | 1.00 | Take a candidate worth at least what it costs. A pure number, never indexed |
-| `σ_w` | 0.20 | Spread of the household taste multiplier `w_h`, mean exactly 1 |
+| `σ_w` | 0.20 | Spread of the **shared** household taste multiplier `w_h`, mean exactly 1. Per-category taste and quality steepness are §3.5 |
 | `subsistence_share` | 0.55 | Protected from the credit residual test: `0.55 × 650 = €357.50`, roughly food plus a minimum of leisure |
 | `buffer_months` (φ) | 2.0 | The reservation price on money (`01-SIMULATION.md` §5.3): cash above φ months of own income lowers a household's λ in proportion, `λ_h = λ · min(1, φ / b_h)`. Below φ, λ is unchanged. This is what anchors the price level; 0 switches it off and the pool drains a fifth of income a tick (§7.2). Chosen over 1 and 3 on seeds 1–3: at 1 durables are widely cash-unaffordable, at 3 the pool dips to half and premium is still converging at tick 360 |
 | `affordability_horizon` | `myopic` | The instalment must fit **this tick**. `full_term` is the control: the whole repayable amount must fit the residual instead (`01-SIMULATION.md` §6 step 4) |

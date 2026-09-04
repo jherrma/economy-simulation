@@ -42,7 +42,8 @@ The list of what to add and in what order is [`../draft/`](../draft/). Nothing t
 | Field | Set at | Changes |
 |---|---|---|
 | `income_h` | initialisation, drawn | never — fixed nominal income |
-| `w_h` | initialisation, drawn | never — a taste multiplier, mean 1 |
+| `w_h` | initialisation, drawn | never — the shared taste multiplier, mean 1 (§5.4) |
+| `archetype_h` | initialisation, drawn | never — an index into the archetype table (§5.4), drawn in **every** scenario |
 | `θ_h` | initialisation, by scenario | never |
 | `abstainer_h` | initialisation, drawn | never — `θ = 0` in **every** scenario |
 | `cash_h` | `opening_cash_share · income_h` | every tick |
@@ -111,6 +112,10 @@ balance is falling still pays interest on the opening amount. The default `loan_
 24-month term is `finance_mult = 1.16` — 16% of the price in interest — which is an effective APR
 near **15%**, not 8%. Anyone comparing this to a real card or BNPL rate must convert first: an APR
 of `r` is roughly a flat rate of `r · (n + 1) / 2n`, so a real-world 13% APR is `loan_rate ≈ 6.8`.
+
+`w_h` is written as a single number here and generalises to a per-category taste and a
+per-category quality steepness in §5.4; with the default archetype table the two forms are
+identical, so everything below reads the same either way.
 
 `a_g` is a floor in euros per tick that does **not** scale with income; `b_g · income_h` does. The
 split is neutral at the mean income, so it changes only the income gradient of demand. It is not
@@ -183,6 +188,156 @@ What it cannot do is make the top spend everything. The richest households earn 
 basket price the rest of the town can clear, so a residual of about 1% of income a tick is hoarded
 by the top decile alone; deciles one to nine are flat. That residual is a fact about fixed incomes
 with one unit per category, and V4 is stated with it in mind (`03-VERIFICATION.md`).
+
+### 5.4 The population has types — added 2026-09-04
+
+v1 gives every household **one** taste multiplier `w_h`, applied identically to all six categories,
+and **one** tier value ladder shared by everybody. So a household that loves food loves hobby
+equipment exactly as much, and nobody can care more about the quality of their food than about the
+quality of their washing machine. Neither restriction is a claim about the world; both are accidents
+of keeping the minimal model minimal.
+
+Two generalisations, and deliberately no third:
+
+```
+flow_value(h, g, tier) = (a_g + b_g · income_h) · w_h,g · value_mult(tier)^κ_g,A(h)
+
+w_h,g                  = w_h · ŵ_g,A(h) · ε_h,g
+```
+
+`A(h)` is the household's **archetype**; `ŵ` is that archetype's taste for the category, `κ` its
+quality steepness there, and `ε` an optional idiosyncratic residual.
+
+**Level and steepness are different questions, and v1 conflates them.** Take a household that eats
+well but does not overeat: it buys the best food and one portion of it. In v1 that is unsayable,
+because the only way to spend more on food is to buy a better one, so "wants good food" and "wants a
+lot of food" are the same number. Splitting the level `ŵ` from the steepness `κ` says it in two:
+`κ_food` high, `ŵ_food` average. The same split separates the household that owns a cheap phone
+because it does not care about phones from the one that owns a cheap phone because it cannot afford
+the good one — and that distinction is the subject of this model.
+
+**Why a table of types rather than six independent draws per household.** Three reasons. Nobody can
+hand-write a thousand households, so what is configurable is a distribution either way, and a short
+table of named types is the one a reader can argue with. Taste across categories is *correlated* in
+reality — independent draws assert that correlation is zero, v1 asserts it is one, and neither is
+defensible unstated. And the finding is reportable by type: *the gadget cohort bids electronics up;
+the prudent abstainer, who never wanted a phone, pays more for food anyway.* This also extends a
+mechanism that is already here — `abstainer_share` is a two-type population — rather than adding a
+second one beside it.
+
+#### The three levels of taste
+
+| Level | Symbol | Varies over | What it says |
+|---|---|---|---|
+| Shared | `w_h` | households | a big spender or a small one, the same in every category — v1's only channel |
+| Systematic | `ŵ_g,A` | (archetype, category) | this kind of household wants this kind of thing |
+| Idiosyncratic | `ε_h,g` | (household, category) | everything else; `σ_idio = 0` by default, so this level is off |
+
+The three are a decomposition of correlation, not three ways to say the same thing: `w_h` alone is
+taste perfectly correlated across categories, `ε` alone is taste uncorrelated across them, and the
+archetype table is the structured middle where the correlation has a name.
+
+#### There is no switch, because the default table is the identity
+
+v1 is the exact special case `ŵ ≡ 1`, `κ ≡ 1`, `σ_idio = 0` — not a close approximation to it. So
+§12's rule that a new mechanism must arrive behind a switch whose *off* setting reproduces the model
+byte for byte is satisfied by the default archetype table rather than by a boolean, in the same way
+`credit_off.toml` is satisfied by an empty file (09-01). A boolean would be a second place to say
+the same thing, and the two would eventually disagree.
+
+The archetype assignment is drawn from its own stream **whether or not the table is the identity**,
+following the rule θ already obeys (§8): a draw that happens in both arms disturbs nothing, and
+skipping it when it looks unnecessary is how two scenarios end up on different random worlds.
+Assignment is independent of the abstainer draw. If abstainers were systematically more prudent, the
+comparison would confound *does not borrow* with *wants less*, and the paired design would not catch
+it — that is a scenario someone may want to run deliberately, never a default.
+
+#### The taste identity
+
+For every category:
+
+```
+Σ_A share_A · ŵ_g,A = 1
+```
+
+The archetype table redistributes a category's demand across the population; it does not change how
+much of it there is. `v_g` is the parameter for that, and two parameters for one quantity is how a
+calibration stops being arguable. The table is therefore written as **relative** weights and the
+loader divides each column by its share-weighted mean, so the identity holds by construction and the
+normalised values are what the effective configuration records — which is what the campaign manifest
+hashes (09-02).
+
+`κ` is **not** normalised, and the asymmetry is deliberate. "What if the population became more
+quality-conscious" is a real question and pinning the mean would forbid asking it. The price is that
+a table whose mean `κ` differs from 1 is a **different baseline economy**, so its credit comparison
+must be run against `credit_off` *under the same table* and never against the v1 baseline. Both arms
+already share the table, because the archetype is drawn per household and per seed, not per scenario.
+
+#### The bound on κ
+
+§5.1's diminishing returns are a consequence of `value_mult` rising more slowly than `price_mult`,
+and an exponent can destroy that. Candidate scores as multiples of `V / (P / life)`:
+
+| κ | budget mult | premium mult | buy budget | budget → standard | standard → premium |
+|---|---|---|---|---|---|
+| 0.85 | 0.720 | 1.331 | **1.201** | 0.699 | 0.414 |
+| 1.00 | 0.680 | 1.400 | **1.133** | 0.800 | 0.500 |
+| 1.20 | 0.630 | 1.497 | **1.049** | 0.926 | 0.622 |
+| 1.3245 | 0.600 | 1.562 | **1.000** | 1.000 | 0.702 |
+| 1.50 | 0.561 | 1.657 | 0.935 | **1.098** | 0.821 |
+
+The ladder inverts at `ln(price_mult_budget) / ln(value_mult_budget)` = `ln 0.60 / ln 0.68` =
+**1.3245**. Above it `0.68^κ < 0.60`, buying budget scores below upgrading to standard, and the
+candidate list is no longer sorted. The **walk** survives that — §6 step 4 ranks every candidate
+descending and does not rely on list position — but the **stop** rule does not: a household whose
+budget candidate falls below λ halts, while the standard unit it would gladly have bought scores
+higher and is unreachable, because the step below it was never taken. That is exactly the open
+modelling question already recorded in §6 step 4 (2026-09-03), and `κ > 1.3245` promotes it from a
+curiosity to the thing that decides the run.
+
+So `0 < κ < κ_max`, rejected at load above it. `κ_max` is **derived from the tier table**, never a
+literal in the code: the tier multipliers are themselves parameters, and a hard-coded 1.3245 would
+silently become wrong the first time somebody changes one. At the v1 tiers the second ordering
+condition — `budget → standard` above `standard → premium` — binds only at 2.3194, so the first is
+what actually constrains; at another tier table it need not be.
+
+#### What archetypes deliberately do not carry
+
+- **θ.** The scenario sets the credit level; two places to set it is one place for them to disagree,
+  which is the reason 09-01 refuses a scenario file that names itself. A per-category *shape* on θ —
+  a `finance_affinity` multiplier, so a household will finance a washing machine but not a phone —
+  is the obvious next extension and is recorded here, not scheduled.
+- **`buffer_months` (φ).** A per-household φ is genuinely new information: it is a nonlinearity in
+  cash, not a scale on value, so nothing else reproduces it. It belongs to §5.3, not to taste.
+- **`life`.** Replacement discipline — running a phone into the ground versus replacing it early —
+  is real and is not taste. It also interacts with a calibration identity: `capacity_g` is *derived*
+  as `round(households / life_g)`, so a per-household life whose mean is not `life_g` changes the
+  steady-state replacement demand and quietly changes the scarcity the experiment is about.
+- **λ.** Never, and not merely for now — see below.
+
+#### Two parameters that look obvious and buy nothing
+
+Both are recorded because they are what a reader reaches for next.
+
+**Per-household `necessity_h,g` is exactly absorbed into `w_h,g`.** Income is fixed for the life of
+the run, so each household sits at one income, `(a_g + b_g · income_h)` is a single number, and
+`w` already spans every positive number it could take. Per-*category* necessity keeps doing its
+work — it varies across the population *through income*, which is the whole point of §5's split.
+The redundancy ends the moment incomes are allowed to move, and this note should be re-read then.
+
+**Per-household `λ_h` is redundant against the shared level `w_h`.** The test is `score ≥ λ_h` and
+`score ∝ w_h`, so a picky household with a high threshold is algebraically a low-taste household;
+§5.3's modulation `λ · min(1, φ / b_h)` is multiplicative and preserves the equivalence exactly. λ
+stays global, and the heterogeneity goes where it can be read.
+
+#### What it costs
+
+More heterogeneity is more trajectory noise, and §10.4's comfortable margin is a margin, not
+immunity. Pairing cancels the *draw* — the same household is the same archetype in both arms — but
+not *which* households are marginal, and that is where the noise lives. The power probe
+(`tools/Gates pilot`) is the instrument; it is re-run after the table changes rather than assumed to
+still hold. A table that pushes the headline below its own resolution is a finding about the table,
+and it is reported, not tuned away.
 
 ## 6. The tick
 
@@ -446,12 +601,18 @@ should be labelled as such rather than as a price effect.
 
 Every draw comes from a stream derived as `hash(run_seed, household_id, purpose)`, where `purpose`
 is a string constant — `"income"`, `"willingness"`, `"theta"`, `"abstainer"`, `"initial_age"`,
-`"finance"` — plus one per-tick stream `hash(run_seed, 0, "order", tick)` for the shopping order.
+`"finance"`, `"archetype"`, `"taste_idio"` — plus one per-tick stream
+`hash(run_seed, 0, "order", tick)` for the shopping order.
 
 There is **no single shared generator**. Adding a new consumer of randomness must not shift any
 existing draw, and a test asserts exactly that by registering an unused purpose and requiring
 byte-identical output. This costs about thirty lines now and is what makes every later comparison
 between two runs mean something.
+
+`"archetype"` and `"taste_idio"` are drawn unconditionally, exactly as `"theta"` is when credit is
+off (§5.4). The identity archetype table consumes the same draws as any other, so the population is
+assigned in every run and only the *table* differs — which is what lets a typed scenario be compared
+against its own `credit_off` on the same seeds.
 
 Durable ages are drawn **uniformly over each good's life** at initialisation — over `{1 … life}`,
 so that with wants asked before ageing the first replacement cohort falls in tick 1 rather than
@@ -754,7 +915,12 @@ Every one of these must accompany any number that comes out of it.
   financed premium buying pulls production up-market, which would amplify the trade-down effect on
   the abstainer. Its absence cuts **against** the hypothesis.
 - **A household buys at most one unit of a category per tick.** Extra income goes into quality, never
-  into quantity, so there is no way to model buying *more* rather than *better*.
+  into quantity, so there is no way to model buying *more* rather than *better*. §5.4's archetypes do
+  **not** lift this: they say how much a household is willing to pay for its one unit and how far up
+  the tiers it will go, not how many units it wants. Allowing more would lengthen the candidate
+  ladder, break the `capacity = households / life` identity, and give income a new outlet — which
+  moves the baseline the credit effect is measured against, so it is a version change and not a
+  parameter.
 
 ## 12. What comes next, and why not now
 
@@ -767,3 +933,11 @@ measurable rather than merely visible.
 Not now, because none of them can be calibrated against anything until this model has produced a
 number, and because a mechanism added before its effect can be measured is a mechanism nobody can
 argue with.
+
+**§5.4's archetypes are not on that list and come before it, for a reason worth stating.** Every
+milestone above answers an objection by adding a *channel* the model does not have. Archetypes add
+no channel: they remove an accidental restriction on a parameter that already exists, replacing one
+taste multiplier with six and one quality ladder with one per type. That is why the identity table
+reproduces v1 byte for byte without a switch, and why it can be done before the model has been
+argued with rather than after. The genuine next steps out of it — `finance_affinity`, a per-household
+`buffer_months`, a per-household `life` — do add channels, and they wait their turn.

@@ -220,6 +220,23 @@ Every mechanism added after v1 inherits this requirement: it arrives behind a sw
 reproduces the previous version byte-for-byte. A mechanism that cannot be switched off is one whose
 contribution cannot be measured.
 
+### V5a — Archetypes off, by table rather than by switch — added 2026-09-04
+
+The **identity archetype table** — one type, every `w` and every `kappa` at 1.0 — must reproduce a
+v1 run byte-for-byte on the same seeds, with `sigma_idio = 0`. This is the §5.4 mechanism's V5
+clause, and it is discharged by *data* rather than by a boolean, so there are two things to check
+and not one:
+
+- The identity table reproduces v1. That is the regression half.
+- The `"archetype"` and `"taste_idio"` streams are drawn **even under the identity table**, and
+  drawing them changes nothing — V2's unused-stream test, applied to the two new purposes. If the
+  draws were skipped when the table looks trivial, a typed scenario and its own `credit_off` would
+  sit on different random worlds and the pairing would be worthless while still looking paired.
+
+The paired-seed check in the campaign runner (09-02) therefore compares **archetype assignment**
+across arms as well as the abstainer set, and compares the assignment itself rather than the count
+of each type — equal counts are not the same claim as the same households.
+
 ## V6 — Bounds and sanity
 
 Cheap assertions that catch the errors the walk is prone to:
@@ -236,6 +253,11 @@ Cheap assertions that catch the errors the walk is prone to:
 - **Upgrade scores are monotone decreasing** within a category: budget > budget→standard >
   standard→premium, for every household and every price vector. If this ever fails, `value_mult`
   has been set above `price_mult` somewhere and quality has stopped having diminishing returns.
+  With archetypes (`01-SIMULATION.md` §5.4) this is per household *and* per category, because
+  `kappa` differs by type; the load-time bound on `kappa` is what makes the assertion unreachable
+  rather than merely checked. Derive that bound from the tier table — `ln(price_mult_budget) /
+  ln(value_mult_budget)`, which is 1.3245 at the v1 tiers — and never write the number down in the
+  code, or changing a tier multiplier will move the bound without moving the guard.
 - An upgrade is never taken without the step below it.
 - `blocked_(g,t) > 0` implies that tier had no stock at the end of the tick.
 - Every wanted durable that is bought resets `age = 0`; nothing else does.
@@ -264,6 +286,9 @@ series, which is why it needs a named check rather than a reviewer's judgement.
 | Nobody ever buys budget; the ladder collapses to standard/premium | The tier below not being required before an upgrade is available |
 | Poor households buy nothing at all, including food | `a_g` missing — value proportional to income makes every good a luxury |
 | The pool drains steadily and the run halts around tick 11 | Opening pool sized at one month instead of twelve. The opening tier mix is not an equilibrium and the transient has to be survivable |
+| A typed run differs from the untyped baseline everywhere, including in categories no type touches | The archetype columns not normalised (`02-PARAMETERS.md` §3.5). An unnormalised table changes each category's *total* demand as well as its distribution, so it moves `v_g` by accident and the whole economy shifts |
+| Households stop buying a category entirely once `kappa` is raised | `kappa` above the ladder bound. Buying budget now scores below upgrading to standard, the walk's stop rule fires on the budget candidate, and the standard unit the household would have bought is unreachable because the step below it was never taken |
+| A typed `credit_high` and a typed `credit_off` disagree about which households exist | Archetype assignment drawn from a stream that some other draw perturbs, or skipped under the identity table. V5a |
 | Tier shares are constant across every scenario | Tier prices repriced on a category-wide signal instead of per tier, so relative prices cannot move and the mix cannot clear |
 
 ## Running order

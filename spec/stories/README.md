@@ -4,7 +4,8 @@ Implementation backlog for [`../01-SIMULATION.md`](../01-SIMULATION.md). Paramet
 [`../02-PARAMETERS.md`](../02-PARAMETERS.md); the checks that stand in for a reference
 implementation in [`../03-VERIFICATION.md`](../03-VERIFICATION.md).
 
-**33 stories across 9 epics.** One story per file, `<epic>-<story>-<slug>.md`. Every story carries
+**33 stories across 9 epics built; 4 more in E10, specified and not built.** One story per file,
+`<epic>-<story>-<slug>.md`. Every story carries
 an objective pass/fail check — nothing is "done" because it looks done. No story depends on a story
 later in the build order, and that is mechanically checkable from the headers.
 
@@ -26,6 +27,7 @@ later in the build order, and that is mechanically checkable from the headers.
 | **E7** | Output | 3 | Including the cohort metrics, which are the finding rather than a raw number |
 | **E8** | Validation gates | 4 | V2–V5 as runnable programs |
 | **E9** | Scenarios and the campaign | 2 | Five scenarios, thirty seeds, paired |
+| **E10** | The population has types | 4 | *Specified, not built.* Per-category taste and quality steepness (`01-SIMULATION.md` §5.4) — the first change after v1 produced a number |
 
 Two ordering rules override convenience:
 
@@ -49,6 +51,7 @@ rather than a crash. Six devices stand in for an oracle, detailed in
 | **V3** | Nominal neutrality | 08-02 |
 | **V4** | The null run, including tier-mix stationarity | 08-03 |
 | **V5** | Credit-off regression, byte for byte | 08-04 |
+| **V5a** | The identity archetype table reproduces v1, byte for byte | 10-03 |
 | **V6** | Bounds and sanity, as assertions inside the tick | 03-02, 05-01 |
 
 **V1 is this project's white-furnace test**: a single invariant, trivially cheap, that any
@@ -91,6 +94,7 @@ Each has a story that names it, because none of them crashes and none is caught 
 | Tiers ranked by total score instead of incremental — everyone buys budget, premium never sells | 04-03 | Upgrade candidates |
 | Interest destroyed with principal — the money stock leaks and damps the measured effect | 06-03 | Money creation |
 | Durable ages initialised to zero — a sawtooth that looks like a business cycle | 02-04 | Household draws |
+| Archetype columns unnormalised — the table moves each category's *total* demand, not just its distribution | 10-01 | The archetype table |
 
 ---
 
@@ -146,6 +150,19 @@ Each has a story that names it, because none of them crashes and none is caught 
 ### E9 — Scenarios and the campaign
 - [09-01](09-01-scenario-definition.md) — Defining a scenario
 - [09-02](09-02-campaign-runner.md) — The runner, and paired-seed comparison
+
+### E10 — The population has types — *specified 2026-09-04, not built*
+- [10-01](10-01-archetype-table-and-the-taste-identity.md) — The archetype table, and the taste identity
+- [10-02](10-02-assignment-and-the-taste-vector.md) — Assignment, and the taste vector inside `flow_value`
+- [10-03](10-03-identity-table-regression-gate.md) — **V5a**: the identity table reproduces v1 byte for byte
+- [10-04](10-04-reporting-by-type-and-re-measuring-the-power.md) — Reporting by type, and re-measuring the power
+
+**Why E10 comes before the milestones in `01-SIMULATION.md` §12.** Every milestone on that list —
+supply response, wages, default, the second-hand market, status — answers an objection by adding a
+*channel*. E10 adds none: it replaces one taste multiplier with six and one quality ladder with one
+per type, generalising a parameter that already exists. That is why its off setting is a table of
+ones rather than a boolean, and why it can be done before the model has been argued with instead of
+after.
 
 ---
 
