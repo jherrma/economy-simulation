@@ -37,6 +37,15 @@ public sealed record RunParameters
     /// is the baseline's name, because the default configuration *is* the baseline.
     /// </summary>
     public string Scenario { get; init; } = "credit_off";
+
+    /// <summary>
+    /// How a durable comes to be wanted again (`02-PARAMETERS.md` §3.5, `01-SIMULATION.md` §5.5).
+    ///
+    /// `deterministic` is v1 and stays the default, so V5 and V5a keep their meaning. `hazard` is
+    /// the only setting under which a non-integer life means anything, and §3.6's grouped
+    /// calibration needs it.
+    /// </summary>
+    public Replacement Replacement { get; init; } = Replacement.Deterministic;
 }
 
 /// <summary>§2.</summary>
@@ -276,6 +285,24 @@ public sealed record MoneyParameters
     public int OpeningPoolMonths { get; init; } = 24;
 }
 
+/// <summary>
+/// How a durable comes to be wanted again: at a fixed age, or by failing.
+///
+/// The two are not a refinement of each other. A calendar separates its opening cohorts once, at
+/// initialisation, and then never mixes them — a household replacing in month 7 replaces in month
+/// 7 + life forever, and only rationing ever decorrelates them. A hazard is memoryless, so there is
+/// no age to initialise and no sawtooth to warm out; the cost is that per-tick replacement demand
+/// becomes `Binomial(owners, p)` rather than a near-constant.
+/// </summary>
+public enum Replacement
+{
+    /// <summary>v1: `age_h,g ≥ life_g`, with ages drawn uniform at initialisation. The default.</summary>
+    Deterministic,
+
+    /// <summary>`01-SIMULATION.md` §5.5: a unit fails with probability `1 / life_h,g` each tick.</summary>
+    Hazard,
+}
+
 /// <summary>Whether a financed instalment has to fit this tick or the whole term.</summary>
 public enum AffordabilityHorizon
 {
@@ -318,9 +345,17 @@ public static class EnumeratedParameters
         Rationing.Willingness => "willingness",
     };
 
+    public static string ToTomlValue(this Replacement replacement) => replacement switch
+    {
+        Replacement.Deterministic => "deterministic",
+        Replacement.Hazard => "hazard",
+    };
+
 #pragma warning restore CS8524
 
     public static IReadOnlyList<string> AffordabilityHorizons { get; } = ["myopic", "full_term"];
 
     public static IReadOnlyList<string> Rationings { get; } = ["random", "willingness"];
+
+    public static IReadOnlyList<string> Replacements { get; } = ["deterministic", "hazard"];
 }

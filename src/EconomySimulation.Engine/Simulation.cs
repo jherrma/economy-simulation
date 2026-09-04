@@ -231,13 +231,22 @@ public sealed class Simulation
     {
         _ = tick;
 
+        var hazard = Parameters.Run.Replacement == Replacement.Hazard;
+
         for (var h = 0; h < Population.Count; h++)
         {
             var cell = CohortMetrics.Cell(Population, h);
 
             for (var c = 0; c < Goods.CategoryCount; c++)
             {
-                Population.RefreshWant(h, c, Goods.Categories[c].Life);
+                if (hazard)
+                {
+                    Population.RefreshWantFromHolding(h, c);
+                }
+                else
+                {
+                    Population.RefreshWant(h, c, Goods.Categories[c].Life);
+                }
 
                 if (Population.Wanted[Population.AgeIndex(h, c)])
                 {
@@ -252,11 +261,26 @@ public sealed class Simulation
     /// <summary>Step 4 — the shopping walk.</summary>
     private Result Walk(int tick) => Shopping.Run(tick);
 
-    /// <summary>Step 5 — every held durable gets a tick older.</summary>
+    /// <summary>
+    /// Step 5 — every held durable gets a tick older, or fails.
+    ///
+    /// The step keeps its name because the tick order is asserted by it and renaming a step is a
+    /// change to the order test rather than to the model. What it does is chosen by
+    /// `run.replacement`, and `deterministic` is the default, which is what keeps V5 and V5a
+    /// meaning what they meant.
+    /// </summary>
     private Result Ageing(int tick)
     {
         _ = tick;
-        Population.AgeDurables(Goods);
+
+        if (Parameters.Run.Replacement == Replacement.Hazard)
+        {
+            Population.FailDurables(Goods);
+        }
+        else
+        {
+            Population.AgeDurables(Goods);
+        }
 
         return Results.Ok;
     }

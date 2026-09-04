@@ -65,6 +65,22 @@ public sealed class Purpose
     public static readonly Purpose TasteIdiosyncratic = Register("taste_idio");
 
     /// <summary>
+    /// Per household, per good, per tick: whether the unit held fails (`01-SIMULATION.md` §5.5).
+    ///
+    /// **The draw is unconditional** — every household, every good, every tick, whether or not a
+    /// unit is owned. A household with nothing cannot lose anything, so drawing for it looks like
+    /// waste, and skipping it is the bug: the stream position would then depend on who was
+    /// rationed, which differs between arms *by construction*, since being rationed is the thing
+    /// under measurement. The two arms would sit on different worlds, every household would be a
+    /// different household, and the paired comparison would keep returning plausible numbers.
+    ///
+    /// θ had this argument in 02-04 and the archetype assignment had it in 10-02. This is its third
+    /// and least obvious instance, because here the *state* that would gate the draw is itself an
+    /// outcome.
+    /// </summary>
+    public static readonly Purpose Failure = Register("failure");
+
+    /// <summary>
     /// Per tick: the order households shop in.
     ///
     /// This is the one place the model legitimately wants order dependence — under rationing, the

@@ -39,6 +39,28 @@ namespace EconomySimulation.Gates;
 public static class NullRunGate
 {
     /// <summary>
+    /// The access series V4 checks: **`wait_median_met`, never `wait_median`.**
+    ///
+    /// Added 2026-09-04 with the hazard (11-03). Replacement demand became `Binomial(owners, p)`
+    /// rather than a near-constant, so the series that says how long a household waits for a unit
+    /// carries per-tick noise it did not carry before, and a gate that never looked at it would not
+    /// notice if that noise turned into a drift. It is the series `01-SIMULATION.md` §10.1 says the
+    /// finding rests on, and the null run is where it has to be shown to be flat first.
+    /// </summary>
+    public static IReadOnlyList<string> WaitSeries { get; } =
+        ["abstainer_wait_median_met", "borrower_wait_median_met"];
+
+    /// <summary>
+    /// How far the wait to a met want may travel across the measured window, **in ticks**.
+    ///
+    /// Absolute rather than relative, because in a creditless baseline this series is identically
+    /// zero — every want that is met is met the tick it appears — and a relative bound on a series
+    /// whose mean is nought is a check that cannot fail. A quarter of a tick is a fortieth of the
+    /// median wait §10.1 reports for the excluded cohort.
+    /// </summary>
+    public const double WaitDriftTicks = 0.25;
+
+    /// <summary>
     /// How far a price series may travel across the measured window, relative to its own mean.
     ///
     /// The price rule moves a shelf by at most `k` — five per cent — in one tick. One per cent over
@@ -135,6 +157,7 @@ public static class NullRunGate
         Flat(report.Check("no tier price drifts"), runs, runs[0].Prices, warmup, PriceDrift, band: 0.0);
         Flat(report.Check("the realised tier mix is stationary"), runs, runs[0].Mixes, warmup, MixDrift, band: 0.0);
         Flat(report.Check("the cash of deciles one to nine shows no trend"), runs, ["lower_deciles_cash"], warmup, CashDrift, band: 0.0);
+        Waiting(report.Check("the wait to a met want shows no trend"), runs, warmup);
         Pool(report.Check("the pool has stopped falling"), runs, warmup);
         NoLoans(report.Check("no loan exists at any tick"), runs);
         Settling(report.Check("everything settled before the warm-up ended"), runs, warmup);
@@ -232,6 +255,76 @@ public static class NullRunGate
         if (band > 0.0 && worstBand > band)
         {
             check.Fail(Invariant($"{bandAt} swings {worstBand:P1} peak to trough, past {band:P1}. A series with no trend and a band that wide is being hunted rather than nudged — k is too large."));
+        }
+    }
+
+    /// <summary>
+    /// `wait_median_met`, in ticks, level and trend — and the level is the point.
+    ///
+    /// §10.1 found that the rationing is an exclusion rather than a queue: `wait_median` mixes a
+    /// flow of freshly opened wants against a growing stock of wants that are never met, so it
+    /// drifts and swings several-fold in a perfectly stationary economy, and `wait_median_met` is
+    /// the series the finding rests on. In a creditless baseline it is **identically zero**, which
+    /// is a stronger statement than "no trend" and is the one worth making: the null run has no
+    /// queue at all, so any wait that appears in a credit arm is credit's.
+    ///
+    /// Added with the hazard (11-03), because replacement demand became `Binomial(owners, p)`
+    /// rather than a near-constant and a gate that never looked at this series would not notice if
+    /// that noise turned into a queue.
+    /// </summary>
+    private static void Waiting(GateCheck check, IReadOnlyList<NullRun> runs, int warmup)
+    {
+        foreach (var name in WaitSeries)
+        {
+            var levels = new List<double>(runs.Count);
+            var drifts = new List<double>(runs.Count);
+            var highest = 0.0;
+            var highestAt = string.Empty;
+
+            foreach (var run in runs)
+            {
+                var window = run.Window(name, warmup);
+                var level = 0.0;
+                var first = 0.0;
+                var last = 0.0;
+                var quarter = Math.Max(1, window.Length / 4);
+
+                for (var i = 0; i < window.Length; i++)
+                {
+                    level += window[i];
+
+                    if (i < quarter)
+                    {
+                        first += window[i];
+                    }
+
+                    if (i >= window.Length - quarter)
+                    {
+                        last += window[i];
+                    }
+
+                    if (window[i] > highest)
+                    {
+                        highest = window[i];
+                        highestAt = Invariant($"seed {run.Seed}");
+                    }
+                }
+
+                levels.Add(level / window.Length);
+                drifts.Add((last - first) / quarter);
+            }
+
+            var mean = levels.Average();
+            var moved = drifts.Average();
+
+            check.Observe(Invariant(
+                $"{name}: level {mean:0.000} ticks, last quarter minus first {moved:+0.000;-0.000;0.000}, worst single tick {highest:0.0} ({(highestAt.Length == 0 ? "never above zero" : highestAt)})"));
+
+            if (Math.Abs(moved) > WaitDriftTicks)
+            {
+                check.Fail(Invariant(
+                    $"{name} moves {moved:+0.000;-0.000} ticks across the window on average over {runs.Count} seeds, past the {WaitDriftTicks} allowed. A creditless baseline that is growing a queue is not a baseline."));
+            }
         }
     }
 
@@ -513,6 +606,12 @@ public static class NullRunGate
 
             read.series["cpi"] = Column(run, "cpi");
             read.series["pool"] = Column(run, "pool");
+
+            foreach (var wait in WaitSeries)
+            {
+                read.series[wait] = Column(run, wait);
+            }
+
             read.series["lower_deciles_cash"] = [.. collected.LowerDecilesCash];
 
             read.LowestPool = read.series["pool"].Min();
@@ -526,7 +625,11 @@ public static class NullRunGate
 
             for (var row = 0; row < tiers.RowCount; row++)
             {
-                var shelf = tiers.Field(row, tiers.Column("category")) + "." + tiers.Field(row, tiers.Column("tier"));
+                // Keyed by **good**, not by category: since E11 a category label is shared by three
+                // goods, and keying by it would concatenate three shelves' series into one of three
+                // times the length. Under §3.1 the two are the same string, which is why this was
+                // invisible until the grouped calibration existed.
+                var shelf = tiers.Field(row, tiers.Column("good")) + "." + tiers.Field(row, tiers.Column("tier"));
 
                 Append(byShelf, "price " + shelf, OutputFile.Number(tiers.Field(row, tiers.Column("price"))));
                 Append(byShelf, "mix " + shelf, OutputFile.Number(tiers.Field(row, tiers.Column("mix_share"))));

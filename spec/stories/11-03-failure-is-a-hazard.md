@@ -25,6 +25,15 @@ The unconditional draw is the criterion that will be optimised away by somebody 
 
 The second thing worth knowing before starting is that the hazard is **quieter** than the rule it replaces, which is not the intuition. Deterministic replacement separates its opening cohorts once, at initialisation, and then never mixes them: a household replacing in month 7 replaces in month 7 + life forever. Only rationing decorrelates them. Memorylessness does it for free, and an unconstrained four-month good oscillates at a per-tick standard deviation of 500 units under the calendar against 31 under the hazard. Expect the null run to get *easier*, not harder.
 
+> **The "quieter" claim above is wrong, and was measured on 2026-09-04 while building this story.**
+> Unconstrained at 5,000 households, a four-month good sits at 1250.0 ± 35.8 under the calendar and
+> 1251.8 ± 31.6 under the hazard — the same spread, and the calendar's mean is capacity exactly, not
+> something short of it. The 500-unit figure does not reproduce and was presumably measured on ages
+> initialised at zero, which is the sawtooth 02-04 already fixed. The real difference is
+> **structure**: the calendar's series is periodic, with an autocorrelation of essentially 1 at lag
+> `life`, while the hazard's is essentially 0 at every lag. Expect the null run to behave about the
+> same, not better. `01-SIMULATION.md` §5.5 is corrected and `HazardTests` asserts the comparison.
+
 What the hazard cannot do belongs in the commit message and in §11: a constant hazard has no wear-out, and it models a thing breaking rather than a household choosing to replace something that still works. `prudent` keeping its phone for forty-two months is expressed here as a phone that fails less often, which is not what is meant.
 
 ## How to verify

@@ -16,6 +16,7 @@ namespace EconomySimulation.Engine.World;
 public sealed class Households
 {
     private readonly double[] categoryTaste;
+    private RandomStream[]? failure;
     private readonly double[] tierValue;
 
     private Households(int count, int categoryCount, int tierCount, IReadOnlyList<string> archetypeNames)
@@ -31,6 +32,7 @@ public sealed class Households
         IsAbstainer = new bool[count];
         Archetype = new int[count];
         Age = new int[count * categoryCount];
+        Holds = new bool[count * categoryCount];
         Wanted = new bool[count * categoryCount];
         Wait = new int[count * categoryCount];
         categoryTaste = new double[count * categoryCount];
@@ -104,8 +106,25 @@ public sealed class Households
         return cash;
     }
 
-    /// <summary>Ticks since the household's unit of a category was bought, category-major per household.</summary>
+    /// <summary>
+    /// Ticks since the household's unit of a category was bought, category-major per household.
+    ///
+    /// Under `hazard` this is **kept for reporting and decides nothing** — the geometric
+    /// distribution is memoryless, so how long a unit has lasted says nothing about whether it is
+    /// about to fail, and reading it would be the calendar creeping back in.
+    /// </summary>
     public int[] Age { get; }
+
+    /// <summary>
+    /// Whether the household owns a **working** unit of the category.
+    ///
+    /// **Only `hazard` maintains it.** Under `deterministic` the same fact is `Age[i] < life`, and
+    /// this array is written by <see cref="Acquire"/> and read by nobody — deliberately not kept in
+    /// step, because the two rules disagree about a life-1 good (the calendar wants one every tick
+    /// whether or not it just bought one) and a parallel state that is right most of the time is
+    /// worse than one that is plainly unused.
+    /// </summary>
+    public bool[] Holds { get; }
 
     /// <summary>
     /// Whether the household wants a unit of the category this tick. A bool, not a count: the
@@ -140,6 +159,22 @@ public sealed class Households
     }
 
     /// <summary>
+    /// The same step under `hazard`: wanted when no working unit is held.
+    ///
+    /// The life-1 special case is gone rather than moved. `p = 1 / life` is 1 at `life = 1`, so a
+    /// consumable is consumed every tick by the rule that fails a washing machine, and
+    /// `life == 1 || age ≥ life` collapses into one condition on one flag.
+    /// </summary>
+    public void RefreshWantFromHolding(int household, int category)
+    {
+        var i = AgeIndex(household, category);
+        var wants = !Holds[i];
+
+        Wait[i] = wants && Wanted[i] ? Wait[i] + 1 : 0;
+        Wanted[i] = wants;
+    }
+
+    /// <summary>
     /// The household now holds a fresh unit of the category: age 0, want met, wait over. The one
     /// operation the walk performs on a household's holdings.
     /// </summary>
@@ -148,6 +183,7 @@ public sealed class Households
         var i = AgeIndex(household, category);
 
         Age[i] = 0;
+        Holds[i] = true;
         Wanted[i] = false;
         Wait[i] = 0;
     }
@@ -175,11 +211,77 @@ public sealed class Households
     }
 
     /// <summary>
+    /// Step 5 under `hazard`: every household draws for every good, and a unit it holds fails when
+    /// the draw is below `1 / life`.
+    ///
+    /// **Every household, every good, every tick, owned or not.** A household with nothing cannot
+    /// lose anything, so drawing for it looks like waste — and skipping it makes the stream
+    /// position depend on who was rationed, which differs between arms by construction, since being
+    /// rationed is the thing under measurement. See <see cref="Purpose.Failure"/>.
+    ///
+    /// The age is still advanced, and still decides nothing: the hazard is memoryless, so an old
+    /// unit is exactly as likely to fail as a new one. It is written to output because a reader
+    /// wants to know how long things lasted.
+    /// </summary>
+    public void FailDurables(GoodsTable goods)
+    {
+        ArgumentNullException.ThrowIfNull(goods);
+
+        if (failure is null)
+        {
+            throw new InvalidOperationException(
+                "The failure streams were never opened; this population was not drawn for a hazard run.");
+        }
+
+        for (var h = 0; h < Count; h++)
+        {
+            var stream = failure[h];
+
+            for (var c = 0; c < CategoryCount; c++)
+            {
+                // Drawn first and unconditionally, before anything is asked about what is held.
+                var drawn = stream.NextDouble();
+                var i = AgeIndex(h, c);
+
+                Age[i]++;
+
+                if (Holds[i] && drawn < 1.0 / goods.Categories[c].Life)
+                {
+                    Holds[i] = false;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Opens one failure stream per household, once, at setup.
+    ///
+    /// Per household rather than per tick, so a household's failure months are a property of that
+    /// household and of the seed — not of how many other households there are. And opened here
+    /// rather than in the tick, because <see cref="RandomStream"/> is a class and the tick
+    /// allocates nothing.
+    /// </summary>
+    private void OpenFailureStreams(int runSeed)
+    {
+        failure = new RandomStream[Count];
+
+        for (var h = 0; h < Count; h++)
+        {
+            failure[h] = RandomStream.ForHousehold(runSeed, h, Purpose.Failure);
+        }
+    }
+
+    /// <summary>
     /// A population stated outright rather than drawn: given incomes and taste weights, no
     /// abstainers, one θ for all (0 unless given), every durable at age 0. For tests that need a
     /// household on exactly €650 with `w = 1`, which no seed will ever produce.
     /// </summary>
-    internal static Households Specified(GoodsTable goods, Money[] incomes, double[] tasteWeights, double theta = 0.0)
+    internal static Households Specified(
+        GoodsTable goods,
+        Money[] incomes,
+        double[] tasteWeights,
+        double theta = 0.0,
+        int runSeed = 0)
     {
         ArgumentNullException.ThrowIfNull(goods);
         ArgumentNullException.ThrowIfNull(incomes);
@@ -199,6 +301,11 @@ public sealed class Households
         incomes.CopyTo(households.Income, 0);
         tasteWeights.CopyTo(households.TasteWeight, 0);
         Array.Fill(households.Theta, theta);
+
+        // Every durable working, and the failure streams open: a stated population is usable under
+        // either replacement rule, so a test does not have to know which one it is exercising.
+        Array.Fill(households.Holds, true);
+        households.OpenFailureStreams(runSeed);
 
         // The identity type: taste is the household's own weight and nothing else, and a tier is
         // worth what the tier table says it is worth.
@@ -259,6 +366,13 @@ public sealed class Households
             [.. types.Select(a => a.Name)]);
 
         households.FillTierValues(goods, types);
+
+        var hazard = parameters.Run.Replacement == Replacement.Hazard;
+
+        if (hazard)
+        {
+            households.OpenFailureStreams(runSeed);
+        }
 
         var meanIncome = parameters.Income.MeanIncome;
 
@@ -325,6 +439,21 @@ public sealed class Households
             // would land in tick 2 — a one-tick hole at the start of every durable's series. A
             // non-durable has no age and stays at 0; the draw still happens, so the stream is the
             // same length whatever the category's life.
+            if (hazard)
+            {
+                // Nothing to initialise and nothing to draw. The geometric distribution is
+                // memoryless, so there is no age to spread: every household opens owning a working
+                // unit of every durable, a fraction `1/life` of them fails in tick 1, and that is
+                // already the steady state. `"initial_age"` exists only to separate the first
+                // cohort, and under a hazard there is no cohort to separate.
+                for (var c = 0; c < goods.CategoryCount; c++)
+                {
+                    households.Holds[households.AgeIndex(h, c)] = true;
+                }
+
+                continue;
+            }
+
             var ages = RandomStream.ForHousehold(runSeed, h, Purpose.InitialAge);
 
             for (var c = 0; c < goods.CategoryCount; c++)

@@ -155,6 +155,14 @@ public static class ConfigurationLoader
             WarmupTicks = section.Int("warmup_ticks", defaults.WarmupTicks),
             Seeds = section.Int("seeds", defaults.Seeds),
             Scenario = section.Text("scenario", defaults.Scenario),
+            Replacement = section.Choice(
+                "replacement",
+                defaults.Replacement.ToTomlValue(),
+                EnumeratedParameters.Replacements) switch
+            {
+                "hazard" => Replacement.Hazard,
+                _ => Replacement.Deterministic,
+            },
         };
 
         section.RejectUnknownKeys();

@@ -455,10 +455,18 @@ Three things fall out that were not the reason for choosing it:
   `1/life` of them fails in tick 1, and that is already the steady state. 02-04's uniform age draw
   and the `"initial_age"` purpose exist only to spread the first cohort, and they do not mix the
   cohorts afterwards — under deterministic replacement a household that replaces in month 7 replaces
-  again in month 7 + life, forever, and only rationing ever decorrelates them. Measured on an
-  unconstrained population of 5,000: deterministic replacement of a four-month good oscillates with
-  a per-tick standard deviation of **500 units** about a mean that never reaches capacity, where the
-  hazard sits at 1250.7 ± 31.2.
+  again in month 7 + life, forever, and only rationing ever decorrelates them.
+
+  **The difference is structure, not size — corrected 2026-09-04 against the measurement.** An
+  earlier draft of this bullet claimed the calendar "oscillates with a per-tick standard deviation
+  of 500 units about a mean that never reaches capacity" against 31 for the hazard, and concluded
+  the null run should get *easier*. Unconstrained at 5,000 households, a four-month good sits at
+  **1250.0 ± 35.8** under the calendar and **1251.8 ± 31.6** under the hazard: the same spread, and
+  the calendar's mean is capacity exactly. What separates them is that the calendar's series is
+  *periodic* — its cohorts are fixed at initialisation and never mix, so its autocorrelation at lag
+  `life` is essentially 1 — while the hazard's is essentially 0 at every lag. Expect the null run
+  to behave about the same, not better; what the hazard removes is the cohort to initialise and the
+  cohort to warm out, which is worth having on its own.
 - **The life-1 special case disappears.** `p = 1/life` gives `p = 1` at `life = 1`, so a consumable
   is consumed every tick by the same rule that fails a washing machine. `wants = life == 1 || age ≥ life`
   becomes one draw.
@@ -467,11 +475,13 @@ Three things fall out that were not the reason for choosing it:
   the household is assumed to complete. Which answers the second question below by construction.
 
 The cost is real and is stated so nobody discovers it: per-tick replacement demand is now
-`Binomial(owners, p)` rather than a near-constant. At 5,000 households the relative standard
-deviation is 15.9% for large appliances, 12.7% for the TV, 8.0% for the phone, 2.5% for clothing
-basics — but **0.84%, 0.67%, 0.42% and 0.13%** over a 360-tick measured window, and the failure draw
-is taken **unconditionally**, for every household and every good and every tick, whether or not a
-unit is owned. That is the rule `θ` obeys (§8), and here it means the same households fail in the
+`Binomial(owners, p)` rather than a near-constant, with a relative standard deviation of
+`√((1 − p) / (N · p))`. At 5,000 households that is 16.9% for large appliances, 12.9% for the TV,
+7.6% for the phone and 2.5% for clothing basics; measured on seed 11 over a 360-tick window,
+**16.5%, 13.6%, 7.5% and 2.5%** — and **0.87%, 0.72%, 0.39% and 0.13%** once divided by the length of
+that window, which is the number a result is actually read off. The failure draw is taken
+**unconditionally**, for every household and every good and every tick, whether or not a unit is
+owned. That is the rule `θ` obeys (§8), and here it means the same households fail in the
 same months in both arms, so the noise cancels in the paired difference rather than merely
 averaging out.
 
@@ -659,6 +669,11 @@ Every held durable's `age_h,g` increases by one.
 good, from the `"failure"` stream — **unconditionally, whether or not it owns a working unit** — and
 a unit it does own fails when the draw is below `1 / life_h,g`. A life-1 good has `p = 1` and is
 consumed by the same rule. `age_h,g` is kept for reporting and decides nothing.
+
+One consequence of opening with everything working: under `hazard` **tick 1 has no wants at all**,
+and the first replacements are bought in tick 2. That is the opposite hole from the one 02-04's
+`{1 … life}` age draw was written to avoid, it is one tick at the very start of a six-hundred-tick
+run, and it is inside the warm-up. It is stated here so that nobody reads it off a plot as a result.
 
 The draw is unconditional for the reason `θ` is drawn with credit off (§8): a household rationed out
 of a good in one arm and served in the other must still consume the same stream position, or the two
@@ -878,8 +893,13 @@ that cannot be argued with.
   real consumption is capped, so the question is not how much the economy consumes but **who gets
   it**.
 - **`wait`**: for each durable want, the number of ticks between first wanting a unit and obtaining
-  one. Reported as a cohort median. This is the cleanest available statement of the timing channel —
-  the borrower gets it now, the abstainer gets it later or not at all.
+  one. Reported as a cohort median, and read as **`wait_median_met`** — the median over the wants
+  that were actually met — never as `wait_median`, which mixes that flow against a growing stock of
+  wants that are never met and therefore drifts in a perfectly stationary economy (§10.1). This is
+  the cleanest available statement of the timing channel: the borrower gets it now, the abstainer
+  gets it later or not at all. **In the creditless baseline it is identically zero**, on thirty
+  seeds and under both replacement rules (V4, 2026-09-04) — the null run has no queue, so any wait
+  that appears in a credit arm is credit's.
 - **`tier_mix`**: the share of each cohort's purchases at each tier, **within a good or within a
   category, never pooled across categories** (§10.4 — pooled, it reports the trade-down with the
   wrong sign). One category is the widest denominator this model will report a share over.

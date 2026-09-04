@@ -292,6 +292,22 @@ category-shaped:
   realised replacement demand per tick per good matches `capacity_g` within sampling error, and
   the `"failure"` draw is taken for every household, good and tick regardless of ownership. The
   second half is what makes the arms comparable and it is invisible in any single run.
+  **Done 2026-09-04** (11-03). The unconditional draw is checked by replaying the `"failure"` stream
+  from outside the model and requiring every loss, in both a `credit_off` and a `credit_high` arm, to
+  be exactly "held a unit, and the stream said so". A draw skipped for a household holding nothing
+  desynchronises the replay in the arm with more rationing and the test fails; nothing else in the
+  repository would notice, because both arms would still produce plausible numbers.
+- **V4 holds under the hazard, and now checks `wait_median_met`.** **Done 2026-09-04** (11-03).
+  `dotnet run --project tools/Gates -- nullrun hazard` runs the whole gate under §5.5's failure rule
+  on §3.1's six categories, and every check passes with the same margins as the calendar. The new
+  series is checked in **ticks rather than per cent**, because in a creditless baseline
+  `wait_median_met` is identically zero — every want that is met is met the tick it appears — and a
+  relative bound on a series whose mean is nought is a check that cannot fail. That the level is
+  zero is the stronger claim and the one the gate now reports: the null run has no queue at all, so
+  any wait appearing in a credit arm is credit's.
+- **The `d`-under-`deterministic` rejection belongs to 11-04.** `life` is an `int` and `d` does not
+  exist yet, so under 11-03 there is no way to state a non-integer life and nothing to reject. The
+  rule is stated in §1 of `02-PARAMETERS.md` and the check lands with the parameter.
 - `d ≡ 1` reproduces the same calibration run without `d`, byte for byte.
 - **`capacity` is derived from `households` and `life`, never from the realised population.**
   A test asserts two seeds of one scenario produce identical effective configurations — which is

@@ -157,6 +157,7 @@ public sealed record SimulationParameters
         Write(toml, "warmup_ticks", Run.WarmupTicks);
         Write(toml, "seeds", Run.Seeds);
         Write(toml, "scenario", Run.Scenario);
+        Write(toml, "replacement", Run.Replacement.ToTomlValue());
         toml.AppendLine();
 
         toml.AppendLine("[income]");

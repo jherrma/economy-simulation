@@ -31,7 +31,7 @@ internal static class Program
         {
             "determinism" => DeterminismGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "neutrality" => NeutralityGate.Run(SimulationParameters.Default, Runs.WindowSeeds, workspace),
-            "nullrun" => NullRunGate.Run(SimulationParameters.Default, Runs.CampaignSeeds(SimulationParameters.Default), workspace),
+            "nullrun" => NullRunGate.Run(Replaced(args), Runs.CampaignSeeds(SimulationParameters.Default), workspace),
             "creditoff" => CreditOffGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "archetypes" => ArchetypeGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "rebaseline" => CreditOffGate.Rebaseline(SimulationParameters.Default, Runs.ShortSeeds),
@@ -52,6 +52,23 @@ internal static class Program
         }
 
         return report.Passed ? 0 : 1;
+    }
+
+    /// <summary>
+    /// `nullrun hazard` runs V4 under §5.5's failure rule instead of the calendar.
+    ///
+    /// The hazard makes replacement demand `Binomial(owners, p)` rather than a near-constant, and
+    /// whether a creditless economy still sits still under that is a question about the model, not
+    /// about the gate. Answering it here rather than discovering it during 11-05 is the difference
+    /// between a warm-up measured on evidence and a warm-up measured on hope.
+    /// </summary>
+    private static SimulationParameters Replaced(string[] args)
+    {
+        var defaults = SimulationParameters.Default;
+
+        return Array.Exists(args, a => string.Equals(a, "hazard", StringComparison.Ordinal))
+            ? defaults with { Run = defaults.Run with { Replacement = Replacement.Hazard } }
+            : defaults;
     }
 
     /// <summary>
@@ -110,6 +127,7 @@ internal static class Program
         Console.Error.WriteLine("  determinism   V2 — the same seed produces the same run, twice and across threads");
         Console.Error.WriteLine("  neutrality    V3 — multiply every nominal quantity by c and nothing real moves");
         Console.Error.WriteLine("  nullrun       V4 — the creditless baseline sits still after the warm-up");
+        Console.Error.WriteLine("                     add 'hazard' to run it under §5.5's failure rule");
         Console.Error.WriteLine("  creditoff     V5 — credit_high with theta = 0 reproduces credit_off, byte for byte");
         Console.Error.WriteLine("  archetypes    V5a — the identity archetype table reproduces the pre-archetype model");
         Console.Error.WriteLine("  pilot         not a gate — how finely the campaign's seed set resolves the headline");
