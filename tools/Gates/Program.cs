@@ -33,6 +33,7 @@ internal static class Program
             "nullrun" => NullRunGate.Run(SimulationParameters.Default, Runs.CampaignSeeds(SimulationParameters.Default), workspace),
             "creditoff" => CreditOffGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "rebaseline" => CreditOffGate.Rebaseline(SimulationParameters.Default, Runs.ShortSeeds),
+            "pilot" => PilotProbe.Run(Speed(args, SimulationParameters.Default), Runs.CampaignSeeds(SimulationParameters.Default), workspace),
             _ => null,
         };
 
@@ -51,6 +52,16 @@ internal static class Program
         return report.Passed ? 0 : 1;
     }
 
+    /// <summary>`pilot 0.1` reruns the probe at another adjustment speed — the one sensitivity worth asking.</summary>
+    private static SimulationParameters Speed(string[] args, SimulationParameters parameters)
+    {
+        var given = Array.Find(args, a => double.TryParse(a, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _));
+
+        return given is null
+            ? parameters
+            : parameters with { Prices = parameters.Prices with { K = double.Parse(given, System.Globalization.CultureInfo.InvariantCulture) } };
+    }
+
     private static int Usage(string problem)
     {
         Console.Error.WriteLine(Invariant($"gates: {problem}."));
@@ -60,6 +71,7 @@ internal static class Program
         Console.Error.WriteLine("  neutrality    V3 — multiply every nominal quantity by c and nothing real moves");
         Console.Error.WriteLine("  nullrun       V4 — the creditless baseline sits still after the warm-up");
         Console.Error.WriteLine("  creditoff     V5 — credit_high with theta = 0 reproduces credit_off, byte for byte");
+        Console.Error.WriteLine("  pilot         not a gate — how finely the campaign's seed set resolves the headline");
         Console.Error.WriteLine("  rebaseline    write new committed baselines for V5 — deliberate, never automatic");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  --keep        leave the runs on disk instead of removing them");

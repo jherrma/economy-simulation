@@ -486,7 +486,8 @@ that cannot be argued with.
 - **`wait`**: for each durable want, the number of ticks between first wanting a unit and obtaining
   one. Reported as a cohort median. This is the cleanest available statement of the timing channel —
   the borrower gets it now, the abstainer gets it later or not at all.
-- **`tier_mix`**: the share of each cohort's purchases at each tier, per category. **This is the
+- **`tier_mix`**: the share of each cohort's purchases at each tier, **per category, never pooled
+  across them** (§10.4 — pooled, it reports the trade-down with the wrong sign). **This is the
   trade-down finding.** If credit moves borrowers up the ladder and abstainers down it, that shows
   here before it shows anywhere else, and it is a more concrete claim than a price index.
 - **`real_units`**: total units obtained, per category and in total.
@@ -495,7 +496,9 @@ that cannot be argued with.
 - **nominal spend**, and the price index faced.
 
 The headline is the difference in the abstainer cohort's `cpi`, `share_of_wanted_obtained` and
-`wait` between `credit_high` and `credit_off`, paired by seed, over the measured window.
+`wait` between `credit_high` and `credit_off`, paired by seed, over the measured window. §10.4
+measures it: it resolves at ten to sixty times the spread across thirty seeds, and it lives in the
+per-category price and access series rather than in the level.
 
 **The result may be null, and a null result is publishable.** If abstainers are no worse off, the
 hypothesis is not supported by this mechanism, and that is a finding about the mechanism.
@@ -621,6 +624,84 @@ spread across seeds can resolve.
 
 Re-check with `dotnet run --project tools/Gates -- nullrun`, which reports every drift, every
 settling tick, and the seed spread behind both.
+
+### 10.4 The effect is large; the pooled tier mix reports it backwards — found 2026-09-04
+
+Found with `tools/Gates` `pilot`, which is not a gate: it runs both arms of the experiment over the
+campaign's own thirty seeds at the campaign's own parameters and asks whether the difference the
+write-up is for is larger than the spread across seeds. Sixty runs of 600 ticks take sixteen
+seconds, so this is a question that can be asked before the campaign exists rather than after it
+produces a number nobody can defend. §10.2 is what made it worth asking: pairing removes the
+population draw, not the trajectory noise, so the paired difference carries the noise of both arms.
+
+**It resolves, and not narrowly.** `credit_high` against `credit_off`, paired by seed, thirty seeds,
+window from tick 241, against the smallest difference thirty seeds could distinguish from zero:
+
+| | `credit_off` | `credit_high` | difference | 95% detectable |
+|---|---|---|---|---|
+| `cpi` | 1.0432 | 1.0489 | **+0.55%** | 0.26% |
+| abstainer share of wanted obtained | 0.7598 | 0.7172 | **−5.61%** | 0.48% |
+| abstainer electronics obtained | 0.1224 | 0.0805 | **−34.3%** | 3.47% |
+| abstainer appliances obtained | 0.0263 | 0.0198 | **−24.5%** | 2.74% |
+| `cpi_electronics` | 0.9901 | 1.0987 | **+10.97%** | 0.59% |
+| `cpi_appliances` | 1.1781 | 1.2667 | **+7.53%** | 0.53% |
+
+The headline is ten to sixty times its own resolution. **Thirty seeds are more than the question
+needs**; eight would carry it. The 271 shelf-level series of §10.2 still do not resolve, and still
+do not have to — the headline is not made of them.
+
+**Where the effect is.** Not in the price level: the CPI moves half a percent, and the money stock
+moves +0.44%, which is the §7.3 channel and about the same size. It is in **relative prices, in
+exactly the goods credit is used for** — electronics +11%, appliances +7.5%, hobby +5.7%, against
+clothing −3.6% — and in who ends up holding them. The abstainer's total unit count barely moves
+(−0.36%); their access to durables collapses. That is the answer to §1 in the model's own terms:
+the good B never borrowed for gets **more expensive and harder to get**, and it is not general
+inflation doing it.
+
+**Nobody gains units.** Town-wide consumption falls: −0.36% of units and −0.39% of value-weighted
+units, and both cohorts lose (borrowers −0.35% units, −0.50% quality). Credit creates no goods; in a
+stationary window the borrower's head start was taken during the warm-up and what remains of it is
+debt service. Any write-up claiming borrowers do better must say **at what** — it is timing and
+composition, never quantity.
+
+**The pooled `tier_mix` of §10 reports the trade-down backwards.** Pooled over categories, the
+abstainer's premium share *rises* 2.1% under credit. Within category it falls everywhere it
+matters:
+
+| abstainer, within category | budget share | premium share |
+|---|---|---|
+| appliances | **+11.7 pp** | −4.0 pp |
+| electronics | **+7.1 pp** | −3.6 pp |
+| hobby | +1.8 pp | −0.8 pp |
+| food | −1.5 pp | +0.7 pp |
+| leisure | −0.4 pp | +0.3 pp |
+
+All at |t| > 4. Being priced out of appliances moves those units out of the pooled denominator and
+the money into better food, and the pooled share reports that as trading up. **`tier_mix` is a
+within-category measure and must never be pooled across categories** — the same failure as §10.1's
+`wait_median`, and the same remedy: the number is sound, the aggregate over it is not.
+
+**`k` sets the price level, not just the speed it is reached at.** Re-running the probe at
+`k` = 0.02, 0.05, 0.1, 0.2 moves the baseline economy a long way — `cpi` 1.027 → 1.043 → 1.235 →
+1.426, and the abstainer's share of wanted obtained 0.78 → 0.76 → 0.59 → 0.49. A multiplicative rule
+on lumpy demand does not average to its midpoint. **The difference between the arms survives it**:
+`cpi_electronics` +8.7% to +11.6%, abstainer electronics obtained −22% to −32%, the sign and the
+order of magnitude unchanged across a tenfold range. So the comparison is robust and the baseline is
+a calibration. Every reported percentage must be reported **as a difference**, and the write-up owes
+the reader the sensitivity band rather than a single number carrying four digits.
+
+**Two things the campaign will find missing.** `rationed` — credit rationing, the pool refusing to
+fund — is **identically zero on all sixty runs**: the pool always funds, so `credit_high` is
+unconstrained credit and the loan-supply channel is inert at these parameters. And the "price index
+faced" per cohort that §10 lists is not a column; `abstainer_spend / abstainer_obtained` is a unit
+value, which moves with composition and is not a price index. Whoever builds the analysis needs the
+cohort's basket priced at both arms' prices, or the price claim has to rest on `cpi_*` and the
+per-category shares, which carry it perfectly well.
+
+**Supply never binds.** About a quarter of appliance capacity and a fifth of electronics capacity go
+unsold every tick in both arms, while abstainers obtain 2.6% of the appliances they want. The
+constraint on B is cash, not stock — B is priced out, not queued out, which is what §10.1 saw from
+the other side. A write-up must not describe this as A taking the last unit off the shelf.
 
 ## 11. What this model cannot show
 
