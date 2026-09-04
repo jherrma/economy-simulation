@@ -306,6 +306,25 @@ silently become wrong the first time somebody changes one. At the v1 tiers the s
 condition — `budget → standard` above `standard → premium` — binds only at 2.3194, so the first is
 what actually constrains; at another tier table it need not be.
 
+**But the bound is measured at opening prices, and the headroom it appears to give is small once
+prices move.** The scores use *actual* prices, and inversion happens when
+`price_budget / price_standard > value_mult_budget^κ`. The opening ratio is 0.60, so the budget
+shelf has to become dearer relative to standard by:
+
+| κ | inverts once budget/standard rises by |
+|---|---|
+| 1.00 | +13.3% |
+| 1.20 | +5.0% |
+| 1.25 | **+2.9%** |
+
+§10.3 watched food's budget shelf move 22% in a single run. So for `gadget` (electronics κ 1.25) and
+`health_conscious` (food κ 1.25) the halt-on-budget pathology is **routine rather than exceptional**,
+in exactly the cohorts and categories under test — and the load-time bound does not prevent it, it
+only keeps the *opening* ladder sorted. §3.5's "deliberate headroom" claim was written against the
+static bound and is too comfortable. Either lower the table's κ, or resolve §6 step 4's open
+question about buying the next tier directly when the one below is sold out, before this matters.
+(Raised 2026-09-04 in review.)
+
 #### What archetypes deliberately do not carry
 
 - **θ.** The scenario sets the credit level; two places to set it is one place for them to disagree,
@@ -354,9 +373,20 @@ bridging a lump is the entire job of the credit this model is about.
 **A product group is not a new dimension. It is a good.** A category in this model is a row of
 `(life, capacity, price_ref, v, necessity, financeable, term)`, and a group with its own replacement
 cycle and price is exactly that row. So the goods table goes from six rows to eighteen, `category`
-demotes from a thing to a **label** on each row, and nothing in the engine learns a new concept: the
-tier overlay is untouched, `Σ_t units(g,t) = capacity_g` still holds per row, and 18 × 3 = 54
-shelves reprice where 18 did. `02-PARAMETERS.md` §3.6 is the table.
+demotes from a thing to a **label** on each row, and the *engine proper* learns no new concept: the
+tier overlay is untouched, `Σ_t units(g,t) = capacity_g` still holds per row, 18 × 3 = 54 shelves
+reprice where 18 did, and `GoodsTable`, `Market`, `MetricsWriter` and `CohortMetrics` already read
+their length from the configuration. `02-PARAMETERS.md` §3.6 is the table.
+
+**The loader is a different story, and an earlier draft of this section was wrong about it.**
+`ConfigurationLoader.ReadCategories` *merges*: a category the file does not name is kept from the
+basis, by design, so that `[categories.food]` changes food and leaves the other five alone (02-02).
+A file naming eighteen goods therefore loads as **twenty-four**, and `Σ price_ref / life` comes to
+1,300 rather than 650. There is no removal syntax, `Scenario.FromToml` overlays on
+`SimulationParameters.Default` unconditionally, and `Scenario.All` loads five hard-coded names. So
+E11 does need a genuinely new mechanism — replace-semantics for the goods table, or a calibration
+basis plumbed through the loader, the runner and the campaign — and 11-01 owns it. It is a day's
+work, not a concept, but it is not nothing and it must not be discovered during 11-02.
 
 The label earns its keep twice. It is the level at which output is rolled up — a CPI for
 *electronics* is what a reader can hold in their head, not one for laptops — and it is the level at
@@ -392,6 +422,29 @@ Once a category is three cycles, the cycle is something a household can have an 
 `d[A][g]` multiplies a good's life for archetype `A`: below 1 replaces sooner, above 1 keeps it
 longer. `prudent` keeps a phone forty-two months; `gadget` replaces it every twenty.
 `family_practical` wears out underwear in three months and stretches the phone.
+
+**Two questions are open, and 11-03 is blocked until they are answered** (raised 2026-09-04 in
+review, and recorded here rather than assumed).
+
+*Is a household's life an integer?* `CategoryParameters.Life` is `int`, `Households.Age` is `int[]`,
+and a want fires at `Age ≥ life`, so the realised lives in §3.7 — 20.3 months, 4.9 months — have no
+representation. Rounding them per archetype breaks the harmonic identity by **more than the error
+the identity exists to prevent**: on clothing basics, rounding gives 1.040 against arithmetic
+normalisation's 1.025. The identity would still be asserted at load on the unrounded table and pass,
+while the running engine violated it. The candidates are to constrain `d` so that `life × d` is an
+integer and assert the identity on the rounded table (which will then not hold exactly, and the
+authored table has to absorb the difference), or to make the life a per-household draw with the
+right mean reciprocal, or to replace the deterministic `age ≥ life` with a hazard. Each is a
+different model; none is a patch.
+
+*Which life enters `flow_cost`?* §5 defines `flow_cost = price / life_g`. If the walk uses the
+household's own life, a `gadget` household's phone costs it ×1.48 per tick and every electronics
+score falls by a factor 0.676 — which almost exactly cancels its 1.55 taste weight, so the
+replacement-cycle table would erase the taste table in the very category the epic is about, while
+`prudent` gains. If the walk keeps the good's nominal life, a household values a phone at €20 a
+month while actually spending €600 every twenty, and §5's "everything is euros per tick" footing
+stops being true of that household. Both are defensible; the choice decides what E11 measures, and
+it is the single most consequential open question in this epic.
 
 **The normalisation is harmonic** — `Σ_A share_A / d[A][g] = 1` — because demand per tick is
 `1 / life`, so it is the reciprocal that must average to one. Normalising `d` itself would hand the

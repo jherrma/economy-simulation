@@ -15,6 +15,9 @@ As the model author, I want each good to carry a category label and the output t
 - [ ] A test loads a goods table of a length that is neither six nor eighteen and runs a tick, asserting nothing reads a fixed count.
 - [ ] 07-02's CPI and tier mix are emitted **per good and per category label**, and a test asserts the category series is the unit-weighted roll-up of its goods.
 - [ ] Tier shares are reported **within** a good and within a category, never pooled across categories (§10.4).
+- [ ] **The goods table gains replace-semantics, and this story owns it.** `ConfigurationLoader.ReadCategories` currently *merges* — a category the file does not name is kept from the basis (02-02, deliberately, so `[categories.food]` changes food alone). An eighteen-good file therefore loads as twenty-four rows with `Σ price_ref / life = 1300`. Either a stated replace form for the whole table, or a calibration basis plumbed through the loader, `Runner` and `Campaign`; `Scenario.FromToml` overlays on `SimulationParameters.Default` unconditionally today.
+- [ ] A test asserts an eighteen-good calibration loads as **eighteen** rows and satisfies `Σ price_ref / life = mean_income`. That test is the one that fails today.
+- [ ] `tools/Gates/PilotProbe.cs` holds the one hard-coded list of six category names; it reads them from the goods table instead.
 - [ ] The default configuration is unchanged: six rows, each its own category, and V5 stays green.
 
 ## Where to start

@@ -12,7 +12,8 @@ As the model author, I want cohort metrics cut by archetype as well as by abstai
 
 - [ ] 07-03's cohort metrics gain an archetype dimension: the same columns, per (abstainer, archetype) cell, with the archetype name on every row.
 - [ ] Category shares are reported **within category**, never pooled across categories — `01-SIMULATION.md` §10.4, and the archetype cut makes the trap worse rather than better, because the types differ in exactly the group weights that the pooled figure averages over.
-- [ ] The `typed` scenarios are added to `config/scenarios/`: at minimum `typed_credit_off` and `typed_credit_high`, each carrying the **same** table, so the pair is comparable.
+- [ ] The `typed` scenarios are added to `config/scenarios/`: at minimum `typed_credit_off` and `typed_credit_high`, each carrying the **same** table, so the pair is comparable. `Scenario.Names` is a hard-coded list of five; widening it is part of this story.
+- [ ] **All five tables of `02-PARAMETERS.md` §3.5's sweep grid are run and reported**, including `typed_kappa_neutral`. Reporting only `typed` against `identity` confounds "taste is heterogeneous" with "taste is cheaper", because the typed table's population-mean `kappa` is 0.92–0.965 in every category.
 - [ ] `tools/Gates pilot` runs under the typed table and reports each measure's paired difference against what 30 seeds resolve, exactly as it does untyped.
 - [ ] The result of that probe is written into `01-SIMULATION.md` §10 as a dated finding, **whatever it says**. A typed table under which the headline stops resolving is a result about the population and is reported as one.
 - [ ] `Notes.md` gets a dated block for what the typed run showed, per its own convention.

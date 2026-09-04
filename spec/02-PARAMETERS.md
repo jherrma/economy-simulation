@@ -264,8 +264,10 @@ Read the two rows of a type together — that is the point of the split:
   `gadget`: high demand that does not chase the premium tier.
 
 `kappa` is nowhere above **1.25**, against the bound of 1.3245 derived in `01-SIMULATION.md` §5.4.
-That is deliberate headroom, not a coincidence: at 1.3245 the candidate ladder inverts and the
-model's diminishing returns to quality stop being a consequence of the parameters.
+That reads as deliberate headroom and mostly is not: the bound holds at *opening* prices, and at
+κ = 1.25 the ladder inverts as soon as the budget shelf becomes 2.9% dearer relative to standard —
+a move §10.3 has already observed several times over. See §5.4 for the table. Treat 1.25 as the
+value to justify or lower, not as a safe margin.
 
 #### The taste identity, and what the loader does with it
 
@@ -304,10 +306,27 @@ measures the table and the credit together and attributes both to credit.
 The four types are an arguable reading of how consumption differs across a population, not a
 measured one, and nothing in this repository can calibrate them. They inherit the rule that governs
 the tier mix (`stories/README.md`): **a table adjusted until the headline came out better would turn
-this model from evidence into an illustration.** The defence is the same one used for `k` and
-`loan_rate` in §10.4 — report the effect across a band of tables and show that its sign and rough
-size do not depend on which one was picked. A table under which the effect vanishes is a result
-about the population and gets published as one.
+this model from evidence into an illustration.**
+
+"Swept, not fitted" is worth nothing unless the sweep is named **before** the first typed run, so it
+is named here. The `gadget` row puts its two high weights and its two high steepnesses on exactly
+the two financeable categories, and this section itself calls it "the one whose bidding the
+abstainer feels" — a hypothesis pointed in the hypothesis's direction. That is legitimate only
+against a fixed band. 10-04 reports all five of these, and reports them whatever they say:
+
+| Table | What it isolates |
+|---|---|
+| `identity` | v1, the control |
+| `typed` | the table above |
+| `typed_w_only` | `w` as above, `kappa ≡ 1` — level without steepness |
+| `typed_kappa_only` | `kappa` as above, `w ≡ 1` — steepness without level |
+| `typed_kappa_neutral` | `typed`, with each `kappa` column rescaled to share-weighted mean 1 |
+
+The last one is a **control the earlier draft lacked**. `kappa` is unnormalised by design, and under
+the table above its population mean is 0.92–0.965 in every category — a population shifted toward
+budget. That plausibly puts *more* households on the very shelves an abstainer trades down to, so a
+typed-versus-untyped comparison confounds "taste is heterogeneous" with "taste is cheaper". Without
+the neutral table the delta cannot be read. (Raised 2026-09-04 in review.)
 
 #### Configuration shape
 
@@ -410,29 +429,39 @@ not hold at every income; the crossings are now spread across the distribution r
 because `necessity` varies within a category and not just between:
 
 ```
-going out overtakes groceries at   EUR 762      phone at    EUR 899
-small appliances at                EUR 788      TV at       EUR 938
-laptop at                          EUR 835      big kit at  EUR 1,008
+going out overtakes groceries at   EUR 762      phone, medium appliances at  EUR 899
+small appliances at                EUR 788      TV at                        EUR 938
+laptop at                          EUR 835      big kit at                   EUR 1,008
 ```
 
-**2. The median sits mid-ladder.** The standard upgrade for the financeable durables lands at
-phone 0.992, laptop 0.976, medium appliances 0.992, large appliances 0.992 — just under λ, which is
-where a small price move flips a tier choice. §3.1 put electronics and appliances at 0.998; the
-margin credit is expected to act on is deliberately the same one.
+Requirement 1 holds at €300 but **narrowly**: small appliances' budget candidate is 0.997 and the
+phone's 0.989, so two euros of income or one tick of repricing moves the boundary. It is true as
+stated and fragile as a design requirement, which is why the check in 11-02 asserts the four named
+goods rather than "nothing else clears λ".
+
+**2. The median sits mid-ladder.** The standard upgrade for the **four large financeable durables**
+lands at phone 0.992, laptop 0.976, medium appliances 0.992, large appliances 0.992 — just under λ,
+which is where a small price move flips a tier choice. §3.1 put electronics and appliances at 0.998;
+the margin credit is expected to act on is deliberately the same one.
+
+The other three financeable goods are **not** on that margin and are not meant to be: hobby
+equipment 0.896, TV 0.880, hobby big kit 0.816. They are financeable because they are financed in
+the world, not because the experiment needs them responsive, and any check on this requirement must
+name the four rather than say "the financeable durables".
 
 **3. Premium never clears at the median.** The highest premium candidate is groceries at 0.710.
 
 **A fourth property the six-category table could not express.** Because `necessity` is now per good,
 goods **enter the basket at different incomes**:
 
-| Bought at any income | Enters around | |
-|---|---|---|
-| groceries, consumables, clothing basics, large appliances (€115) | phone | €309 |
-| | everyday clothing | €348 |
-| | hobby supplies | €448 |
-| | TV | €499 |
-| | holiday | €535 |
-| | eating out | €592 |
+| Bought at any income | Enters around | | | |
+|---|---|---|---|---|
+| groceries, consumables, clothing basics | large appliances | €115 | hobby supplies | €448 |
+| | small appliances | €302 | outerwear | €477 |
+| | phone, medium appliances | €309 | hobby equipment | €493 |
+| | everyday clothing | €348 | TV | €499 |
+| | going out | €352 | holiday | €535 |
+| | events | €461 | eating out | €592 |
 
 A household below about €590 never eats out and never takes a holiday, while it replaces its fridge
 at any income at all. That is Engel's law with a shape rather than a slope, and it matters here: the
@@ -441,17 +470,25 @@ which is exactly the region this table resolves and §3.1 did not.
 
 #### Opening pressure is unchanged
 
-Measured over 200,000 draws from the income distribution, at opening prices, ignoring cash:
+Measured over 200,000 draws from the income distribution, at opening prices, ignoring cash. §3.3
+quotes "about 23% below income" as prose; the figures below recompute **both** tables the same way,
+because a number computed one way against a sentence written another way is not a comparison:
 
-```
-aggregate desired spend   EUR 500.90 per household per tick   =  77.1% of mean income
-desired tier mix (units)  budget 0.521   standard 0.464   premium 0.016
-supply                    budget 0.400   standard 0.400   premium 0.200
-```
+| | `w` fixed at 1 | `w` drawn, `σ_w = 0.20` |
+|---|---|---|
+| §3.1, six categories | 80.1% of mean income | 75.8% |
+| §3.6, eighteen goods | **77.1%** (€500.90) | **72.1%** |
 
-§3.1 gives 77% and the same heavy premium surplus (§3.3). The grouped calibration therefore opens in
-the same disequilibrium as the six-category one and is not a different regime — which is what makes
-results from the two comparable in kind, though never in number.
+The grouped table opens **three to four points lower** on either method — not unchanged, as an
+earlier draft of this section claimed. The disequilibrium is of the same kind: desired spending
+below income, and premium in heavy surplus against a 40/40/20 supply (grouped: 0.521 / 0.464 /
+0.016 of decisions at `w = 1`). But it is a somewhat slacker economy at the opening, which pushes
+in the direction of *less* scarcity and therefore, if anything, against the hypothesis. That is
+worth knowing before any difference is read, and it is not to be closed by adjusting base scores.
+
+The mix figures count **(household, good) decisions**, not units per tick. Per tick the mix is
+0.39 / 0.59 / 0.016, because the life-1 goods dominate the flow — quote whichever, never both under
+one label.
 
 #### The town has to get bigger
 
@@ -460,7 +497,7 @@ splitting three ways makes it thinner. At `households = 1000`:
 
 | Good | capacity | budget / standard / **premium** |
 |---|---|---|
-| Electronics/laptop | 19 | 8 / 8 / **3** |
+| Electronics/laptop | 19 | 8 / 7 / **4** |
 | Electronics/TV | 12 | 5 / 5 / **2** |
 | Hobby/big kit | 17 | 7 / 7 / **3** |
 | Appliances/medium | 10 | 4 / 4 / **2** |
@@ -468,7 +505,10 @@ splitting three ways makes it thinner. At `households = 1000`:
 
 **One premium washing machine per tick for a thousand households.** That shelf's price series is
 noise, and `01-SIMULATION.md` §10.2 already found the trajectory chaotic with eighteen shelves of
-which the thinnest was two units.
+which the thinnest was two units. Four premium shelves sit at three units or fewer; the laptop's
+fourth premium unit is the largest-remainder rule handing the leftover to the biggest discarded
+fraction (`Allocation.LargestRemainder`), which is why the split must be read off that rule rather
+than off `round(share × capacity)`.
 
 | Parameter | v1 | Grouped | Why |
 |---|---|---|---|

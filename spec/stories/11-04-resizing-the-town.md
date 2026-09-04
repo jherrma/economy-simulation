@@ -10,7 +10,7 @@ As the model author, I want a check that no shelf is too thin to carry a price s
 
 ## Acceptance criteria
 
-- [ ] A **thin-shelf check** at load: report every `(good, tier)` whose opening unit count is below a stated floor, and fail the grouped calibration if any is. At `households = 1000` five premium shelves are at three units or fewer and one is at **one**; at 5,000 none is under seven.
+- [ ] A **thin-shelf check** at load: report every `(good, tier)` whose opening unit count is below a stated floor, and fail the grouped calibration if any is. At `households = 1000` four premium shelves are at three units or fewer and one is at **one**; at 5,000 none is under seven. The counts come from `Allocation.LargestRemainder`, not from `round(share × capacity)` — the two disagree (a capacity of 19 splits 8/7/4, not 8/8/3).
 - [ ] `households = 5000` for the grouped calibration, set by that check rather than by preference, and `capacity` follows the identity without any number being restated by hand.
 - [ ] `warmup_ticks` is **measured on the null run** (V4) under the grouped calibration and the result written into `02-PARAMETERS.md` §3.6 with its evidence. §10.3 found relative prices converge eight times slower than the level at eighteen shelves; the figure for fifty-four is not to be guessed, and the current 240 is not to be assumed to carry over.
 - [ ] V4 passes under the grouped calibration: the creditless baseline is stationary over the measured window, tested on `wait_median_met` and not on `wait_median` (§10.1).

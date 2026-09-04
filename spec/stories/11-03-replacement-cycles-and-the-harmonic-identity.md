@@ -8,6 +8,16 @@
 
 As the model author, I want each archetype to replace each good on its own cycle, so that a type differs in how often it turns up at the shelf and not only in what it will pay when it does.
 
+## Blocked
+
+**Two decisions in `01-SIMULATION.md` §5.5 must be made before this story can be written properly**
+(raised 2026-09-04 in review): whether a household's life is an integer — `Life` is `int` and a want
+fires at `Age ≥ life`, so §3.7's realised 20.3 and 4.9 months have no representation, and rounding
+them breaks the harmonic identity by *more* than the arithmetic-normalisation error the identity
+exists to prevent — and whether `flow_cost` divides by the good's life or the household's, which
+decides whether the cycle table cancels the taste table in the financeable categories. The criteria
+below assume neither answer and will need rewriting once they are settled.
+
 ## Acceptance criteria
 
 - [ ] `archetypes.<name>.d.<good>` multiplies that good's life. Absent means 1.0, the rule `w` and `kappa` follow (`02-PARAMETERS.md` §3.5).

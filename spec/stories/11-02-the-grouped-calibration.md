@@ -14,8 +14,8 @@ As the model author, I want the eighteen-good table authored by base score and s
 - [ ] A test asserts nominal neutrality survives the derivation: scaling `price_ref` and `mean_income` together leaves every `v_g` unchanged (V3).
 - [ ] `config/calibrations/grouped.toml` holds the eighteen goods of `02-PARAMETERS.md` §3.6. **The default stays §3.1's six categories.**
 - [ ] A test asserts the first calibration identity on the grouped table: `Σ_g price_ref_g / life_g = mean_income`, to the cent.
-- [ ] A test asserts §3.4's three design requirements on the grouped table — essentials top the ordering at €300; the financeable durables' standard upgrade lands between 0.95 and 1.00 at the median; no premium candidate clears λ at the median.
-- [ ] A test reproduces the opening-pressure figures of §3.6 — aggregate desired spend near 77% of mean income, premium in surplus against a 40/40/20 supply.
+- [ ] A test asserts §3.4's three design requirements on the grouped table — essentials top the ordering at €300; **the four large financeable durables** (phone, laptop, medium and large appliances) have a standard upgrade between 0.95 and 1.00 at the median; no premium candidate clears λ at the median. It must name those four: hobby equipment is 0.896, TV 0.880 and big kit 0.816, so a criterion phrased over "the financeable durables" rejects the table in §3.6.
+- [ ] A test reproduces the opening-pressure figures of §3.6 on **both** calibrations by the same method, and asserts the grouped table opens three to four points *lower* rather than equal — 80.1% against 77.1% at `w = 1`. The figures are for `w` fixed at 1 and count (household, good) decisions; both facts are stated where the numbers are.
 - [ ] `financeable` and `term` are per good: phone, laptop, TV, hobby equipment and big kit, medium and large appliances; **not** small appliances, and nothing in food, leisure or clothing.
 
 ## Where to start

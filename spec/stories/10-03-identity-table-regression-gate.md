@@ -11,6 +11,7 @@ As the model author, I want the identity archetype table to reproduce a pre-arch
 ## Acceptance criteria
 
 - [ ] A gate `archetypes` runs the current engine under the identity table and compares its output to the recorded pre-E10 baseline for the same seeds. **Byte-identical, or the gate fails naming the first differing line.**
+- [ ] The comparison is over a **stated projection**, not the raw files: `run.csv` and `tiers.csv` whole, and the cohort file with the columns E10 adds (10-04's archetype column) dropped. Without this the gate is permanently red the moment 10-04 lands, because a new column changes every line under the identity table too — and the same applies again to 11-01's per-good columns. State the projection in the gate, never special-case the writer to emit the v1 shape when there is one archetype: that hides exactly the bug the gate is for.
 - [ ] The baseline is the `credit_off` and `credit_high` output at the commit E10 branched from, committed as a fixture with that commit recorded beside it.
 - [ ] The unused-stream test of 01-05 is extended to `"archetype"` and `"taste_idio"`: registering them and not consuming them changes no other stream's output.
 - [ ] The gate is in the CI run alongside determinism, neutrality, nullrun and creditoff.
