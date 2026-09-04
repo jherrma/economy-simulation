@@ -237,6 +237,27 @@ The paired-seed check in the campaign runner (09-02) therefore compares **archet
 across arms as well as the abstainer set, and compares the assignment itself rather than the count
 of each type — equal counts are not the same claim as the same households.
 
+### V5b — The grouped calibration is a configuration — added 2026-09-04
+
+`01-SIMULATION.md` §5.5 needs no switch either, for a different reason from V5a's: the eighteen-good
+table is a **configuration file**, so the default configuration still runs §3.1's six categories and
+V5 keeps its meaning untouched. What must be checked instead is that the *engine* gained nothing
+category-shaped:
+
+- The goods table's length is read from the configuration everywhere. A test loads a table of a
+  length in neither six nor eighteen and runs a tick.
+- **The harmonic identity.** `Σ_A share_A / d[A][g] = 1` for every good, asserted at load on the
+  normalised table. Getting this wrong is the expensive error of the whole epic: normalising `d`
+  rather than `1/d` gives the population permanently more replacement demand than capacity was
+  sized for, by an amount nothing else measures.
+- `d ≡ 1` reproduces the same calibration run without `d`, byte for byte.
+- **`capacity` is derived from `households` and `life`, never from the realised population.**
+  A test asserts two seeds of one scenario produce identical effective configurations — which is
+  also what the campaign collector refuses to proceed without (09-02).
+
+What V5b cannot say is that the grouped calibration is *right*. Nothing here can. It is defended by
+being checkable against observable prices and cycles, which is precisely what §3.1's blob was not.
+
 ## V6 — Bounds and sanity
 
 Cheap assertions that catch the errors the walk is prone to:
@@ -286,6 +307,9 @@ series, which is why it needs a named check rather than a reviewer's judgement.
 | Nobody ever buys budget; the ladder collapses to standard/premium | The tier below not being required before an upgrade is available |
 | Poor households buy nothing at all, including food | `a_g` missing — value proportional to income makes every good a luxury |
 | The pool drains steadily and the run halts around tick 11 | Opening pool sized at one month instead of twelve. The opening tier mix is not an equilibrium and the transient has to be survivable |
+| Replacement demand quietly exceeds capacity for every good with a varied cycle, in every run | `d` normalised arithmetically instead of harmonically (`02-PARAMETERS.md` §3.7). `E[1/d] > 1/E[d]` whenever `d` varies, so the town wants more units per tick than it was sized for. Nothing else measures it and the price level absorbs it silently |
+| Premium price series for the long-lived goods are noise with a trend drawn through them | Shelves too thin. At 1,000 households the grouped calibration gives one premium large appliance per tick. Raise `households`, do not smooth the series |
+| The campaign refuses to collect: two seeds of one scenario ran different configurations | `capacity` derived from the realised archetype assignment rather than from `households / life`. The seed has become a parameter |
 | A typed run differs from the untyped baseline everywhere, including in categories no type touches | The archetype columns not normalised (`02-PARAMETERS.md` §3.5). An unnormalised table changes each category's *total* demand as well as its distribution, so it moves `v_g` by accident and the whole economy shifts |
 | Households stop buying a category entirely once `kappa` is raised | `kappa` above the ladder bound. Buying budget now scores below upgrading to standard, the walk's stop rule fires on the budget candidate, and the standard unit the household would have bought is unreachable because the step below it was never taken |
 | A typed `credit_high` and a typed `credit_off` disagree about which households exist | Archetype assignment drawn from a stream that some other draw perturbs, or skipped under the identity table. V5a |

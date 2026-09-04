@@ -4,7 +4,7 @@ Implementation backlog for [`../01-SIMULATION.md`](../01-SIMULATION.md). Paramet
 [`../02-PARAMETERS.md`](../02-PARAMETERS.md); the checks that stand in for a reference
 implementation in [`../03-VERIFICATION.md`](../03-VERIFICATION.md).
 
-**33 stories across 9 epics built; 4 more in E10, specified and not built.** One story per file,
+**33 stories across 9 epics built; 8 more in E10 and E11, specified and not built.** One story per file,
 `<epic>-<story>-<slug>.md`. Every story carries
 an objective pass/fail check — nothing is "done" because it looks done. No story depends on a story
 later in the build order, and that is mechanically checkable from the headers.
@@ -28,6 +28,7 @@ later in the build order, and that is mechanically checkable from the headers.
 | **E8** | Validation gates | 4 | V2–V5 as runnable programs |
 | **E9** | Scenarios and the campaign | 2 | Five scenarios, thirty seeds, paired |
 | **E10** | The population has types | 4 | *Specified, not built.* Per-category taste and quality steepness (`01-SIMULATION.md` §5.4) — the first change after v1 produced a number |
+| **E11** | Product groups and replacement cycles | 4 | *Specified, not built.* Eighteen goods instead of six, each with its own cycle (§5.5). **After E10, never with it** — E10 preserves the baseline, E11 replaces it |
 
 Two ordering rules override convenience:
 
@@ -52,6 +53,7 @@ rather than a crash. Six devices stand in for an oracle, detailed in
 | **V4** | The null run, including tier-mix stationarity | 08-03 |
 | **V5** | Credit-off regression, byte for byte | 08-04 |
 | **V5a** | The identity archetype table reproduces v1, byte for byte | 10-03 |
+| **V5b** | The grouped calibration is a config; the engine reads no fixed goods count | 11-01, 11-03 |
 | **V6** | Bounds and sanity, as assertions inside the tick | 03-02, 05-01 |
 
 **V1 is this project's white-furnace test**: a single invariant, trivially cheap, that any
@@ -95,6 +97,7 @@ Each has a story that names it, because none of them crashes and none is caught 
 | Interest destroyed with principal — the money stock leaks and damps the measured effect | 06-03 | Money creation |
 | Durable ages initialised to zero — a sawtooth that looks like a business cycle | 02-04 | Household draws |
 | Archetype columns unnormalised — the table moves each category's *total* demand, not just its distribution | 10-01 | The archetype table |
+| Replacement cycles normalised arithmetically instead of harmonically — the town permanently wants more units than capacity | 11-03 | Replacement cycles |
 
 ---
 
@@ -156,6 +159,16 @@ Each has a story that names it, because none of them crashes and none is caught 
 - [10-02](10-02-assignment-and-the-taste-vector.md) — Assignment, and the taste vector inside `flow_value`
 - [10-03](10-03-identity-table-regression-gate.md) — **V5a**: the identity table reproduces v1 byte for byte
 - [10-04](10-04-reporting-by-type-and-re-measuring-the-power.md) — Reporting by type, and re-measuring the power
+
+### E11 — Product groups and replacement cycles — *specified 2026-09-04, not built*
+- [11-01](11-01-goods-are-rows-categories-are-labels.md) — Goods are rows; categories are labels
+- [11-02](11-02-the-grouped-calibration.md) — The grouped calibration, authored by base score
+- [11-03](11-03-replacement-cycles-and-the-harmonic-identity.md) — Replacement cycles by archetype, and the harmonic identity
+- [11-04](11-04-resizing-the-town.md) — Re-sizing the town: households, warm-up and the thin-shelf check
+
+**E11 must follow E10 and must not be merged with it.** E10 reproduces the v1 baseline byte for
+byte, so its effect is attributable. E11 recalibrates the economy, quintuples the population and
+re-measures the warm-up, so it cannot. Build them together and there are two changes and one number.
 
 **Why E10 comes before the milestones in `01-SIMULATION.md` §12.** Every milestone on that list —
 supply response, wages, default, the second-hand market, status — answers an objection by adding a

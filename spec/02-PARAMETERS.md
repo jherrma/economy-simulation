@@ -40,6 +40,11 @@ change it. This makes the abstainer's real-income loss an upper bound (`01-SIMUL
 Six categories, each sold in **three quality tiers**. A household buys at most one unit of a
 category, and the tier is its choice.
 
+**This is the v1 calibration and remains the default.** §3.6 gives a second one — eighteen goods,
+three product groups per category, each with its own replacement cycle — which is a configuration
+rather than a replacement, so the findings in `01-SIMULATION.md` §10 keep the table they were
+measured on.
+
 ### 3.1 Categories
 
 | Category | `life` | `capacity` | `price_ref` | `v` | `necessity` | financeable | `term` |
@@ -321,6 +326,218 @@ kappa = { food = 1.25, appliances = 1.10, leisure = 0.95, clothing = 0.95, hobby
 `health_conscious` shows the absent-means-1.0 rule doing its job: leisure and clothing are omitted
 from `w` because it is average in both, and the file stays a statement of what makes the type
 different. A misspelt category is an error, not a silent 1.0.
+
+### 3.6 The grouped calibration — added 2026-09-04
+
+§3.1's six categories model each as **one** good with **one** replacement cycle. A household does
+not own "electronics"; it owns a phone it replaces every two or three years, a laptop every four or
+five, and a television every seven. Those are three different purchases with three different lumps,
+and credit's whole job is bridging a lump.
+
+This section is a **second calibration**, not a replacement: eighteen goods, three per category,
+each with its own life and price. §3.1 remains the default, so every number in `01-SIMULATION.md`
+§10 keeps its referent. The grouped table is a configuration like any other
+(`config/calibrations/grouped.toml`), and the engine needs no new concept for it — a group with its
+own life, price, capacity and value weight is exactly what a category row already is. **"Category"
+demotes from a thing to a label**: it groups goods for reporting (§7 of `01-SIMULATION.md`) and is
+the level at which archetype taste is authored.
+
+#### The eighteen goods
+
+| Category | Group | `life` | `price_ref` | €/month | `base_score` | `necessity` | financeable | `term` |
+|---|---|---|---|---|---|---|---|---|
+| Food | groceries | 1 | 210 € | 210.00 | 1.42 | 0.85 | no | — |
+| | consumables | 3 | 90 € | 30.00 | 1.35 | 0.75 | no | — |
+| | eating out | 1 | 60 € | 60.00 | 0.95 | 0.20 | no | — |
+| Leisure | going out | 1 | 120 € | 120.00 | 1.30 | 0.30 | no | — |
+| | events | 3 | 150 € | 50.00 | 1.15 | 0.20 | no | — |
+| | holiday | 12 | 360 € | 30.00 | 1.05 | 0.10 | no | — |
+| Clothing | basics | 4 | 48 € | 12.00 | 1.30 | 0.75 | no | — |
+| | everyday | 8 | 152 € | 19.00 | 1.15 | 0.50 | no | — |
+| | outerwear | 24 | 576 € | 24.00 | 1.05 | 0.40 | no | — |
+| Hobby | supplies | 3 | 27 € | 9.00 | 1.20 | 0.15 | no | — |
+| | equipment | 18 | 216 € | 12.00 | 1.12 | 0.12 | **yes** | 12 |
+| | big kit | 60 | 540 € | 9.00 | 1.02 | 0.08 | **yes** | 24 |
+| Electronics | phone | 30 | 600 € | 20.00 | 1.24 | 0.45 | **yes** | 24 |
+| | laptop | 54 | 900 € | 16.67 | 1.22 | 0.25 | **yes** | 24 |
+| | TV | 84 | 700 € | 8.33 | 1.10 | 0.15 | **yes** | 24 |
+| Appliances | small | 36 | 120 € | 3.33 | 1.30 | 0.40 | no | — |
+| | medium | 96 | 640 € | 6.67 | 1.24 | 0.45 | **yes** | 24 |
+| | large | 144 | 1440 € | 10.00 | 1.24 | 0.65 | **yes** | 36 |
+
+`price_ref × price_mult / life` sums to **€650.00** per household per tick at the standard tier —
+§3.4's first identity, unchanged. Splitting a category is a redistribution of its budget, never an
+addition to it.
+
+#### Authored by base score, with `v` derived
+
+`v_g` is not a quantity anyone has an intuition about. The **base score** is: it is what a candidate
+in that good scores for a household at the mean income before the tier multipliers, so it says
+directly where the good sits relative to λ, and the tier a median household reaches follows from it
+by arithmetic (`× 1.133` for budget, `× 0.800` for the standard upgrade, `× 0.500` for premium).
+
+So the table states `base_score` and the loader derives
+
+```
+v_g = base_score_g · price_ref_g / (life_g · mean_income)
+```
+
+`v_g` may still be written down, and if it is it must equal the derived value or the run is rejected
+— the rule `capacity` already obeys (§3.1). Nominal neutrality survives, because `price_ref` and
+`mean_income` scale together and `v_g` is invariant (V3).
+
+| | `v_g` | | `v_g` | | `v_g` |
+|---|---|---|---|---|---|
+| groceries | 0.4588 | basics | 0.0240 | phone | 0.0382 |
+| consumables | 0.0623 | everyday | 0.0336 | laptop | 0.0313 |
+| eating out | 0.0877 | outerwear | 0.0388 | TV | 0.0141 |
+| going out | 0.2400 | supplies | 0.0166 | small | 0.0067 |
+| events | 0.0885 | equipment | 0.0207 | medium | 0.0127 |
+| holiday | 0.0485 | big kit | 0.0141 | large | 0.0191 |
+
+`Σ v_g = 1.2555`, against §3.1's 1.2820 — the median household values its basket at about 26% above
+what it costs, as before.
+
+#### What the base scores were chosen against
+
+§3.4's three design requirements are the constraints, and this table was written to satisfy them
+rather than tuned until it did.
+
+**1. Essentials outrank durables where the budget binds.** At €300, in order: groceries 1.305,
+consumables 1.168, clothing basics 1.125, large appliances 1.006 — and nothing else clears λ at all.
+That household buys food, underwear and a fridge, and owns no phone. As in §3.1 the ordering does
+not hold at every income; the crossings are now spread across the distribution rather than bunched,
+because `necessity` varies within a category and not just between:
+
+```
+going out overtakes groceries at   EUR 762      phone at    EUR 899
+small appliances at                EUR 788      TV at       EUR 938
+laptop at                          EUR 835      big kit at  EUR 1,008
+```
+
+**2. The median sits mid-ladder.** The standard upgrade for the financeable durables lands at
+phone 0.992, laptop 0.976, medium appliances 0.992, large appliances 0.992 — just under λ, which is
+where a small price move flips a tier choice. §3.1 put electronics and appliances at 0.998; the
+margin credit is expected to act on is deliberately the same one.
+
+**3. Premium never clears at the median.** The highest premium candidate is groceries at 0.710.
+
+**A fourth property the six-category table could not express.** Because `necessity` is now per good,
+goods **enter the basket at different incomes**:
+
+| Bought at any income | Enters around | |
+|---|---|---|
+| groceries, consumables, clothing basics, large appliances (€115) | phone | €309 |
+| | everyday clothing | €348 |
+| | hobby supplies | €448 |
+| | TV | €499 |
+| | holiday | €535 |
+| | eating out | €592 |
+
+A household below about €590 never eats out and never takes a holiday, while it replaces its fridge
+at any income at all. That is Engel's law with a shape rather than a slope, and it matters here: the
+cohort `01-SIMULATION.md` §10.1 found to be permanently excluded sits at a median income near €400,
+which is exactly the region this table resolves and §3.1 did not.
+
+#### Opening pressure is unchanged
+
+Measured over 200,000 draws from the income distribution, at opening prices, ignoring cash:
+
+```
+aggregate desired spend   EUR 500.90 per household per tick   =  77.1% of mean income
+desired tier mix (units)  budget 0.521   standard 0.464   premium 0.016
+supply                    budget 0.400   standard 0.400   premium 0.200
+```
+
+§3.1 gives 77% and the same heavy premium surplus (§3.3). The grouped calibration therefore opens in
+the same disequilibrium as the six-category one and is not a different regime — which is what makes
+results from the two comparable in kind, though never in number.
+
+#### The town has to get bigger
+
+`capacity = round(households / life)`, so a long life on a thin category makes a thin shelf, and
+splitting three ways makes it thinner. At `households = 1000`:
+
+| Good | capacity | budget / standard / **premium** |
+|---|---|---|
+| Electronics/laptop | 19 | 8 / 8 / **3** |
+| Electronics/TV | 12 | 5 / 5 / **2** |
+| Hobby/big kit | 17 | 7 / 7 / **3** |
+| Appliances/medium | 10 | 4 / 4 / **2** |
+| Appliances/large | 7 | 3 / 3 / **1** |
+
+**One premium washing machine per tick for a thousand households.** That shelf's price series is
+noise, and `01-SIMULATION.md` §10.2 already found the trajectory chaotic with eighteen shelves of
+which the thinnest was two units.
+
+| Parameter | v1 | Grouped | Why |
+|---|---|---|---|
+| `households` | 1000 | **5000** | Every premium shelf reaches 7 units or more; no shelf is under 7. The walk scales with households × candidates, so the 150-run campaign goes from about 70 seconds to roughly ten to fifteen minutes — the price of admission for 54 shelves |
+| `warmup_ticks` | 240 | **set on the null run** | §10.3 found relative prices converge eight times slower than the level with 18 shelves. Fifty-four repricing independently will be slower again. This number is **measured, not guessed** — the same rule that set 240 |
+
+### 3.7 Replacement cycles by archetype — added 2026-09-04
+
+Once a category is three goods with three cycles, the cycle itself becomes something a household can
+have an opinion about. `d[A][g]` multiplies a good's life for archetype `A`: **below 1 replaces
+sooner, above 1 keeps it longer.** Absent means 1.0, the rule `w` and `kappa` already follow (§3.5).
+
+A life-1 good has no cycle to stretch, so `d` is only meaningful on the twelve durables.
+
+| Good | `life` | `prudent` | `health_conscious` | `gadget` | `family_practical` |
+|---|---|---|---|---|---|
+| Clothing/basics | 4 | 1.20 → 4.9 | 1.00 → 4.1 | 1.00 → 4.1 | **0.80 → 3.3** |
+| Clothing/everyday | 8 | 1.25 → 10.0 | 1.00 → 8.0 | 0.90 → 7.2 | 0.90 → 7.2 |
+| Clothing/outerwear | 24 | **1.35 → 31.0** | 1.00 → 23.0 | 0.85 → 19.5 | 1.00 → 23.0 |
+| Hobby/equipment | 18 | 1.30 → 22.9 | 1.00 → 17.7 | 0.80 → 14.1 | 1.00 → 17.7 |
+| Hobby/big kit | 60 | **1.40 → 82.4** | 1.00 → 58.9 | **0.75 → 44.1** | 1.00 → 58.9 |
+| Electronics/phone | 30 | **1.45 → 42.0** | 1.00 → 29.0 | **0.70 → 20.3** | 1.10 → 31.9 |
+| Electronics/laptop | 54 | 1.35 → 69.8 | 1.00 → 51.7 | 0.80 → 41.4 | 1.05 → 54.3 |
+| Electronics/TV | 84 | 1.30 → 105.5 | 1.00 → 81.1 | 0.85 → 69.0 | 1.00 → 81.1 |
+| Appliances/small | 36 | 1.30 → 46.0 | 1.00 → 35.4 | 1.00 → 35.4 | 0.85 → 30.1 |
+| Appliances/medium | 96 | 1.25 → 116.8 | 1.00 → 93.4 | 1.00 → 93.4 | 0.90 → 84.1 |
+| Appliances/large | 144 | 1.30 → 180.5 | 1.00 → 138.8 | 1.00 → 138.8 | **0.90 → 124.9** |
+| Leisure/holiday | 12 | **1.50 → 17.6** | 1.00 → 11.7 | 0.90 → 10.5 | **0.85 → 9.9** |
+
+*(authored multiplier → realised life in months, after normalisation)*
+
+`prudent` keeps a phone three and a half years; `gadget` replaces it every twenty months.
+`family_practical` wears out underwear in three months and a washing machine in ten years, and
+stretches the phone — hand-me-downs.
+
+#### The normalisation is harmonic, and getting it wrong is expensive
+
+Demand per tick is `1 / life`, so what must average to one across the population is the
+**reciprocal**:
+
+```
+Σ_A share_A / d[A][g] = 1
+```
+
+Normalise `d` itself instead and Jensen's inequality hands the population *more* units per tick than
+capacity was sized for, permanently and invisibly — `E[1/d] > 1/E[d]` whenever `d` varies at all.
+The table redistributes *who* replaces early; it does not make the town replace more. Same intent as
+§3.5's taste identity, different mean, and for a reason that is arithmetic rather than stylistic.
+
+The payoff is that `capacity = round(households / life_g)` **stays correct as written**. Nothing
+downstream has to learn about heterogeneous lives.
+
+#### The residue, and why it must not be corrected
+
+The identity holds in expectation, not in a finite draw: assigning 5,000 households to four types by
+share leaves realised shares off nominal by about 0.65 pp, which moves a good's true replacement
+demand by roughly half a percent against the capacity it was sized for.
+
+Do **not** fix this by deriving capacity from the realised population. That would make the goods
+table depend on the seed, and the campaign collector (09-02) refuses a scenario whose seeds ran
+different effective configurations — correctly, since a seed that changes a parameter is a seed that
+has become a parameter. Leave the residue where it is:
+
+- it is a supply-demand mismatch of well under a per cent, which the reprice rule exists to absorb;
+- it is **identical in both arms**, because the archetype assignment is drawn per household and per
+  seed rather than per scenario, so it cancels exactly in the paired difference that is the finding.
+
+It shifts levels, never the headline. Report it once, in the run's opening state, so nobody
+rediscovers it as an anomaly.
 
 ## 4. The decision
 

@@ -11,10 +11,11 @@ assumed.
 
 ## Status
 
-**All nine epics of v1 complete**, with 463 tests. A tenth epic — a population of household
-archetypes with per-category taste and quality steepness — is **specified and not built**
-([§5.4](spec/01-SIMULATION.md), [§3.5](spec/02-PARAMETERS.md),
-[E10](spec/stories/README.md)). The model runs: a population, a ledger of integer
+**All nine epics of v1 complete**, with 463 tests. Two further epics are **specified and not built**: household
+archetypes with per-category taste and quality steepness
+([§5.4](spec/01-SIMULATION.md), [E10](spec/stories/README.md)), and product groups with their own
+replacement cycles — eighteen goods instead of six
+([§5.5](spec/01-SIMULATION.md), [§3.6](spec/02-PARAMETERS.md), [E11](spec/stories/README.md)). The model runs: a population, a ledger of integer
 cents, a shopping walk over quality tiers, consumer credit that creates money and has to be repaid,
 and two CSV files of output. The campaign runs it five scenarios wide and thirty seeds deep, one
 process per run, and collects one dataset:

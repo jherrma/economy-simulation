@@ -57,6 +57,11 @@ A household is an index into parallel arrays, not an object.
 Six **categories**, each with a fixed `life_g` (ticks a unit lasts), a `capacity_g` (units produced
 per tick), a value weight `v_g`, a `necessity_g` share, a `financeable_g` flag and a loan `term_g`.
 
+The count is configuration, not structure: the goods table is however many rows the configuration
+gives it, and §5.5 splits each category into three product groups with their own replacement cycles,
+making eighteen. Where this section says *category* it means **a row of that table**; where the
+output rolls rows up for reporting, it means the label they share.
+
 Each category is sold in **three quality tiers** — budget, standard, premium — each with its own
 posted price and its own fixed unit supply. A household buys at most **one unit** of a category, and
 which tier it buys is its choice. Tiers are not separate goods: their prices and values are
@@ -338,6 +343,88 @@ not *which* households are marginal, and that is where the noise lives. The powe
 (`tools/Gates pilot`) is the instrument; it is re-run after the table changes rather than assumed to
 still hold. A table that pushes the headline below its own resolution is a finding about the table,
 and it is reported, not tuned away.
+
+### 5.5 Product groups and replacement cycles — added 2026-09-04
+
+§4.2 models each category as one good with one life. A household does not own "electronics"; it owns
+a phone it replaces every two or three years, a laptop every four or five, and a television every
+seven. Three purchases, three lumps of three different sizes at three different frequencies — and
+bridging a lump is the entire job of the credit this model is about.
+
+**A product group is not a new dimension. It is a good.** A category in this model is a row of
+`(life, capacity, price_ref, v, necessity, financeable, term)`, and a group with its own replacement
+cycle and price is exactly that row. So the goods table goes from six rows to eighteen, `category`
+demotes from a thing to a **label** on each row, and nothing in the engine learns a new concept: the
+tier overlay is untouched, `Σ_t units(g,t) = capacity_g` still holds per row, and 18 × 3 = 54
+shelves reprice where 18 did. `02-PARAMETERS.md` §3.6 is the table.
+
+The label earns its keep twice. It is the level at which output is rolled up — a CPI for
+*electronics* is what a reader can hold in their head, not one for laptops — and it is the level at
+which archetype taste is authored (§5.4), with per-group overrides where a type has an opinion about
+one good and not its neighbours. Twenty-four numbers and a handful of exceptions, rather than a
+hundred and eight.
+
+#### What splitting exposed
+
+The groups could not be made to fit the old category budgets. A €600 phone replaced every thirty
+months is €20 a month **on its own**, four fifths of what §3.1 allots the entire electronics
+category; and appliances at €8.33 a month was modelling a household that owns one appliance rather
+than a fridge, a washing machine, an oven, a dishwasher and a kettle. The four durable categories
+had to be reweighted within their €150:
+
+```
+clothing 66.67 -> 55.00     electronics 25.00 -> 45.00
+hobby    50.00 -> 30.00     appliances   8.33 -> 20.00
+```
+
+This is the strongest argument for the split, and it is about falsifiability rather than realism.
+"€900 every 36 months" is a number nobody can look at and call wrong. "A €600 phone every 30 months"
+is checkable against a shop window. Splitting the categories did not merely make the calibration
+better; it made it **arguable**, which is the standard the rest of this specification is held to.
+
+The consequence has to be stated plainly: **the grouped table is a different baseline economy.** The
+numbers in §10 were measured on §3.1 and do not carry over. The two calibrations are comparable in
+kind — §3.6 opens at the same 77% of income and the same premium surplus — never in value.
+
+#### Replacement cycles differ by type
+
+Once a category is three cycles, the cycle is something a household can have an opinion about.
+`d[A][g]` multiplies a good's life for archetype `A`: below 1 replaces sooner, above 1 keeps it
+longer. `prudent` keeps a phone forty-two months; `gadget` replaces it every twenty.
+`family_practical` wears out underwear in three months and stretches the phone.
+
+**The normalisation is harmonic** — `Σ_A share_A / d[A][g] = 1` — because demand per tick is
+`1 / life`, so it is the reciprocal that must average to one. Normalising `d` itself would hand the
+population more units per tick than capacity was sized for, permanently and invisibly, by Jensen's
+inequality. Done correctly, `capacity = round(households / life_g)` stays true as written and
+nothing downstream learns about heterogeneous lives. The finite-sample residue and why it must be
+left alone are in `02-PARAMETERS.md` §3.7.
+
+#### This one adds a channel
+
+§5.4 was a generalisation: archetypes changed what a household was willing to *pay*, and its off
+setting was a table of ones. Replacement cycles change **how often a household turns up at the shelf
+at all**. `gadget` demanding phones half again as often is new crowding, not merely a higher bid,
+and quantity heterogeneity is a mechanism rather than a loosened parameter.
+
+It still switches off exactly — `d ≡ 1` is the identity, and the grouped calibration is a
+configuration whose absence leaves §3.1 running — but it belongs behind §12's discipline and not
+beside §5.4's. In particular it must be built **after** §5.4 and measured separately: §5.4 preserves
+the baseline byte for byte and its effect is therefore attributable, while this changes the
+calibration, the population size and the warm-up, and cannot. Stack the two and there are two
+changes and one number.
+
+#### The question it makes askable
+
+The model currently has one lump per category, so it can only ask whether credit hurts the abstainer
+in *electronics*. With groups there is a spectrum of lump sizes and frequencies inside one category,
+and a sharper question:
+
+> Does the harm concentrate in the frequent-medium lump — a €600 phone every two and a half years —
+> or in the rare-huge one, a €1,440 washing machine every twelve?
+
+Those are different credit propositions and there is no reason to expect the same answer. §10.4
+found the effect living in the durables that credit is used for; this is the next cut down.
 
 ## 6. The tick
 
@@ -915,7 +1002,9 @@ Every one of these must accompany any number that comes out of it.
   financed premium buying pulls production up-market, which would amplify the trade-down effect on
   the abstainer. Its absence cuts **against** the hypothesis.
 - **A household buys at most one unit of a category per tick.** Extra income goes into quality, never
-  into quantity, so there is no way to model buying *more* rather than *better*. §5.4's archetypes do
+  into quantity, so there is no way to model buying *more* rather than *better*. Under §5.5 the cap
+  is per *good*, so a household may buy a phone and a laptop in one tick — but never two phones, and
+  the limitation stands. §5.4's archetypes do
   **not** lift this: they say how much a household is willing to pay for its one unit and how far up
   the tiers it will go, not how many units it wants. Allowing more would lengthen the candidate
   ladder, break the `capacity = households / life` identity, and give income a new outlet — which
@@ -933,6 +1022,12 @@ measurable rather than merely visible.
 Not now, because none of them can be calibrated against anything until this model has produced a
 number, and because a mechanism added before its effect can be measured is a mechanism nobody can
 argue with.
+
+**§5.5's product groups come before the list too, and for a weaker reason than §5.4's.** They add no
+mechanism — a group is a goods-table row — but the recalibration they force *is* a new baseline, and
+the replacement-cycle multiplier *is* a new channel. The justification is that the split makes the
+calibration checkable against a shop window where the six-category table was unfalsifiable, and an
+unfalsifiable calibration undermines every milestone below it. Build it after §5.4, never with it.
 
 **§5.4's archetypes are not on that list and come before it, for a reason worth stating.** Every
 milestone above answers an objection by adding a *channel* the model does not have. Archetypes add
