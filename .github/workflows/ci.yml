@@ -47,6 +47,13 @@ jobs:
       - name: gate — credit-off regression (V5)
         run: dotnet run --project tools/Gates -c Release --no-build -- creditoff
 
+      # V5a. The same claim for the archetype machinery, which has no switch: it is off when the
+      # table is the identity. Compared against a fixture taken before E10 existed, and that
+      # fixture is never regenerated — see tools/Gates/baselines/archetypes/provenance.toml.
+      # Seconds.
+      - name: gate — the identity archetype table (V5a)
+        run: dotnet run --project tools/Gates -c Release --no-build -- archetypes
+
       # The campaign itself: five scenarios over thirty seeds, one process each, collected into one
       # dataset. It runs here because it is the only thing in the project that has to work end to
       # end, and because a collector that has quietly stopped refusing partial runs looks exactly

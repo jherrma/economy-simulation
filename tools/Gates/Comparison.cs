@@ -82,6 +82,95 @@ public static class Comparison
         return null;
     }
 
+    /// <summary>
+    /// The first difference between two CSVs **on the columns their headers share**, with the count
+    /// of columns that were left out.
+    ///
+    /// A narrower comparison than the byte-for-byte one above, and it exists for one situation: a
+    /// baseline taken before a mechanism existed cannot carry the columns that mechanism adds. V5a
+    /// uses it so that adding a cohort column does not turn a neutrality gate permanently red while
+    /// saying nothing about neutrality. Everywhere else, the whole-file comparison is the right one
+    /// — a tolerance for *columns* is still a tolerance, and this one is only safe because the files
+    /// it applies to are named in a projection the gate prints.
+    ///
+    /// Columns are matched by name, not by position, and the row count still has to agree.
+    /// </summary>
+    public static Difference? FirstDifferenceOnSharedColumns(
+        string left,
+        string right,
+        string file,
+        out int dropped)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(left);
+        ArgumentException.ThrowIfNullOrWhiteSpace(right);
+
+        dropped = 0;
+
+        var leftLines = File.ReadAllLines(Path.Combine(left, file));
+        var rightLines = File.ReadAllLines(Path.Combine(right, file));
+
+        if (leftLines.Length == 0 || rightLines.Length == 0)
+        {
+            return new Difference(
+                file,
+                0,
+                "(the file itself)",
+                Invariant($"{leftLines.Length} lines"),
+                Invariant($"{rightLines.Length} lines"));
+        }
+
+        var leftHeader = leftLines[0].Split(',');
+        var rightHeader = rightLines[0].Split(',');
+
+        var shared = new List<(string Name, int Left, int Right)>();
+
+        for (var i = 0; i < leftHeader.Length; i++)
+        {
+            var j = Array.IndexOf(rightHeader, leftHeader[i]);
+
+            if (j >= 0)
+            {
+                shared.Add((leftHeader[i], i, j));
+            }
+        }
+
+        dropped = leftHeader.Length + rightHeader.Length - (2 * shared.Count);
+
+        if (shared.Count == 0)
+        {
+            return new Difference(file, 1, "(the header)", leftLines[0], rightLines[0]);
+        }
+
+        for (var line = 1; line < Math.Max(leftLines.Length, rightLines.Length); line++)
+        {
+            if (line >= leftLines.Length || line >= rightLines.Length)
+            {
+                return new Difference(
+                    file,
+                    line + 1,
+                    "(the row itself)",
+                    line < leftLines.Length ? leftLines[line] : "(no such line)",
+                    line < rightLines.Length ? rightLines[line] : "(no such line)");
+            }
+
+            var leftFields = leftLines[line].Split(',');
+            var rightFields = rightLines[line].Split(',');
+
+            foreach (var (name, l, r) in shared)
+            {
+                var leftField = l < leftFields.Length ? leftFields[l] : "(no such field)";
+                var rightField = r < rightFields.Length ? rightFields[r] : "(no such field)";
+
+                if (!string.Equals(leftField, rightField, StringComparison.Ordinal))
+                {
+                    return new Difference(file, line + 1, name, leftField, rightField);
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static Difference? FirstDifference(string left, string right, string file)
     {
         var leftPath = Path.Combine(left, file);

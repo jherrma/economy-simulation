@@ -1,0 +1,4 @@
+scenario = "credit_off"
+seed = 2
+ticks = 48
+tier_rows = 864

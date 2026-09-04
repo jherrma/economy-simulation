@@ -283,9 +283,15 @@ Cheap assertions that catch the errors the walk is prone to:
   has been set above `price_mult` somewhere and quality has stopped having diminishing returns.
   With archetypes (`01-SIMULATION.md` §5.4) this is per household *and* per category, because
   `kappa` differs by type; the load-time bound on `kappa` is what makes the assertion unreachable
-  rather than merely checked. Derive that bound from the tier table — `ln(price_mult_budget) /
-  ln(value_mult_budget)`, which is 1.3245 at the v1 tiers — and never write the number down in the
-  code, or changing a tier multiplier will move the bound without moving the guard.
+  rather than merely checked. Derive that bound from the tier table and never write the number down
+  in the code, or changing a tier multiplier will move the bound without moving the guard.
+  **Derive it by searching, not by the closed form.** `ln(price_mult_budget) /
+  ln(value_mult_budget)` = 1.3245 is the bound at the *v1* tiers only, because there it is the first
+  ordering condition that binds. Verified 2026-09-04: move `value_mult_budget` from 0.68 to 0.75 and
+  that condition relaxes to 1.7757 while the second — `budget → standard` above
+  `standard → premium` — takes over at 1.7073. *Which* condition binds is itself a property of the
+  tier table, so the bound is the smallest `kappa ≥ 1` at which the opening ladder stops being
+  ordered, found by bisection over the whole ordering predicate.
 - An upgrade is never taken without the step below it.
 - `blocked_(g,t) > 0` implies that tier had no stock at the end of the tick.
 - Every wanted durable that is bought resets `age = 0`; nothing else does.

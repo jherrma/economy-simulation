@@ -1,0 +1,4 @@
+scenario = "credit_high"
+seed = 4
+ticks = 48
+tier_rows = 864

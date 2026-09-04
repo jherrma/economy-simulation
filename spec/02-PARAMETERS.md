@@ -289,6 +289,19 @@ divides each column by its share-weighted mean** and records the result in the e
 configuration, which is what the campaign manifest hashes (09-02). The column scales and the
 normalised table:
 
+Two consequences of doing it at load, both found in building 10-01 and 10-03 and worth stating
+because they are what the byte-for-byte rule rests on:
+
+- **The identity table is a fixed point, and it is the only one-type table there is.** With a single
+  type at share 1.0 the column scale *is* that type's weight, so any one-type table normalises back
+  to 1.0 in every category whatever the author wrote. A configuration with one archetype is v1 by
+  construction rather than by somebody remembering to write 1.0 six times, and there is no edit to
+  such a file that could make V5a fail.
+- The division is **snapped** when a column is already within 1e-9 of mean 1, so normalising an
+  already-normalised table is a no-op to the last bit. Without that, a run rebuilt from its own
+  effective configuration would be divided by 1.0000000000000002 and would be a slightly different
+  run — invisible in exactly the comparison V5a exists to make.
+
 ```
 column scale     Food 1.0150   Leisure 0.9700   Clothing 1.0100
                  Hobby 1.0000  Electronics 1.0300   Appliances 1.0100

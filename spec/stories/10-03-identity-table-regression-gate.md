@@ -32,4 +32,12 @@ Note what this gate cannot do, so nobody expects it to: it says the identity tab
 dotnet run --project tools/Gates -- archetypes
 ```
 
-`PASS`, and a deliberate edit to any `w` in the identity table makes it fail on the first differing line.
+`PASS`, naming both arms and the projection it compared over.
+
+**Corrected while building, 2026-09-04.** This story originally asked for "a deliberate edit to any
+`w` in the identity table makes it fail on the first differing line". That edit cannot be made: with
+a single type at share 1.0 the column scale is that type's own weight, so the loader normalises any
+one-type table straight back to the identity (`02-PARAMETERS.md` §3.5). The property is stronger
+than the check that was asked for, and the gate is exercised instead by a table with two types who
+want different things — which fails both the identity check and the parameter comparison, naming
+`archetypes.` as what moved.

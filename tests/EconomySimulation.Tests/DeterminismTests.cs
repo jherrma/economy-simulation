@@ -171,6 +171,41 @@ public sealed class DeterminismTests
     }
 
     /// <summary>
+    /// And the concrete case E10 needed it for: `archetype` and `taste_idio` are registered and
+    /// drawn, and every stream that existed before them is exactly where it was.
+    ///
+    /// The general property above is the one that pays for the design; this is the instance it was
+    /// designed for, asserted on the real purposes rather than on a probe, because a name that is
+    /// registered *and consumed* is the case where a numbered scheme would have failed.
+    /// </summary>
+    [Fact]
+    public void TheArchetypeStreamsLeaveEveryOlderStreamWhereItWas()
+    {
+        Assert.Equal("archetype", Purpose.Archetype.Name);
+        Assert.Equal("taste_idio", Purpose.TasteIdiosyncratic.Name);
+
+        foreach (var purpose in new[]
+                 {
+                     Purpose.Income, Purpose.Willingness, Purpose.Theta, Purpose.Abstainer,
+                     Purpose.InitialAge, Purpose.Finance, Purpose.Order,
+                 })
+        {
+            for (var h = 0; h < 8; h++)
+            {
+                var stream = RandomStream.ForHousehold(Seed, h, purpose);
+                var drawn = stream.NextUInt64();
+
+                // hash(run_seed, household_id, purpose) and nothing else: no ordering, no
+                // registration count, no dependence on what else exists.
+                Assert.Equal(RandomStream.ForHousehold(Seed, h, purpose).NextUInt64(), drawn);
+
+                Assert.NotEqual(drawn, RandomStream.ForHousehold(Seed, h, Purpose.Archetype).NextUInt64());
+                Assert.NotEqual(drawn, RandomStream.ForHousehold(Seed, h, Purpose.TasteIdiosyncratic).NextUInt64());
+            }
+        }
+    }
+
+    /// <summary>
     /// Serial and parallel give the same answer, because there is nothing shared to race over.
     /// A single generator handed out to threads would pass every other test in this file.
     /// </summary>

@@ -1,0 +1,29 @@
+# V5a — what the pre-archetype baselines were taken from.
+#
+# THIS FIXTURE IS NOT REGENERATED. There is no `rebaseline` command for it, deliberately: it is a
+# photograph of the model as it stood before E10 existed, and a photograph that repairs itself when
+# it disagrees records nothing. A red V5a means either that the identity table is not the identity,
+# or that the archetype code perturbs a run it should not touch. Both are findings, and both are
+# fixed in the spec and the engine rather than here.
+#
+# If it ever has to be remade — because the *output format* changed for a reason unrelated to
+# archetypes, which is the only legitimate case — remake it the way it was made, from the commit
+# below, and say so in the commit message:
+#
+#   git worktree add --detach <tmp> f4bd975        # the commit named below
+#   printf '\n[run]\nticks = 48\nwarmup_ticks = 19\n' >> <tmp-scenarios>/credit_off.toml
+#   dotnet run --project src/EconomySimulation.Runner -- \
+#       --scenario credit_off --seed <n> --into <here>/credit_off/seed-<n> --scenarios <tmp-scenarios>
+#
+# The effective-config.toml beside each run is kept for the reader and is NOT compared: a
+# pre-E10 configuration has no [archetypes] section, and that absence is part of what is being
+# tested. The gate instead loads it through the current schema and requires it to resolve to
+# exactly the parameters being run.
+
+commit = "f4bd9758585af4ea77392f27b12297d36d02e5ce"
+subject = "09-02 The campaign: 150 runs, one process each, and a dataset that is not a result"
+taken = "2026-09-04"
+scenarios = ["credit_off", "credit_high"]
+ticks = 48
+warmup_ticks = 19
+seeds = [1, 2, 3, 4]
