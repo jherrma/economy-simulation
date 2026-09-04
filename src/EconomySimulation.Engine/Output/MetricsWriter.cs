@@ -7,8 +7,8 @@ using FluentResults;
 namespace EconomySimulation.Engine.Output;
 
 /// <summary>
-/// The engine's only output surface: two CSV files, the effective configuration beside them, and a
-/// completion marker.
+/// The engine's only output surface: three CSV files, the effective configuration beside them, and
+/// a completion marker.
 ///
 /// **CSV and nothing else.** No index the analysis might want revised, no percentile, no plot. Every
 /// analytical choice made in here is a choice that can only be changed by re-running the campaign,
@@ -22,6 +22,19 @@ namespace EconomySimulation.Engine.Output;
 ///
 /// **Warm-up is written and flagged, never discarded.** V4's claim is that the transient decayed,
 /// and that can only be checked against the ticks it decayed over.
+///
+/// **`cohorts.csv` is long, and `run.csv` did not change to make room for it.** The archetype cut
+/// (E10) is two-dimensional — (abstainer, archetype) — and folding it into `run.csv` as columns
+/// would be four hundred columns and would break V5a, whose whole claim is that `run.csv` is
+/// byte-identical under the identity table. So the cells go into a file of their own, one row per
+/// tick per cell, and `run.csv` keeps carrying the cohort totals it always carried. A test asserts
+/// the long file sums to them.
+///
+/// **No share is written anywhere but the tier mix.** Counts only, per category and per tier, so a
+/// share computed from this file is necessarily computed *within* a category. Pooling a share
+/// across categories reverses its sign when exclusion moves units out of the denominator
+/// (`01-SIMULATION.md` §10.4), and the archetypes were designed to differ in exactly the category
+/// weights a pooled figure averages over.
 /// </summary>
 public sealed class MetricsWriter : IDisposable
 {
@@ -35,6 +48,7 @@ public sealed class MetricsWriter : IDisposable
 
     private readonly StreamWriter tiers;
     private readonly StreamWriter run;
+    private readonly StreamWriter cohorts;
     private readonly StringBuilder line = new(512);
     private readonly GoodsTable goods;
     private readonly string directory;
@@ -42,12 +56,20 @@ public sealed class MetricsWriter : IDisposable
     private readonly int runSeed;
     private readonly int tierColumns;
     private readonly int runColumns;
+    private readonly int cohortColumns;
 
     private int fields;
     private int ticksWritten;
     private bool finished;
 
-    private MetricsWriter(GoodsTable goods, string directory, string scenario, int runSeed, StreamWriter tiers, StreamWriter run)
+    private MetricsWriter(
+        GoodsTable goods,
+        string directory,
+        string scenario,
+        int runSeed,
+        StreamWriter tiers,
+        StreamWriter run,
+        StreamWriter cohorts)
     {
         this.goods = goods;
         this.directory = directory;
@@ -55,13 +77,18 @@ public sealed class MetricsWriter : IDisposable
         this.runSeed = runSeed;
         this.tiers = tiers;
         this.run = run;
+        this.cohorts = cohorts;
 
         tierColumns = WriteHeader(tiers, TierHeader);
         runColumns = WriteHeader(run, RunHeader);
+        cohortColumns = WriteHeader(cohorts, CohortHeader);
     }
 
     /// <summary>Rows written to `tiers.csv`, excluding the header.</summary>
     public int TierRows { get; private set; }
+
+    /// <summary>Rows written to `cohorts.csv`, excluding the header.</summary>
+    public int CohortRows { get; private set; }
 
     /// <summary>Ticks written to `run.csv`.</summary>
     public int Ticks => ticksWritten;
@@ -109,7 +136,8 @@ public sealed class MetricsWriter : IDisposable
                 parameters.Run.Scenario,
                 simulation.RunSeed,
                 Open(directory, "tiers.csv"),
-                Open(directory, "run.csv")));
+                Open(directory, "run.csv"),
+                Open(directory, "cohorts.csv")));
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
@@ -136,6 +164,7 @@ public sealed class MetricsWriter : IDisposable
         {
             WriteTierRows(simulation, record);
             WriteRunRow(simulation, record);
+            WriteCohortRows(simulation, record);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
@@ -161,12 +190,14 @@ public sealed class MetricsWriter : IDisposable
         {
             tiers.Flush();
             run.Flush();
+            cohorts.Flush();
 
             var marker = new StringBuilder();
             marker.AppendLine(CultureInfo.InvariantCulture, $"scenario = \"{scenario}\"");
             marker.AppendLine(CultureInfo.InvariantCulture, $"seed = {runSeed}");
             marker.AppendLine(CultureInfo.InvariantCulture, $"ticks = {ticksWritten}");
             marker.AppendLine(CultureInfo.InvariantCulture, $"tier_rows = {TierRows}");
+            marker.AppendLine(CultureInfo.InvariantCulture, $"cohort_rows = {CohortRows}");
 
             File.WriteAllText(Path.Combine(directory, MarkerFile), marker.ToString());
             finished = true;
@@ -183,6 +214,7 @@ public sealed class MetricsWriter : IDisposable
     {
         tiers.Dispose();
         run.Dispose();
+        cohorts.Dispose();
     }
 
     // ---- the schema ---------------------------------------------------------------------------
@@ -248,6 +280,43 @@ public sealed class MetricsWriter : IDisposable
                 {
                     column($"{name}_{category.Name}_{tier.Name}_units");
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// One row per tick per (cohort, archetype) cell — 07-03's measures, cut both ways.
+    ///
+    /// Long rather than wide, and the archetype named on **every row**: a reader keyed by name then
+    /// needs no knowledge of how many types there were, and adding a type adds rows rather than
+    /// columns. Under the identity table there is one type called `average` and the file is
+    /// `run.csv`'s cohort block again, which is exactly what makes it checkable.
+    /// </summary>
+    private void CohortHeader(Action<string> column)
+    {
+        Keys(column);
+        column("cohort");
+        column("archetype");
+        column("households");
+        column("cash");
+        column("loans_outstanding");
+        column("debt_service");
+        column("spend");
+        column("quality");
+        column("wanted");
+        column("obtained");
+        column("wait_median");
+        column("wait_median_met");
+
+        foreach (var category in goods.Categories)
+        {
+            column($"{category.Name}_wanted");
+            column($"{category.Name}_obtained");
+            column($"{category.Name}_spend");
+
+            foreach (var tier in goods.Tiers)
+            {
+                column($"{category.Name}_{tier.Name}_units");
             }
         }
     }
@@ -332,6 +401,44 @@ public sealed class MetricsWriter : IDisposable
         }
 
         End(run, runColumns, "run.csv");
+    }
+
+    private void WriteCohortRows(Simulation simulation, TickRecord record)
+    {
+        var metrics = simulation.Cohorts;
+
+        foreach (var cell in metrics.Cells)
+        {
+            Begin(record);
+            Field(Name(cell.Cohort));
+            Field(metrics.ArchetypeNames[cell.Archetype]);
+            Field(metrics.Households(cell));
+            Field(metrics.Cash(cell));
+            Field(metrics.LoansOutstanding(cell));
+            Field(metrics.DebtService(cell));
+            Field(metrics.Spend(cell));
+            Field(metrics.Quality(cell));
+            Field(metrics.Wanted(cell));
+            Field(metrics.Obtained(cell));
+            Field(metrics.WaitMedian(cell));
+            Field(metrics.WaitMedianMet(cell));
+
+            for (var c = 0; c < goods.CategoryCount; c++)
+            {
+                Field(metrics.Wanted(cell, c));
+                Field(metrics.Obtained(cell, c));
+                Field(metrics.Spend(cell, c));
+
+                for (var t = 0; t < goods.TierCount; t++)
+                {
+                    Field(metrics.Units(cell, c, t));
+                }
+            }
+
+            End(cohorts, cohortColumns, "cohorts.csv");
+
+            CohortRows++;
+        }
     }
 
     // ---- rows ---------------------------------------------------------------------------------

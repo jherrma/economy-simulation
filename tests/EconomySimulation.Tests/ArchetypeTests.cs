@@ -409,6 +409,133 @@ public sealed class ArchetypeTests
         }
     }
 
+    // ---- the sweep grid: spec/stories/10-04 -------------------------------------------------------
+
+    private static SimulationParameters Table(string name)
+    {
+        var scenario = Scenario.FromFile(
+            Path.Combine(Repo.Root, "config", "scenarios", name + "_credit_off.toml"));
+
+        Assert.True(
+            scenario.IsSuccess,
+            $"Expected {name} to load: " + string.Join("; ", scenario.Errors.Select(e => e.Message)));
+
+        return scenario.Value.Parameters;
+    }
+
+    /// <summary>
+    /// `typed_w_only` is the typed levels with every steepness at 1: the arm that says how much of a
+    /// typed run is households wanting *more* of a category rather than wanting it *better*. In v1
+    /// those were the same number.
+    /// </summary>
+    [Fact]
+    public void TypedWOnly_IsTypedsLevelsWithNoSteepness()
+    {
+        var typed = Typed().Archetypes;
+        var wOnly = Table("typed_w_only").Archetypes;
+
+        Assert.Equal(typed.Types.Select(a => a.Name), wOnly.Types.Select(a => a.Name));
+
+        for (var i = 0; i < typed.Types.Count; i++)
+        {
+            Assert.Equal(typed.Types[i].Share, wOnly.Types[i].Share);
+            Assert.Equal(typed.Types[i].W, wOnly.Types[i].W);
+            Assert.All(wOnly.Types[i].Kappa, k => Assert.Equal(1.0, k.Value));
+        }
+    }
+
+    /// <summary>And the mirror: `typed_kappa_only` is the steepnesses with every level at 1.</summary>
+    [Fact]
+    public void TypedKappaOnly_IsTypedsSteepnessWithNoLevels()
+    {
+        var typed = Typed().Archetypes;
+        var kappaOnly = Table("typed_kappa_only").Archetypes;
+
+        for (var i = 0; i < typed.Types.Count; i++)
+        {
+            Assert.Equal(typed.Types[i].Share, kappaOnly.Types[i].Share);
+            Assert.Equal(typed.Types[i].Kappa, kappaOnly.Types[i].Kappa);
+            Assert.All(kappaOnly.Types[i].W, w => Assert.Equal(1.0, w.Value));
+        }
+    }
+
+    /// <summary>
+    /// **The control the earlier draft lacked.** `typed_kappa_neutral` keeps `typed`'s levels exactly
+    /// and rescales every `kappa` column to share-weighted mean 1, so the difference between the two
+    /// is the population's average taste for quality and nothing else. Without it, a
+    /// typed-versus-untyped comparison confounds "taste is heterogeneous" with "taste is cheaper".
+    /// </summary>
+    [Fact]
+    public void TypedKappaNeutral_KeepsTheLevelsAndFlattensTheMeanSteepness()
+    {
+        var typed = Typed().Archetypes;
+        var neutral = Table("typed_kappa_neutral").Archetypes;
+
+        Assert.True(neutral.NormaliseKappa);
+        Assert.False(typed.NormaliseKappa);
+
+        for (var i = 0; i < typed.Types.Count; i++)
+        {
+            Assert.Equal(typed.Types[i].Share, neutral.Types[i].Share);
+            Assert.Equal(typed.Types[i].W, neutral.Types[i].W);
+        }
+
+        foreach (var category in Categories)
+        {
+            // The mean is 1 where `typed`'s is 0.92–0.965 …
+            Assert.Equal(1.0, neutral.Types.Sum(a => a.Share * a.ExponentFor(category)), 9);
+            Assert.InRange(typed.Types.Sum(a => a.Share * a.ExponentFor(category)), 0.90, 0.9999);
+
+            // … and the *spread* is preserved, up to that one scale factor: each type's steepness
+            // is typed's divided by the same number, so the ordering and the ratios are untouched.
+            var scale = typed.Types.Sum(a => a.Share * a.ExponentFor(category));
+
+            for (var i = 0; i < typed.Types.Count; i++)
+            {
+                Assert.Equal(typed.Types[i].ExponentFor(category) / scale, neutral.Types[i].ExponentFor(category), 12);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Rescaling `kappa` must not push any type over the ladder bound. It raises every steepness —
+    /// the mean it divides by is below 1 — so the table that was safe at `typed` is the one most
+    /// likely to fail here, and the loader is what would catch it.
+    /// </summary>
+    [Fact]
+    public void RescalingKappaStaysInsideTheLadderBound()
+    {
+        var neutral = Table("typed_kappa_neutral");
+        var bound = QualityLadder.MaxExponent(neutral.Tiers);
+
+        foreach (var type in neutral.Archetypes.Types)
+        {
+            Assert.All(type.Kappa, k => Assert.InRange(k.Value, 1e-9, bound));
+        }
+
+        // And the highest one really did move: health_conscious's food steepness was 1.25.
+        var raised = neutral.Archetypes.Types.Max(a => a.ExponentFor("food"));
+
+        Assert.True(raised > 1.25, $"the rescaled maximum is {raised:0.0000}, which is not above 1.25");
+    }
+
+    /// <summary>Every typed arm of the sweep grid carries the same table as its own control.</summary>
+    [Fact]
+    public void EachSweepRowsArmsCarryTheSameTable()
+    {
+        foreach (var (table, row) in Scenario.SweepGrid.Skip(1))
+        {
+            var control = Scenario.FromFile(Path.Combine(Repo.Root, "config", "scenarios", row[0] + ".toml"));
+            var treatment = Scenario.FromFile(Path.Combine(Repo.Root, "config", "scenarios", row[1] + ".toml"));
+
+            Assert.True(control.IsSuccess && treatment.IsSuccess, table);
+
+            Assert.Equal(
+                control.Value.Parameters.Archetypes,
+                treatment.Value.Parameters.Archetypes);
+        }
+    }
+
     // ---- the bound on kappa ----------------------------------------------------------------------
 
     /// <summary>

@@ -111,12 +111,16 @@ public sealed class CampaignTests
     }
 
     /// <summary>
-    /// The same for the archetype assignment. A treatment arm carrying a different table from its
-    /// own control is the mistake §3.5 warns about — it measures the table and the credit together
-    /// and attributes both to credit — and this is where a campaign notices.
+    /// An arm carrying a different archetype table from the control it is compared against is the
+    /// mistake §3.5 warns about — it measures the table and the mechanism together and attributes
+    /// both to the mechanism — and this is where a campaign notices.
+    ///
+    /// It is also the mistake that will actually happen: the sweep is eight hand-written scenario
+    /// files, and one of them mistyping a weight would leave a pair that looks like a comparison and
+    /// is not.
     /// </summary>
     [Fact]
-    public void ThePairingCheck_CatchesAMovedArchetypeAssignment()
+    public void ThePairingCheck_CatchesAnArmCarryingADifferentTable()
     {
         var scenarios = Scenarios();
 
@@ -134,11 +138,61 @@ public sealed class CampaignTests
         var paired = Pairing.Check([scenarios[0], retyped.Value], [1, 2]);
 
         Assert.True(paired.IsFailed);
-        Assert.Contains("archetypes", paired.Errors[0].Message, StringComparison.Ordinal);
-        Assert.Contains("changed type", paired.Errors[0].Message, StringComparison.Ordinal);
+        Assert.Contains(paired.Errors, e => e.Message.Contains("different archetype table", StringComparison.Ordinal));
+        Assert.Contains(paired.Errors, e => e.Message.Contains("changed type", StringComparison.Ordinal));
 
-        // And the abstainer set is untouched, so the two checks really are separate claims.
+        // And the abstainer set is untouched, so the checks really are separate claims.
         Assert.DoesNotContain(paired.Errors, e => e.Message.Contains("abstainers", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// And a typed arm compared against its **own** control passes — the check is not simply "any
+    /// two scenarios must carry the same table", which would make the whole sweep void.
+    /// </summary>
+    [Fact]
+    public void ATypedArmPairsWithItsOwnControl()
+    {
+        var scenarios = Scenarios();
+
+        var typed = scenarios
+            .Where(s => s.Name.StartsWith("typed_", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Equal(8, typed.Length);
+
+        var paired = Pairing.Check(scenarios, [1, 2]);
+
+        Assert.True(paired.IsSuccess, string.Join("; ", paired.Errors.Select(e => e.Message)));
+    }
+
+    /// <summary>
+    /// Every row of §3.5's sweep grid is committed, and its two arms carry the **same** table. The
+    /// grid is a claim about what the sweep covers, so it is named rather than read off a directory.
+    /// </summary>
+    [Fact]
+    public void EveryRowOfTheSweepGrid_IsCommittedAndItsArmsAgree()
+    {
+        var scenarios = Scenarios().ToDictionary(s => s.Name, StringComparer.Ordinal);
+
+        Assert.Equal(5, Scenario.SweepGrid.Count);
+
+        foreach (var (table, row) in Scenario.SweepGrid)
+        {
+            Assert.Equal(2, row.Count);
+
+            var arms = row.Select(name => scenarios[name]).ToArray();
+
+            Assert.Equal(
+                arms[0].Parameters.Archetypes,
+                arms[1].Parameters.Archetypes);
+
+            // And the two arms really are different runs, or the row measures nothing.
+            Assert.NotEqual(arms[0].Parameters.Credit, arms[1].Parameters.Credit);
+
+            Assert.True(
+                table == "identity" == arms[0].Parameters.Archetypes.IsIdentity,
+                $"{table}: the identity row is the one carrying the identity table, and no other");
+        }
     }
 
     // ---- the marker ----------------------------------------------------------------------------

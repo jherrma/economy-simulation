@@ -86,6 +86,7 @@ unit_share = 0.2
 
 [archetypes]
 sigma_idio = 0.0
+normalise_kappa = false
 
 [archetypes.average]
 share = 1.0

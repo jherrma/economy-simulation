@@ -1097,6 +1097,69 @@ unsold every tick in both arms, while abstainers obtain 2.6% of the appliances t
 constraint on B is cash, not stock — B is priced out, not queued out, which is what §10.1 saw from
 the other side. A write-up must not describe this as A taking the last unit off the shelf.
 
+### 10.5 A typed population halves the access effect and leaves the price effect alone — found 2026-09-04
+
+The archetype table of §5.4 was built without knowing whether the headline would survive it, and
+§3.5's sweep grid was named before the first typed run. This is what the five tables say, each arm
+against **its own** control — a typed table is a different baseline economy, so comparing a typed
+`credit_high` against the untyped `credit_off` would measure the table and the credit together.
+
+Measured with `dotnet run --project tools/Gates -- pilot table=<row>`, thirty paired seeds, 600
+ticks, window from tick 241. The headline measure is the abstainer's share of wanted units obtained.
+
+| table | `credit_off` level | difference | *t* | 95% detectable |
+|---|---|---|---|---|
+| `identity` (v1) | 0.7598 | **−5.61%** | −23.8 | 0.48% |
+| `typed` | 0.7819 | **−3.08%** | −20.0 | 0.32% |
+| `typed_w_only` | 0.7743 | −4.13% | −20.6 | 0.41% |
+| `typed_kappa_only` | 0.7754 | −3.56% | −23.3 | 0.31% |
+| `typed_kappa_neutral` | 0.7800 | −3.08% | −16.1 | 0.39% |
+
+**Thirty seeds are still enough.** The effect is eight to twenty times its own resolution under
+every table, and the paired spread is *smaller* under a typed population than under v1 (0.84%
+against 1.29% on this measure). The dispersion archetypes add to the population does not translate
+into dispersion across seeds, because a seed's population is a draw of a thousand households and the
+table is a property of the draw, not of the seed.
+
+**The effect halves, and `typed_kappa_neutral` says why it is not an artefact of the table's level.**
+§3.5 raised the confound: the typed table's population-mean `kappa` is 0.92–0.965 in every category,
+so the town is shifted toward the budget shelves before credit is mentioned, and that alone might
+put more households on the shelves an abstainer trades down to. Rescaling every `kappa` column to
+mean 1 moves the answer from −3.084% to −3.081%. **It is not the level. It is the heterogeneity.**
+The `w`-only and `kappa`-only rows say both channels contribute and roughly multiplicatively.
+
+**The price effect is untouched.** This is the sharper half of the finding, because §10.4's answer to
+§1 rests on relative prices rather than on the index:
+
+| | `identity` | `typed` | `typed_kappa_neutral` |
+|---|---|---|---|
+| `cpi_electronics` | +10.97% | +11.72% | +11.52% |
+| `cpi_appliances` | +7.53% | +6.59% | +7.13% |
+| `cpi_clothing` | −3.60% | −1.47% | −1.64% |
+| `cpi` | +0.55% | +0.14% | +0.15% |
+
+So the two halves of the claim behave differently under a heterogeneous population: **the good B
+never borrowed for is exactly as much dearer, and about half as much harder to get.** A write-up
+that leads with the price is on firmer ground than one that leads with access.
+
+**What shrank the access effect: there is less borrowing.** `loans_outstanding` averages €70,970
+under `identity`, €49,037 under `typed` and €53,564 under `typed_kappa_neutral` — a quarter to a
+third less credit outstanding at the same θ. The financing decision is a **threshold**, and
+spreading taste around its mean moves households across it in both directions without conserving the
+count. Less borrowing is less bidding, and the abstainer feels proportionally less of it. The
+mechanism is unchanged; the population that exercises it is smaller.
+
+**One thing that only becomes visible with types.** Under `identity` the abstainer's quality index is
+flat and unresolvable (+0.04%, *t* = 0.4). Under every typed table it rises, significantly:
++0.31% at `typed`, *t* = 15.6, while units obtained per tick are flat (+0.008%). The abstainer gets
+about the same number of things and they are very slightly better on average. That is *consistent*
+with exclusion falling on marginal purchases first — the wants that get dropped are the cheap ones —
+but this section has not tested that reading, and it should not be quoted as though it had.
+
+**What this does not say.** It does not say the `typed` table is right. Nothing in this repository
+can (§3.5). It says the headline is not an artefact of v1's assumption that one number describes
+what a household wants — which was the live risk, and is now measured rather than hoped.
+
 ## 11. What this model cannot show
 
 Every one of these must accompany any number that comes out of it.

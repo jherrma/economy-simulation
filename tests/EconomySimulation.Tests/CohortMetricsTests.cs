@@ -184,15 +184,15 @@ public sealed class CohortMetricsTests
         var metrics = new CohortMetrics(goods, population, ticks: 10);
 
         metrics.OpenTick();
-        metrics.RecordWant(Cohort.Abstainer, Food);
-        metrics.RecordPurchase(Cohort.Abstainer, Food, Premium, Money.FromEuros(540), wait: 0);
+        metrics.RecordWant(new CohortCell(Cohort.Abstainer, 0), Food);
+        metrics.RecordPurchase(new CohortCell(Cohort.Abstainer, 0), Food, Premium, Money.FromEuros(540), wait: 0);
 
         var premium = metrics.Quality(Cohort.Abstainer);
         var units = metrics.Obtained(Cohort.Abstainer);
 
         metrics.OpenTick();
-        metrics.RecordWant(Cohort.Abstainer, Food);
-        metrics.RecordPurchase(Cohort.Abstainer, Food, Budget, Money.FromEuros(180), wait: 0);
+        metrics.RecordWant(new CohortCell(Cohort.Abstainer, 0), Food);
+        metrics.RecordPurchase(new CohortCell(Cohort.Abstainer, 0), Food, Budget, Money.FromEuros(180), wait: 0);
 
         Assert.Equal(units, metrics.Obtained(Cohort.Abstainer));
         Assert.True(metrics.Quality(Cohort.Abstainer) < premium);
@@ -223,7 +223,7 @@ public sealed class CohortMetricsTests
         metrics.OpenTick();
 
         // One served now; one still wanting, three ticks in.
-        metrics.RecordPurchase(Cohort.Abstainer, Electronics, Budget, Money.FromEuros(540), wait: 0);
+        metrics.RecordPurchase(new CohortCell(Cohort.Abstainer, 0), Electronics, Budget, Money.FromEuros(540), wait: 0);
 
         var open_ = population.AgeIndex(1, Electronics);
         population.Wanted[open_] = true;
@@ -251,7 +251,7 @@ public sealed class CohortMetricsTests
         // A hundred food purchases at wait 0, and one durable want four ticks old.
         for (var n = 0; n < 100; n++)
         {
-            metrics.RecordPurchase(Cohort.Abstainer, Food, Budget, Money.FromEuros(180), wait: 0);
+            metrics.RecordPurchase(new CohortCell(Cohort.Abstainer, 0), Food, Budget, Money.FromEuros(180), wait: 0);
         }
 
         var open_ = population.AgeIndex(0, Electronics);

@@ -14,7 +14,7 @@ namespace EconomySimulation.Campaign;
 /// </summary>
 public static class Collector
 {
-    public static IReadOnlyList<string> Files { get; } = ["run.csv", "tiers.csv"];
+    public static IReadOnlyList<string> Files { get; } = ["run.csv", "tiers.csv", "cohorts.csv"];
 
     /// <summary>
     /// Concatenates the measured window of every run, keyed by the scenario and seed the rows

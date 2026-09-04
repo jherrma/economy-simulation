@@ -38,13 +38,40 @@ public static class Pairing
         var problems = new List<IError>();
         var baseline = scenarios[0];
 
+        // Each scenario's archetype control is the **first scenario of its own row of §3.5's sweep
+        // grid**, and the untyped baseline for anything the grid does not name. A typed scenario is
+        // a different population from an untyped one by construction — that is what a table is — so
+        // comparing every arm against `credit_off` would fail by design and say nothing.
+        //
+        // The abstainer set has no such qualification: it is drawn from its own stream and does not
+        // depend on the table, so it is compared against the one baseline throughout, and a typed
+        // scenario whose abstainers moved is still void.
+        var controls = Controls(scenarios);
+
         foreach (var seed in seeds)
         {
             var expected = Opening(baseline.Parameters, seed);
+            var opened = new Dictionary<string, (HashSet<int> Abstainers, int[] Archetypes)>(StringComparer.Ordinal);
 
             foreach (var scenario in scenarios.Skip(1))
             {
                 var actual = Opening(scenario.Parameters, seed);
+                var control = controls[scenario.Name];
+
+                if (!ReferenceEquals(control, scenario))
+                {
+                    if (!opened.TryGetValue(control.Name, out var expectedTypes))
+                    {
+                        expectedTypes = Opening(control.Parameters, seed);
+                        opened[control.Name] = expectedTypes;
+                    }
+
+                    // The table first: two arms of one grid row that do not carry the same table
+                    // are not a comparison at all, and eight hand-written scenario files is exactly
+                    // where that typo lives.
+                    Same(problems, seed, scenario, control);
+                    Compare(problems, seed, scenario.Name, control.Name, expectedTypes.Archetypes, actual.Archetypes);
+                }
 
                 if (!expected.Abstainers.SetEquals(actual.Abstainers))
                 {
@@ -55,22 +82,85 @@ public static class Pairing
                     problems.Add(new Error(Invariant(
                         $"seed {seed}: the abstainers of {scenario.Name} are not those of {baseline.Name} ({moved}) — the comparison is not paired and the campaign is void")));
                 }
-
-                // The assignment, not the count per type. Equal counts are not the same claim, and
-                // a table whose types were reordered between two arms would produce exactly that.
-                if (!expected.Archetypes.SequenceEqual(actual.Archetypes))
-                {
-                    var swapped = expected.Archetypes.Length == actual.Archetypes.Length
-                        ? Invariant($"{expected.Archetypes.Where((a, h) => a != actual.Archetypes[h]).Count()} of {expected.Archetypes.Length} households changed type")
-                        : Invariant($"{expected.Archetypes.Length} against {actual.Archetypes.Length} households");
-
-                    problems.Add(new Error(Invariant(
-                        $"seed {seed}: the archetypes of {scenario.Name} are not those of {baseline.Name} ({swapped}) — the comparison is not paired and the campaign is void")));
-                }
             }
         }
 
         return problems.Count > 0 ? Result.Fail(problems) : Result.Ok();
+    }
+
+    /// <summary>
+    /// Which scenario each one's archetype table is checked against: the first scenario of its own
+    /// row of the sweep grid, and the campaign's baseline for anything the grid does not name.
+    /// </summary>
+    private static Dictionary<string, Scenario> Controls(IReadOnlyList<Scenario> scenarios)
+    {
+        var controls = new Dictionary<string, Scenario>(StringComparer.Ordinal);
+
+        foreach (var scenario in scenarios)
+        {
+            controls[scenario.Name] = scenarios[0];
+        }
+
+        foreach (var (_, row) in Scenario.SweepGrid)
+        {
+            var control = scenarios.FirstOrDefault(s => row.Contains(s.Name, StringComparer.Ordinal));
+
+            if (control is null)
+            {
+                continue;
+            }
+
+            foreach (var name in row.Where(controls.ContainsKey))
+            {
+                controls[name] = control;
+            }
+        }
+
+        return controls;
+    }
+
+    /// <summary>
+    /// Two scenarios meant to be compared have to carry the **same** archetype table, or the
+    /// difference between them is the table and the mechanism together.
+    /// </summary>
+    private static void Same(List<IError> problems, int seed, Scenario scenario, Scenario control)
+    {
+        if (seed != 1 || scenario.Parameters.Archetypes == control.Parameters.Archetypes)
+        {
+            return;
+        }
+
+        var keys = scenario.Parameters
+            .DifferencesFrom(control.Parameters)
+            .Where(k => k.StartsWith("archetypes", StringComparison.Ordinal));
+
+        problems.Add(new Error(Invariant(
+            $"{scenario.Name} carries a different archetype table from {control.Name} ({string.Join(", ", keys)}) — comparing them would measure the table and the mechanism together and attribute both to the mechanism")));
+    }
+
+    /// <summary>
+    /// The assignment, not the count per type. Equal counts are not the same claim: two arms with
+    /// three hundred prudent households each can still be two different three hundred.
+    /// </summary>
+    private static void Compare(
+        List<IError> problems,
+        int seed,
+        string scenario,
+        string control,
+        int[] expected,
+        int[] actual)
+    {
+        if (expected.SequenceEqual(actual))
+        {
+            return;
+        }
+
+        var swapped = expected.Length == actual.Length
+            ? Invariant($"{expected.Where((a, h) => a != actual[h]).Count()} of {expected.Length} households changed type")
+            : Invariant($"{expected.Length} against {actual.Length} households");
+
+        problems.Add(new Error(Invariant(
+            $"seed {seed}: the archetypes of {scenario} are not those of {control} ({swapped}) — the comparison is not paired and the campaign is void")));
     }
 
     private static (HashSet<int> Abstainers, int[] Archetypes) Opening(SimulationParameters parameters, int seed)

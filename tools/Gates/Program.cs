@@ -35,7 +35,7 @@ internal static class Program
             "creditoff" => CreditOffGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "archetypes" => ArchetypeGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "rebaseline" => CreditOffGate.Rebaseline(SimulationParameters.Default, Runs.ShortSeeds),
-            "pilot" => PilotProbe.Run(Probe(args, SimulationParameters.Default), Runs.CampaignSeeds(SimulationParameters.Default), workspace),
+            "pilot" => PilotProbe.Run(Probe(args, SimulationParameters.Default), Runs.CampaignSeeds(SimulationParameters.Default), workspace, Table(args)),
             _ => null,
         };
 
@@ -59,6 +59,23 @@ internal static class Program
     /// worth asking: the adjustment speed sets the price level (§10.4), and the loan rate is the
     /// one parameter a reader will check against their own credit card.
     /// </summary>
+    /// <summary>
+    /// `pilot table=typed` runs the probe over one row of §3.5's sweep grid. The default is the
+    /// identity table, which is v1: the probe's original question, unchanged.
+    /// </summary>
+    private static string Table(string[] args)
+    {
+        foreach (var argument in args)
+        {
+            if (argument.StartsWith("table=", StringComparison.Ordinal))
+            {
+                return argument["table=".Length..];
+            }
+        }
+
+        return PilotProbe.IdentityTable;
+    }
+
     private static SimulationParameters Probe(string[] args, SimulationParameters parameters)
     {
         foreach (var argument in args)
@@ -96,6 +113,8 @@ internal static class Program
         Console.Error.WriteLine("  creditoff     V5 — credit_high with theta = 0 reproduces credit_off, byte for byte");
         Console.Error.WriteLine("  archetypes    V5a — the identity archetype table reproduces the pre-archetype model");
         Console.Error.WriteLine("  pilot         not a gate — how finely the campaign's seed set resolves the headline");
+        Console.Error.WriteLine("                pilot table=<row> runs it over one row of the §3.5 sweep grid:");
+        Console.Error.WriteLine("                " + string.Join(", ", Scenario.SweepGrid.Select(r => r.Table)));
         Console.Error.WriteLine("  rebaseline    write new committed baselines for V5 — deliberate, never automatic");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  --keep        leave the runs on disk instead of removing them");

@@ -171,6 +171,67 @@ public static class Comparison
         return null;
     }
 
+    /// <summary>
+    /// The first difference between two `key = value` files **on the keys the left one states**,
+    /// with the count of keys the right one has that it does not.
+    ///
+    /// For `run.done`, and only for `run.done`. The marker is metadata *about the files*, not model
+    /// output: it names how many rows each of them got, so adding an output file necessarily adds a
+    /// line to it. V5a compares against a fixture that is never retaken, so a marker line that a
+    /// later story adds must not be able to fail it — while `ticks` and `tier_rows`, which are the
+    /// marker's actual claim about the run, still have to agree to the character.
+    /// </summary>
+    public static Difference? FirstDifferenceOnSharedKeys(
+        string left,
+        string right,
+        string file,
+        out int dropped)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(left);
+        ArgumentException.ThrowIfNullOrWhiteSpace(right);
+
+        var expected = Keyed(Path.Combine(left, file));
+        var actual = Keyed(Path.Combine(right, file));
+
+        dropped = actual.Count - expected.Keys.Count(k => actual.ContainsKey(k));
+
+        var line = 0;
+
+        foreach (var (key, value) in expected)
+        {
+            line++;
+
+            if (!actual.TryGetValue(key, out var got))
+            {
+                return new Difference(file, line, key, value, "(no such key)");
+            }
+
+            if (!string.Equals(value, got, StringComparison.Ordinal))
+            {
+                return new Difference(file, line, key, value, got);
+            }
+        }
+
+        return null;
+    }
+
+    private static Dictionary<string, string> Keyed(string path)
+    {
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var raw in File.ReadAllLines(path))
+        {
+            var separator = raw.IndexOf('=', StringComparison.Ordinal);
+
+            if (separator > 0)
+            {
+                values[raw[..separator].Trim()] = raw[(separator + 1)..].Trim();
+            }
+        }
+
+        return values;
+    }
+
     private static Difference? FirstDifference(string left, string right, string file)
     {
         var leftPath = Path.Combine(left, file);

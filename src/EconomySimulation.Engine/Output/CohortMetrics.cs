@@ -17,6 +17,17 @@ public enum Cohort
 }
 
 /// <summary>
+/// One cell of the two-dimensional cut: a cohort and an archetype.
+///
+/// A type rather than a pair of `int`s because the per-cohort and per-cell readings would otherwise
+/// have the same signature — `Spend(cohort, 3)` meaning either "category 3" or "archetype 3" is a
+/// bug that compiles.
+/// </summary>
+/// <param name="Cohort">Abstainer or borrower.</param>
+/// <param name="Archetype">Index into <see cref="CohortMetrics.ArchetypeNames"/>.</param>
+public readonly record struct CohortCell(Cohort Cohort, int Archetype);
+
+/// <summary>
 /// Four things about each cohort, ordered by how easy they are to argue with.
 ///
 /// `share_of_wanted_obtained` and `wait` say a cohort is served **less often** or **later**.
@@ -27,31 +38,49 @@ public enum Cohort
 ///
 /// Everything here is a **raw series**. The differencing between scenarios happens outside the
 /// engine, where it can be revised without re-running the campaign.
+///
+/// **The cut is two-dimensional** since E10: every quantity is accumulated per
+/// (cohort, archetype) **cell**, and the per-cohort figure is the sum over the archetypes. That
+/// ordering matters — a cohort total computed from cell totals is exact, while a cohort *median*
+/// is not, so the wait medians sum their histograms rather than their answers.
+///
+/// Resist widening the cut further. Four types times two cohorts is eight cells and each cell is a
+/// quarter of the households it used to be; the per-cell noise grows accordingly. If a cell gets
+/// thin, the answer is more seeds, not a finer cut.
 /// </summary>
 public sealed class CohortMetrics
 {
-    private const int Count = 2;
+    private const int CohortCount = 2;
 
     private readonly GoodsTable goods;
-    private readonly int[] households = new int[Count];
+    private readonly int archetypes;
+    private readonly int cells;
+    private readonly int[] households;
 
-    // Per cohort.
-    private readonly Money[] cash = new Money[Count];
-    private readonly Money[] loansOutstanding = new Money[Count];
-    private readonly Money[] debtService = new Money[Count];
-    private readonly Money[] spend = new Money[Count];
-    private readonly double[] quality = new double[Count];
-    private readonly double[] waitMedian = new double[Count];
-    private readonly double[] waitMedianMet = new double[Count];
+    // Per cell.
+    private readonly Money[] cash;
+    private readonly Money[] loansOutstanding;
+    private readonly Money[] debtService;
+    private readonly Money[] spend;
+    private readonly double[] quality;
+    private readonly double[] waitMedian;
+    private readonly double[] waitMedianMet;
     private readonly int[][] waits;
     private readonly int[][] waitsMet;
 
-    // Per cohort, per category.
+    // Per cohort, over its archetypes — a median is not a sum, so it is taken from the summed
+    // histogram rather than from the cells' answers.
+    private readonly double[] cohortWaitMedian = new double[CohortCount];
+    private readonly double[] cohortWaitMedianMet = new double[CohortCount];
+    private readonly int[][] cohortWaits;
+    private readonly int[][] cohortWaitsMet;
+
+    // Per cell, per category.
     private readonly int[] wanted;
     private readonly int[] obtained;
     private readonly Money[] spendByCategory;
 
-    // Per cohort, per category, per tier.
+    // Per cell, per category, per tier.
     private readonly int[] units;
 
     public CohortMetrics(GoodsTable goods, Households population, int ticks)
@@ -62,22 +91,43 @@ public sealed class CohortMetrics
 
         this.goods = goods;
 
-        wanted = new int[Count * goods.CategoryCount];
-        obtained = new int[Count * goods.CategoryCount];
-        spendByCategory = new Money[Count * goods.CategoryCount];
-        units = new int[Count * goods.GoodCount];
+        archetypes = population.ArchetypeNames.Count;
+        ArchetypeNames = population.ArchetypeNames;
+        cells = CohortCount * archetypes;
+
+        households = new int[cells];
+        cash = new Money[cells];
+        loansOutstanding = new Money[cells];
+        debtService = new Money[cells];
+        spend = new Money[cells];
+        quality = new double[cells];
+        waitMedian = new double[cells];
+        waitMedianMet = new double[cells];
+
+        wanted = new int[cells * goods.CategoryCount];
+        obtained = new int[cells * goods.CategoryCount];
+        spendByCategory = new Money[cells * goods.CategoryCount];
+        units = new int[cells * goods.GoodCount];
 
         // A histogram rather than a list: the median has to be computed every tick inside a run
         // that allocates nothing, and a wait is a small non-negative integer. The last bucket
         // holds everything at or beyond the run's length, which nothing can exceed.
-        waits = [new int[ticks + 2], new int[ticks + 2]];
-        waitsMet = [new int[ticks + 2], new int[ticks + 2]];
+        waits = Histograms(cells, ticks);
+        waitsMet = Histograms(cells, ticks);
+        cohortWaits = Histograms(CohortCount, ticks);
+        cohortWaitsMet = Histograms(CohortCount, ticks);
 
         for (var h = 0; h < population.Count; h++)
         {
-            households[(int)Of(population, h)]++;
+            households[Cell(population, h)]++;
         }
     }
+
+    /// <summary>The archetype table's types, in the order the loader put them. One column of the cut.</summary>
+    public IReadOnlyList<string> ArchetypeNames { get; }
+
+    /// <summary>How many archetypes the cut has. One under the identity table.</summary>
+    public int ArchetypeCount => archetypes;
 
     /// <summary>Which cohort a household is in. By construction, never changes and never depends on the scenario.</summary>
     public static Cohort Of(Households population, int household)
@@ -87,23 +137,63 @@ public sealed class CohortMetrics
         return population.IsAbstainer[household] ? Cohort.Abstainer : Cohort.Borrower;
     }
 
-    public int Households(Cohort cohort) => households[(int)cohort];
+    /// <summary>
+    /// Which (cohort, archetype) cell a household is in. Both dimensions are fixed at
+    /// initialisation and identical across scenarios for a given seed, which is what makes the
+    /// comparison paired in both of them.
+    /// </summary>
+    public static int Cell(Households population, int household)
+    {
+        ArgumentNullException.ThrowIfNull(population);
 
-    public Money Cash(Cohort cohort) => cash[(int)cohort];
+        return ((int)Of(population, household) * population.ArchetypeNames.Count)
+               + population.Archetype[household];
+    }
 
-    public Money LoansOutstanding(Cohort cohort) => loansOutstanding[(int)cohort];
+    /// <summary>Every cell of the cut, cohort-major — the rows of the cohort file.</summary>
+    public IEnumerable<CohortCell> Cells
+    {
+        get
+        {
+            foreach (var cohort in new[] { Cohort.Abstainer, Cohort.Borrower })
+            {
+                for (var a = 0; a < archetypes; a++)
+                {
+                    yield return new CohortCell(cohort, a);
+                }
+            }
+        }
+    }
 
-    public Money DebtService(Cohort cohort) => debtService[(int)cohort];
+    public int Households(Cohort cohort) => Sum(households, cohort);
+
+    public int Households(CohortCell cell) => households[Index(cell)];
+
+    public Money Cash(Cohort cohort) => Sum(cash, cohort);
+
+    public Money Cash(CohortCell cell) => cash[Index(cell)];
+
+    public Money LoansOutstanding(Cohort cohort) => Sum(loansOutstanding, cohort);
+
+    public Money LoansOutstanding(CohortCell cell) => loansOutstanding[Index(cell)];
+
+    public Money DebtService(Cohort cohort) => Sum(debtService, cohort);
+
+    public Money DebtService(CohortCell cell) => debtService[Index(cell)];
 
     /// <summary>What the cohort spent on goods this tick, at the posted prices of the tiers it landed on.</summary>
-    public Money Spend(Cohort cohort) => spend[(int)cohort];
+    public Money Spend(Cohort cohort) => Sum(spend, cohort);
+
+    public Money Spend(CohortCell cell) => spend[Index(cell)];
 
     /// <summary>
     /// Units obtained this tick weighted by `value_mult`, so a cohort that holds its unit count by
     /// buying worse goods is not recorded as unaffected. Raw, not per household: the cohort sizes
     /// are in the same file.
     /// </summary>
-    public double Quality(Cohort cohort) => quality[(int)cohort];
+    public double Quality(Cohort cohort) => Sum(quality, cohort);
+
+    public double Quality(CohortCell cell) => quality[Index(cell)];
 
     /// <summary>
     /// The median wait, in ticks, over every **durable** want the cohort faced this tick — those
@@ -114,7 +204,9 @@ public sealed class CohortMetrics
     /// drop them and report an improvement. Food and leisure are excluded because they are wanted
     /// every tick and met or not the same tick, so their zeros would swamp the number that matters.
     /// </summary>
-    public double WaitMedian(Cohort cohort) => waitMedian[(int)cohort];
+    public double WaitMedian(Cohort cohort) => cohortWaitMedian[(int)cohort];
+
+    public double WaitMedian(CohortCell cell) => waitMedian[Index(cell)];
 
     /// <summary>
     /// The median wait over the durable wants the cohort **actually had met** this tick.
@@ -129,22 +221,46 @@ public sealed class CohortMetrics
     /// Both are recorded, and neither is enough alone. This one alone would make a cohort that
     /// never gets served look patient; the other alone would report a trend that is arithmetic.
     /// </summary>
-    public double WaitMedianMet(Cohort cohort) => waitMedianMet[(int)cohort];
+    public double WaitMedianMet(Cohort cohort) => cohortWaitMedianMet[(int)cohort];
 
-    public int Wanted(Cohort cohort, int category) => wanted[At(cohort, category)];
+    public double WaitMedianMet(CohortCell cell) => waitMedianMet[Index(cell)];
 
-    public int Obtained(Cohort cohort, int category) => obtained[At(cohort, category)];
+    public int Wanted(Cohort cohort, int category) => Sum(wanted, cohort, category);
 
-    public Money Spend(Cohort cohort, int category) => spendByCategory[At(cohort, category)];
+    public int Wanted(CohortCell cell, int category) => wanted[At(Index(cell), category)];
+
+    public int Obtained(Cohort cohort, int category) => Sum(obtained, cohort, category);
+
+    public int Obtained(CohortCell cell, int category) => obtained[At(Index(cell), category)];
+
+    public Money Spend(Cohort cohort, int category) => Sum(spendByCategory, cohort, category);
+
+    public Money Spend(CohortCell cell, int category) => spendByCategory[At(Index(cell), category)];
 
     /// <summary>The cohort's `tier_mix`, as counts: units it obtained of this category at this tier.</summary>
-    public int Units(Cohort cohort, int category, int tier) =>
-        units[((int)cohort * goods.GoodCount) + goods.Index(category, tier)];
+    public int Units(Cohort cohort, int category, int tier)
+    {
+        var total = 0;
+
+        for (var a = 0; a < archetypes; a++)
+        {
+            total += Units(new CohortCell(cohort, a), category, tier);
+        }
+
+        return total;
+    }
+
+    public int Units(CohortCell cell, int category, int tier) =>
+        units[(Index(cell) * goods.GoodCount) + goods.Index(category, tier)];
 
     /// <summary>Totals over the categories, for the columns a reader looks at first.</summary>
     public int Wanted(Cohort cohort) => Total(wanted, cohort);
 
+    public int Wanted(CohortCell cell) => Total(wanted, Index(cell));
+
     public int Obtained(Cohort cohort) => Total(obtained, cohort);
+
+    public int Obtained(CohortCell cell) => Total(obtained, Index(cell));
 
     // ---- recording ----------------------------------------------------------------------------
 
@@ -158,33 +274,53 @@ public sealed class CohortMetrics
         Array.Clear(spend);
         Array.Clear(quality);
 
-        for (var i = 0; i < Count; i++)
+        for (var i = 0; i < cells; i++)
         {
             Array.Clear(waits[i]);
             Array.Clear(waitsMet[i]);
         }
+
+        for (var i = 0; i < CohortCount; i++)
+        {
+            Array.Clear(cohortWaits[i]);
+            Array.Clear(cohortWaitsMet[i]);
+        }
     }
 
     /// <summary>Step 3 told this household it wants a unit of this category.</summary>
-    internal void RecordWant(Cohort cohort, int category) => wanted[At(cohort, category)]++;
+    internal void RecordWant(int cell, int category) => wanted[At(cell, category)]++;
+
+    /// <summary>The same, addressed by cell rather than by index — for callers not in the tick loop.</summary>
+    internal void RecordWant(CohortCell cell, int category) => RecordWant(Index(cell), category);
+
+    /// <summary>The same, addressed by cell rather than by index — for callers not in the tick loop.</summary>
+    internal void RecordPurchase(CohortCell cell, int category, int tier, Money paid, int wait) =>
+        RecordPurchase(Index(cell), category, tier, paid, wait);
 
     /// <summary>
     /// The walk finished and this household holds one new unit of the category, at this tier,
     /// having paid the tier's posted price for it. Called once per category per household — the
     /// increments a household walked add up to the posted price of the tier it landed on.
     /// </summary>
-    internal void RecordPurchase(Cohort cohort, int category, int tier, Money paid, int wait)
+    internal void RecordPurchase(int cell, int category, int tier, Money paid, int wait)
     {
-        obtained[At(cohort, category)]++;
-        spendByCategory[At(cohort, category)] += paid;
-        spend[(int)cohort] += paid;
-        units[((int)cohort * goods.GoodCount) + goods.Index(category, tier)]++;
-        quality[(int)cohort] += goods.Tiers[tier].ValueMult;
+        obtained[At(cell, category)]++;
+        spendByCategory[At(cell, category)] += paid;
+        spend[cell] += paid;
+        units[(cell * goods.GoodCount) + goods.Index(category, tier)]++;
+
+        // The **tier table's** value multiplier, not the household's `value_mult^kappa`. This is a
+        // reported quantity, and it has to mean the same thing for every household or a cohort's
+        // quality index would move when the population's taste changed rather than when what it
+        // bought did. What a household thinks a tier is worth belongs in its decision, not here.
+        quality[cell] += goods.Tiers[tier].ValueMult;
 
         if (goods.IsDurable(category))
         {
-            RecordWait(waits[(int)cohort], wait);
-            RecordWait(waitsMet[(int)cohort], wait);
+            RecordWait(waits[cell], wait);
+            RecordWait(waitsMet[cell], wait);
+            RecordWait(cohortWaits[cell / archetypes], wait);
+            RecordWait(cohortWaitsMet[cell / archetypes], wait);
         }
     }
 
@@ -204,11 +340,11 @@ public sealed class CohortMetrics
 
         for (var h = 0; h < population.Count; h++)
         {
-            var cohort = (int)Of(population, h);
+            var cell = Cell(population, h);
 
-            cash[cohort] += books.Cash(h);
-            loansOutstanding[cohort] += loans.OutstandingPrincipal(h);
-            debtService[cohort] += loans.DebtService(h);
+            cash[cell] += books.Cash(h);
+            loansOutstanding[cell] += loans.OutstandingPrincipal(h);
+            debtService[cell] += loans.DebtService(h);
 
             for (var c = 0; c < goods.CategoryCount; c++)
             {
@@ -216,15 +352,22 @@ public sealed class CohortMetrics
 
                 if (population.Wanted[i] && goods.IsDurable(c))
                 {
-                    RecordWait(waits[cohort], population.Wait[i]);
+                    RecordWait(waits[cell], population.Wait[i]);
+                    RecordWait(cohortWaits[cell / archetypes], population.Wait[i]);
                 }
             }
         }
 
-        for (var cohort = 0; cohort < Count; cohort++)
+        for (var cell = 0; cell < cells; cell++)
         {
-            waitMedian[cohort] = Median(waits[cohort]);
-            waitMedianMet[cohort] = Median(waitsMet[cohort]);
+            waitMedian[cell] = Median(waits[cell]);
+            waitMedianMet[cell] = Median(waitsMet[cell]);
+        }
+
+        for (var cohort = 0; cohort < CohortCount; cohort++)
+        {
+            cohortWaitMedian[cohort] = Median(cohortWaits[cohort]);
+            cohortWaitMedianMet[cohort] = Median(cohortWaitsMet[cohort]);
         }
     }
 
@@ -272,15 +415,104 @@ public sealed class CohortMetrics
     private static void RecordWait(int[] histogram, int wait) =>
         histogram[Math.Min(wait, histogram.Length - 1)]++;
 
-    private int At(Cohort cohort, int category) => ((int)cohort * goods.CategoryCount) + category;
+    private static int[][] Histograms(int rows, int ticks)
+    {
+        var histograms = new int[rows][];
+
+        for (var i = 0; i < rows; i++)
+        {
+            histograms[i] = new int[ticks + 2];
+        }
+
+        return histograms;
+    }
+
+    /// <summary>Where a cell lives in the flat arrays. Cohort-major, so a cohort's cells are contiguous.</summary>
+    private int Index(CohortCell cell) => ((int)cell.Cohort * archetypes) + cell.Archetype;
+
+    private int At(int cell, int category) => (cell * goods.CategoryCount) + category;
 
     private int Total(int[] byCategory, Cohort cohort)
     {
         var total = 0;
 
+        for (var a = 0; a < archetypes; a++)
+        {
+            total += Total(byCategory, Index(new CohortCell(cohort, a)));
+        }
+
+        return total;
+    }
+
+    private int Total(int[] byCategory, int cell)
+    {
+        var total = 0;
+
         for (var c = 0; c < goods.CategoryCount; c++)
         {
-            total += byCategory[At(cohort, c)];
+            total += byCategory[At(cell, c)];
+        }
+
+        return total;
+    }
+
+    // ---- summing a cohort out of its cells ------------------------------------------------------
+
+    private int Sum(int[] byCell, Cohort cohort)
+    {
+        var total = 0;
+
+        for (var a = 0; a < archetypes; a++)
+        {
+            total += byCell[Index(new CohortCell(cohort, a))];
+        }
+
+        return total;
+    }
+
+    private double Sum(double[] byCell, Cohort cohort)
+    {
+        var total = 0.0;
+
+        for (var a = 0; a < archetypes; a++)
+        {
+            total += byCell[Index(new CohortCell(cohort, a))];
+        }
+
+        return total;
+    }
+
+    private Money Sum(Money[] byCell, Cohort cohort)
+    {
+        var total = Money.Zero;
+
+        for (var a = 0; a < archetypes; a++)
+        {
+            total += byCell[Index(new CohortCell(cohort, a))];
+        }
+
+        return total;
+    }
+
+    private int Sum(int[] byCellAndCategory, Cohort cohort, int category)
+    {
+        var total = 0;
+
+        for (var a = 0; a < archetypes; a++)
+        {
+            total += byCellAndCategory[At(Index(new CohortCell(cohort, a)), category)];
+        }
+
+        return total;
+    }
+
+    private Money Sum(Money[] byCellAndCategory, Cohort cohort, int category)
+    {
+        var total = Money.Zero;
+
+        for (var a = 0; a < archetypes; a++)
+        {
+            total += byCellAndCategory[At(Index(new CohortCell(cohort, a)), category)];
         }
 
         return total;

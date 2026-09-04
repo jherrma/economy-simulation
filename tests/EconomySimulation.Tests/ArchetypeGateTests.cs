@@ -50,9 +50,15 @@ public sealed class ArchetypeGateTests
 
         Assert.True(report.Passed, report.ToString());
 
-        Assert.Contains(against.Observations, o => o.Contains("compared whole: run.csv, tiers.csv, run.done", StringComparison.Ordinal));
+        Assert.Contains(against.Observations, o => o.Contains("compared whole: run.csv, tiers.csv", StringComparison.Ordinal));
+        Assert.Contains(against.Observations, o => o.Contains("run.done: the keys the fixture states", StringComparison.Ordinal));
         Assert.Contains(against.Observations, o => o.Contains("not compared: effective-config.toml", StringComparison.Ordinal));
         Assert.Contains(against.Observations, o => o.Contains("columns the fixture and the run have in common", StringComparison.Ordinal));
+
+        // And what it actually left out on this run: the marker's newer key, and the cohort file
+        // the fixture predates. Both said once per arm rather than once per seed.
+        Assert.Contains(against.Observations, o => o.Contains("newer key(s) not compared", StringComparison.Ordinal));
+        Assert.Contains(against.Observations, o => o.Contains("cohorts.csv is present only in the run", StringComparison.Ordinal));
         Assert.Contains(against.Observations, o => o.Contains("credit_off: 1 seeds", StringComparison.Ordinal));
         Assert.Contains(against.Observations, o => o.Contains("credit_high: 1 seeds", StringComparison.Ordinal));
 

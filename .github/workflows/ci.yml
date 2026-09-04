@@ -54,10 +54,11 @@ jobs:
       - name: gate — the identity archetype table (V5a)
         run: dotnet run --project tools/Gates -c Release --no-build -- archetypes
 
-      # The campaign itself: five scenarios over thirty seeds, one process each, collected into one
-      # dataset. It runs here because it is the only thing in the project that has to work end to
-      # end, and because a collector that has quietly stopped refusing partial runs looks exactly
-      # like one that works. About seventy seconds.
+      # The campaign itself: thirteen scenarios over thirty seeds, one process each, collected into
+      # one dataset. It runs here because it is the only thing in the project that has to work end
+      # to end, and because a collector that has quietly stopped refusing partial runs looks exactly
+      # like one that works. About three minutes since E10 added the typed sweep — four tables times
+      # two arms on top of the five of §9.
       - name: campaign
         run: dotnet run --project tools/Campaign -c Release --no-build -- --all
 

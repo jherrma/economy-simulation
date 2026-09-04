@@ -35,19 +35,64 @@ public sealed class ScenarioTests
 
         Assert.True(
             all.IsSuccess,
-            "Expected the five scenarios to load: " + string.Join("; ", all.Errors.Select(e => e.Message)));
+            "Expected every committed scenario to load: " + string.Join("; ", all.Errors.Select(e => e.Message)));
 
         return all.Value;
     }
 
     private static Scenario Named(string name) => Load().Single(s => s.Name == name);
 
-    // ---- the five ------------------------------------------------------------------------------
+    // ---- the named set ---------------------------------------------------------------------------
 
     [Fact]
-    public void TheFiveScenariosOfSection9_AreCommittedAndLoad()
+    public void EveryNamedScenario_IsCommittedAndLoads()
     {
         Assert.Equal(Scenario.Names, [.. Load().Select(s => s.Name)]);
+    }
+
+    /// <summary>
+    /// The five of §9, plus §3.5's sweep: four typed tables times two arms. A campaign that silently
+    /// became twelve scenarios because a file was renamed is a campaign whose missing arm nobody
+    /// notices, so the count is asserted rather than inferred.
+    /// </summary>
+    [Fact]
+    public void TheNamedSet_IsTheFiveOfSection9AndTheTypedSweep()
+    {
+        Assert.Equal(13, Scenario.Names.Count);
+        Assert.Equal(5, Scenario.Names.Count(n => !n.StartsWith("typed_", StringComparison.Ordinal)));
+        Assert.Equal(8, Scenario.Names.Count(n => n.StartsWith("typed_", StringComparison.Ordinal)));
+    }
+
+    /// <summary>
+    /// A typed scenario changes the archetype table and, in a treatment arm, the credit settings.
+    /// Nothing else. Stated as a rule rather than as eight key lists, because eight key lists is
+    /// eight places for a typo to hide behind an assertion that was updated to match it.
+    /// </summary>
+    [Theory]
+    [InlineData("typed_credit_off")]
+    [InlineData("typed_credit_high")]
+    [InlineData("typed_w_only_credit_off")]
+    [InlineData("typed_w_only_credit_high")]
+    [InlineData("typed_kappa_only_credit_off")]
+    [InlineData("typed_kappa_only_credit_high")]
+    [InlineData("typed_kappa_neutral_credit_off")]
+    [InlineData("typed_kappa_neutral_credit_high")]
+    public void EachTypedScenario_MovesTheTableAndAtMostTheCredit(string name)
+    {
+        var scenario = Named(name);
+
+        Assert.All(
+            scenario.Changes,
+            key => Assert.True(
+                key.StartsWith("archetypes", StringComparison.Ordinal)
+                || key.StartsWith("credit.", StringComparison.Ordinal),
+                $"{name} changes {key}, which is neither the table nor the credit"));
+
+        Assert.Contains(scenario.Changes, k => k.StartsWith("archetypes", StringComparison.Ordinal));
+
+        Assert.Equal(
+            name.EndsWith("_credit_high", StringComparison.Ordinal),
+            scenario.Parameters.Credit.CreditEnabled);
     }
 
     /// <summary>

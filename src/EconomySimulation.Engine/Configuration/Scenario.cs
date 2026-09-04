@@ -25,7 +25,19 @@ public sealed class Scenario
         Parameters = parameters;
     }
 
-    /// <summary>The five of `01-SIMULATION.md` §9, in the order the write-up reports them.</summary>
+    /// <summary>
+    /// The five of `01-SIMULATION.md` §9, in the order the write-up reports them, followed by the
+    /// typed sweep of `02-PARAMETERS.md` §3.5.
+    ///
+    /// The sweep is four tables times two arms, and the arms come in pairs deliberately: a typed
+    /// table is a **different baseline economy** — its population-mean `kappa` is below 1 in every
+    /// category — so its treatment arm has to be compared against a control carrying the same
+    /// table. Comparing a typed `credit_high` against the untyped `credit_off` would measure the
+    /// table and the credit together and attribute both to credit.
+    ///
+    /// The fifth table of the grid is the identity, and it is not listed here because it is
+    /// `credit_off` and `credit_high` above: the default configuration *is* the identity table.
+    /// </summary>
     public static IReadOnlyList<string> Names { get; } =
     [
         "credit_off",
@@ -33,6 +45,30 @@ public sealed class Scenario
         "credit_high",
         "credit_high_no_money_creation",
         "credit_high_willingness_rationing",
+        "typed_credit_off",
+        "typed_credit_high",
+        "typed_w_only_credit_off",
+        "typed_w_only_credit_high",
+        "typed_kappa_only_credit_off",
+        "typed_kappa_only_credit_high",
+        "typed_kappa_neutral_credit_off",
+        "typed_kappa_neutral_credit_high",
+    ];
+
+    /// <summary>
+    /// The five tables of §3.5's sweep grid, each with the scenarios that run it — the control arm
+    /// first.
+    ///
+    /// Named here rather than inferred from the filenames, because the grid is a claim about what
+    /// the sweep covers and a claim that reads itself off a directory listing is not a claim.
+    /// </summary>
+    public static IReadOnlyList<(string Table, IReadOnlyList<string> Scenarios)> SweepGrid { get; } =
+    [
+        ("identity", new[] { "credit_off", "credit_high" }),
+        ("typed", new[] { "typed_credit_off", "typed_credit_high" }),
+        ("typed_w_only", new[] { "typed_w_only_credit_off", "typed_w_only_credit_high" }),
+        ("typed_kappa_only", new[] { "typed_kappa_only_credit_off", "typed_kappa_only_credit_high" }),
+        ("typed_kappa_neutral", new[] { "typed_kappa_neutral_credit_off", "typed_kappa_neutral_credit_high" }),
     ];
 
     /// <summary>The scenario id, from the filename. Written on every output row.</summary>
@@ -88,7 +124,8 @@ public sealed class Scenario
         var failures = new List<IError>();
 
         // The named list rather than whatever the directory holds. A campaign that silently becomes
-        // four scenarios because a file was renamed is a campaign whose missing arm nobody notices.
+        // twelve scenarios because a file was renamed is a campaign whose missing arm nobody
+        // notices.
         foreach (var name in Names)
         {
             var scenario = FromFile(Path.Combine(directory, name + ".toml"));

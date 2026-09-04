@@ -134,17 +134,33 @@ public sealed record ArchetypeParameters
     /// </summary>
     public double SigmaIdio { get; init; }
 
+    /// <summary>
+    /// Whether to divide each `kappa` column by its share-weighted mean, as `w` is always divided.
+    ///
+    /// False everywhere except the `typed_kappa_neutral` control (`02-PARAMETERS.md` §3.5), which is
+    /// *defined* as that operation. `kappa` is unnormalised by design — a table whose population
+    /// mean is below 1 is a genuinely more budget-minded town — and that is exactly why the control
+    /// is needed: without it a typed-versus-untyped comparison confounds "taste is heterogeneous"
+    /// with "taste is cheaper". Naming the operation keeps the control one line away from `typed`
+    /// instead of twenty-four numbers somebody worked out by hand and nothing re-checks.
+    /// </summary>
+    public bool NormaliseKappa { get; init; }
+
     public IReadOnlyList<Archetype> Types { get; init; } =
         [Archetype.Identity(CategoryParameters.Default.Select(c => c.Name))];
 
     public bool Equals(ArchetypeParameters? other) =>
-        other is not null && SigmaIdio.Equals(other.SigmaIdio) && Types.SequenceEqual(other.Types);
+        other is not null
+        && SigmaIdio.Equals(other.SigmaIdio)
+        && NormaliseKappa == other.NormaliseKappa
+        && Types.SequenceEqual(other.Types);
 
     public override int GetHashCode()
     {
         var hash = new HashCode();
 
         hash.Add(SigmaIdio);
+        hash.Add(NormaliseKappa);
 
         foreach (var type in Types)
         {

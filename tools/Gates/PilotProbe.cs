@@ -7,6 +7,15 @@ namespace EconomySimulation.Gates;
 /// Not a gate. A power probe: it runs the two arms of the experiment and asks whether the
 /// campaign, at the seed count it is specified with, can resolve the difference between them.
 ///
+/// **It takes a table.** Since E10 the population is a table of archetypes, and the sweep grid of
+/// `02-PARAMETERS.md` §3.5 has five of them. Each is a different baseline economy, so each has its
+/// own control arm and its own answer to "can thirty seeds see this" — archetypes add dispersion in
+/// exactly the place that decides who is marginal in the financeable categories, and pairing does
+/// not rescue that: the same household being the same type in both arms cancels the *draw*, not the
+/// trajectory the draw sets off. So the honest order is to measure the power first and read the
+/// finding second, because a difference read off an underpowered comparison looks exactly like a
+/// difference read off a powered one.
+///
 /// It exists because §10.2 made the question live. A run's trajectory is chaotic, so the paired
 /// difference between two arms carries the trajectory noise of both, and no amount of pairing
 /// removes it. Whether the headline is measurable is therefore an empirical question about
@@ -120,20 +129,50 @@ public static class PilotProbe
         return [.. measures];
     }
 
-    public static GateReport Run(SimulationParameters parameters, IReadOnlyList<int> seeds, Workspace workspace)
+    /// <summary>The row of §3.5's sweep grid this probe runs by default: v1's population.</summary>
+    public const string IdentityTable = "identity";
+
+    public static GateReport Run(
+        SimulationParameters parameters,
+        IReadOnlyList<int> seeds,
+        Workspace workspace,
+        string table = IdentityTable)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         ArgumentNullException.ThrowIfNull(seeds);
         ArgumentNullException.ThrowIfNull(workspace);
 
-        var report = new GateReport("pilot — can the campaign resolve the difference it is for?");
+        var report = new GateReport(Invariant($"pilot — can the campaign resolve the difference it is for? ({table})"));
         var arms = report.Check(Invariant($"both arms complete on {seeds.Count} seeds"));
 
-        var off = workspace.Arm("credit_off");
-        var high = workspace.Arm("credit_high");
+        var row = Scenario.SweepGrid.FirstOrDefault(r => string.Equals(r.Table, table, StringComparison.Ordinal));
 
-        var ranOff = Runs.Execute(Scenarios.CreditOff(parameters), seeds, off, threaded: true);
-        var ranHigh = Runs.Execute(Scenarios.CreditHigh(parameters), seeds, high, threaded: true);
+        if (row.Scenarios is null)
+        {
+            arms.Fail(Invariant(
+                $"no table called '{table}' in the sweep grid; it has {string.Join(", ", Scenario.SweepGrid.Select(r => r.Table))}"));
+
+            return report;
+        }
+
+        var off = workspace.Arm(row.Scenarios[0]);
+        var high = workspace.Arm(row.Scenarios[1]);
+
+        var control = Scenarios.Apply(row.Scenarios[0], parameters);
+        var treatment = Scenarios.Apply(row.Scenarios[1], parameters);
+
+        // The two arms have to carry the same table, or the difference between them is the table
+        // and the credit together and this probe would be measuring the wrong thing precisely.
+        if (control.Archetypes != treatment.Archetypes)
+        {
+            arms.Fail(Invariant(
+                $"{row.Scenarios[0]} and {row.Scenarios[1]} carry different archetype tables; the difference between them would not be credit"));
+
+            return report;
+        }
+
+        var ranOff = Runs.Execute(control, seeds, off, threaded: true);
+        var ranHigh = Runs.Execute(treatment, seeds, high, threaded: true);
 
         if (ranOff.IsFailed || ranHigh.IsFailed)
         {
@@ -146,10 +185,11 @@ public static class PilotProbe
         var highReadings = seeds.Select(s => Reading.Of(Runs.Directory(high, s))).ToList();
 
         arms.Observe(Invariant($"{seeds.Count} paired runs at {parameters.Run.Ticks} ticks, window from {parameters.Run.WarmupTicks + 1}"));
+        arms.Observe(Invariant($"table '{table}': {row.Scenarios[0]} against {row.Scenarios[1]}, {control.Archetypes.Types.Count} archetype(s)"));
 
         var resolution = report.Check("what the campaign can resolve, per measure");
 
-        resolution.Observe("measure | credit_off | credit_high | diff | diff % | paired sd % | t | MDE % | unpaired MDE %");
+        resolution.Observe(Invariant($"measure | {row.Scenarios[0]} | {row.Scenarios[1]} | diff | diff % | paired sd % | t | MDE % | unpaired MDE %"));
 
         foreach (var measure in Measures())
         {

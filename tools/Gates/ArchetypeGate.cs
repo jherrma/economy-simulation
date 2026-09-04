@@ -46,7 +46,17 @@ public static class ArchetypeGate
     /// Compared **whole**, byte for byte. E10 adds no column to either of these, and if it ever
     /// does, that is the failure this gate is for.
     /// </summary>
-    public static IReadOnlyList<string> Whole { get; } = ["run.csv", "tiers.csv", "run.done"];
+    public static IReadOnlyList<string> Whole { get; } = ["run.csv", "tiers.csv"];
+
+    /// <summary>
+    /// The completion marker, compared on the keys the fixture states.
+    ///
+    /// It is metadata *about the files* — it names how many rows each of them got — so adding an
+    /// output file necessarily adds a line to it, and this fixture is never retaken. `ticks` and
+    /// `tier_rows`, which are the marker's actual claim about the run, still have to agree to the
+    /// character; a `cohort_rows` the fixture never heard of does not.
+    /// </summary>
+    public const string Marker = "run.done";
 
     /// <summary>
     /// Not compared, and named here rather than left to be inferred: a pre-E10 configuration has no
@@ -104,6 +114,7 @@ public static class ArchetypeGate
 
         against.Observe(Provenance(baselines));
         against.Observe("compared whole: " + string.Join(", ", Whole));
+        against.Observe($"{Marker}: the keys the fixture states");
         against.Observe("not compared: " + string.Join(", ", NotCompared));
         against.Observe(SharedColumnsRule);
 
@@ -155,6 +166,10 @@ public static class ArchetypeGate
         var into = workspace.Arm(arm);
         var ran = Runs.Execute(configured, seeds, into);
 
+        // What the projection left out is the same for every seed; saying it once per arm is the
+        // difference between a report and a wall.
+        var said = new HashSet<string>(StringComparer.Ordinal);
+
         if (ran.IsFailed)
         {
             var failed = report.Check(Invariant($"the {arm} arm runs at all"));
@@ -186,7 +201,7 @@ public static class ArchetypeGate
                 continue;
             }
 
-            var difference = Difference(check, storedSeed, runSeed, arm);
+            var difference = Difference(check, storedSeed, runSeed, arm, said);
 
             if (difference is not null)
             {
@@ -256,13 +271,30 @@ public static class ArchetypeGate
         return true;
     }
 
-    private static Difference? Difference(GateCheck check, string stored, string run, string arm)
+    private static Difference? Difference(
+        GateCheck check,
+        string stored,
+        string run,
+        string arm,
+        HashSet<string> said)
     {
         var whole = Comparison.FirstDifference(stored, run, Whole);
 
         if (whole is not null)
         {
             return whole;
+        }
+
+        var marker = Comparison.FirstDifferenceOnSharedKeys(stored, run, Marker, out var newKeys);
+
+        if (newKeys > 0)
+        {
+            Say(check, said, Invariant($"{arm}: {Marker} compared on the fixture's keys; {newKeys} newer key(s) not compared"));
+        }
+
+        if (marker is not null)
+        {
+            return marker;
         }
 
         foreach (var file in Others(stored, run))
@@ -274,7 +306,7 @@ public static class ArchetypeGate
             {
                 var side = storedHas ? "fixture" : "run";
 
-                check.Observe(Invariant(
+                Say(check, said, Invariant(
                     $"{arm}: {file} is present only in the {side} and is not compared — the fixture cannot speak to a file that did not exist when it was taken"));
 
                 continue;
@@ -284,7 +316,7 @@ public static class ArchetypeGate
 
             if (dropped > 0)
             {
-                check.Observe(Invariant($"{arm}: {file} compared on the shared columns; {dropped} not compared"));
+                Say(check, said, Invariant($"{arm}: {file} compared on the shared columns; {dropped} not compared"));
             }
 
             if (shared is not null)
@@ -296,10 +328,19 @@ public static class ArchetypeGate
         return null;
     }
 
+    /// <summary>An observation, once per arm rather than once per seed.</summary>
+    private static void Say(GateCheck check, HashSet<string> said, string what)
+    {
+        if (said.Add(what))
+        {
+            check.Observe(what);
+        }
+    }
+
     /// <summary>Every file in either directory that the projection does not name, in name order.</summary>
     private static IReadOnlyList<string> Others(string stored, string run)
     {
-        var named = Whole.Concat(NotCompared).ToHashSet(StringComparer.Ordinal);
+        var named = Whole.Concat(NotCompared).Append(Marker).ToHashSet(StringComparer.Ordinal);
 
         return
         [

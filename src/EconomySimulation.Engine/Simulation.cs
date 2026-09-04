@@ -233,7 +233,7 @@ public sealed class Simulation
 
         for (var h = 0; h < Population.Count; h++)
         {
-            var cohort = CohortMetrics.Of(Population, h);
+            var cell = CohortMetrics.Cell(Population, h);
 
             for (var c = 0; c < Goods.CategoryCount; c++)
             {
@@ -241,7 +241,7 @@ public sealed class Simulation
 
                 if (Population.Wanted[Population.AgeIndex(h, c)])
                 {
-                    Cohorts.RecordWant(cohort, c);
+                    Cohorts.RecordWant(cell, c);
                 }
             }
         }

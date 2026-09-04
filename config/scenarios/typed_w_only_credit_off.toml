@@ -1,14 +1,13 @@
-# typed_credit_off — the four archetypes of §3.5, level and steepness together.
+# typed_w_only_credit_off — the `typed` table with every `kappa` at 1.0 — level without steepness.
 #
 # Credit stays off: this is the control arm for its own table. It is a *different baseline economy*
 # from the untyped `credit_off`, and that is the point — a typed treatment arm compared against the
 # untyped baseline would measure the table and the credit together and attribute both to credit.
 # Compare typed against typed.
 #
-# This is the treatment table of the sweep. Read the two rows of a type together: `prudent` cares
-# less about quality everywhere, `health_conscious` buys the best food rather than more food,
-# `gadget` wants far more hobby and electronics *and* wants them good, `family_practical` wants more
-# clothing and appliances and wants them durable rather than fine.
+# One arm of §3.5's sweep grid. Against `typed` it says how much of a typed run is households
+# wanting *more* of a category rather than wanting it *better*. In v1 those were the same number and
+# the distinction could not be made.
 #
 # The weights are **relative**: the loader divides each `w` column by its share-weighted mean, so
 # that `Sum_A share_A * m_g,A = 1` holds by construction, and writes the normalised table into the
@@ -23,19 +22,15 @@
 [archetypes.prudent]
 share = 0.30
 w     = { food = 0.90, leisure = 0.80, clothing = 0.85, hobby = 0.75, electronics = 0.80, appliances = 0.90 }
-kappa = { food = 0.85, leisure = 0.85, clothing = 0.85, hobby = 0.85, electronics = 0.85, appliances = 0.85 }
 
 [archetypes.health_conscious]
 share = 0.20
 w     = { food = 1.20, hobby = 0.90, electronics = 0.85, appliances = 1.05 }
-kappa = { food = 1.25, leisure = 0.95, clothing = 0.95, hobby = 0.95, electronics = 0.95, appliances = 1.10 }
 
 [archetypes.gadget]
 share = 0.20
 w     = { food = 0.95, leisure = 1.15, clothing = 1.05, hobby = 1.55, electronics = 1.60 }
-kappa = { food = 0.95, leisure = 1.05, clothing = 0.95, hobby = 1.20, electronics = 1.25, appliances = 0.95 }
 
 [archetypes.family_practical]
 share = 0.30
 w     = { food = 1.05, clothing = 1.15, hobby = 0.95, appliances = 1.10 }
-kappa = { food = 0.90, leisure = 0.90, clothing = 0.95, hobby = 0.90, electronics = 0.90, appliances = 0.90 }

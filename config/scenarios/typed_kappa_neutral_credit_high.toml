@@ -1,14 +1,15 @@
-# typed_credit_off — the four archetypes of §3.5, level and steepness together.
+# typed_kappa_neutral_credit_high — `typed`, with each `kappa` column rescaled to share-weighted mean 1.
 #
-# Credit stays off: this is the control arm for its own table. It is a *different baseline economy*
-# from the untyped `credit_off`, and that is the point — a typed treatment arm compared against the
-# untyped baseline would measure the table and the credit together and attribute both to credit.
-# Compare typed against typed.
+# Credit on, `theta ~ U(0.4, 0.9)` — the treatment `credit_high` applies, over this table.
 #
-# This is the treatment table of the sweep. Read the two rows of a type together: `prudent` cares
-# less about quality everywhere, `health_conscious` buys the best food rather than more food,
-# `gadget` wants far more hobby and electronics *and* wants them good, `family_practical` wants more
-# clothing and appliances and wants them durable rather than fine.
+# **The control the earlier draft lacked.** `kappa` is unnormalised by design, and under the
+# `typed` table its population mean is 0.92–0.965 in every category — a population shifted toward
+# budget. That plausibly puts *more* households on the very shelves an abstainer trades down to, so
+# a typed-versus-untyped comparison confounds "taste is heterogeneous" with "taste is cheaper".
+# Without this table the delta cannot be read.
+#
+# `normalise_kappa` is what makes it a one-line difference from `typed` rather than twenty-four
+# numbers somebody worked out by hand and nothing re-checks.
 #
 # The weights are **relative**: the loader divides each `w` column by its share-weighted mean, so
 # that `Sum_A share_A * m_g,A = 1` holds by construction, and writes the normalised table into the
@@ -19,6 +20,14 @@
 # inherits the rule that governs the tier mix: a table adjusted until the headline came out better
 # would turn this model from evidence into an illustration. It is swept, not fitted, and the sweep
 # was named before the first typed run (`02-PARAMETERS.md` §3.5).
+
+[credit]
+credit_enabled = true
+theta_min = 0.4
+theta_max = 0.9
+
+[archetypes]
+normalise_kappa = true
 
 [archetypes.prudent]
 share = 0.30

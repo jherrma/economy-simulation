@@ -303,7 +303,7 @@ public sealed class Walker
 
                 // Before Acquire, which clears the wait this purchase ended.
                 Cohorts?.RecordPurchase(
-                    CohortMetrics.Of(population, household),
+                    CohortMetrics.Cell(population, household),
                     c,
                     tier,
                     market.Price(c, tier),

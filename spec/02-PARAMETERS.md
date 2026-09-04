@@ -228,6 +228,7 @@ table below is the `typed` table: it lives in a scenario file, not in the defaul
 | `archetypes.<name>.w.<category>` | 1.0 | Relative **score multiplier** `m` — how much better or worse than average a candidate in this category scores for this type. **Absent means 1.0**, so a type names only the categories it differs in (§2 of `01-SIMULATION.md` on absent-versus-unknown: an absent key defaults, an unknown key is an error). Under §3.7 the taste weight `ŵ = m / d` is *derived* from it, because a shorter replacement cycle raises the cost per tick and would otherwise cancel the intent; where `d = 1` — every life-1 good, and the whole of this section — the two are the same number |
 | `archetypes.<name>.kappa.<category>` | 1.0 | Quality steepness, applied as `value_mult(tier)^kappa`. Absent means 1.0 |
 | `replacement` | **`deterministic`** | How a durable comes to be wanted again. `deterministic` is v1: `age_h,g ≥ life_g`, with ages drawn uniform at initialisation. `hazard` is `01-SIMULATION.md` §5.5: a per-tick failure probability of `1 / life_h,g`, no age state, no `"initial_age"` draw, and the only setting under which a non-integer life means anything. The grouped calibration requires `hazard`; a configuration that sets a `d` under `deterministic` is rejected rather than rounded |
+| `archetypes.normalise_kappa` | **false** | Divide each `kappa` column by its share-weighted mean, as `w` is always divided. False everywhere except the `typed_kappa_neutral` control below, which is *defined* as that operation — naming it here is what keeps the control a one-line difference from `typed` rather than twenty-four numbers somebody worked out by hand and nothing re-checks. Added 2026-09-04 while building 10-04 |
 | `sigma_idio` | **0.0** | Spread of the per-household, per-category residual `ε`. Zero by default, so taste is perfectly correlated across categories exactly as in v1. Raising it walks that correlation toward zero and is the sweep for "does it matter that the same households want everything" |
 
 `w` is authored as a **relative** weight and normalised by the loader; see the identity below.
@@ -341,13 +342,19 @@ against a fixed band. 10-04 reports all five of these, and reports them whatever
 | `typed` | the table above |
 | `typed_w_only` | `w` as above, `kappa ≡ 1` — level without steepness |
 | `typed_kappa_only` | `kappa` as above, `w ≡ 1` — steepness without level |
-| `typed_kappa_neutral` | `typed`, with each `kappa` column rescaled to share-weighted mean 1 |
+| `typed_kappa_neutral` | `typed`, with each `kappa` column rescaled to share-weighted mean 1 — `normalise_kappa = true` |
 
 The last one is a **control the earlier draft lacked**. `kappa` is unnormalised by design, and under
 the table above its population mean is 0.92–0.965 in every category — a population shifted toward
 budget. That plausibly puts *more* households on the very shelves an abstainer trades down to, so a
 typed-versus-untyped comparison confounds "taste is heterogeneous" with "taste is cheaper". Without
 the neutral table the delta cannot be read. (Raised 2026-09-04 in review.)
+
+**All five were run, and the control earned its place — by ruling the confound out.** The headline
+falls from −5.61% under `identity` to −3.084% under `typed`, and `typed_kappa_neutral` gives
+−3.081%: the shrinkage is heterogeneity, not the level. Had the control not been in the grid there
+would have been no way to say so. `01-SIMULATION.md` §10.5 carries the whole table, including the
+sharper half — the *price* effect is unchanged by any of them. (Measured 2026-09-04.)
 
 #### Configuration shape
 

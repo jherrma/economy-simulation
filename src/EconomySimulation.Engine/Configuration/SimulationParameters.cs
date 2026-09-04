@@ -189,6 +189,7 @@ public sealed record SimulationParameters
 
         toml.AppendLine("[archetypes]");
         Write(toml, "sigma_idio", Archetypes.SigmaIdio);
+        Write(toml, "normalise_kappa", Archetypes.NormaliseKappa);
         toml.AppendLine();
 
         // The **normalised** weights, not the authored ones: the campaign manifest hashes this

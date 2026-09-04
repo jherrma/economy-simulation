@@ -53,6 +53,146 @@ public sealed class MetricsWriterTests
         }
     }
 
+    // ---- the cohort file (10-04) -----------------------------------------------------------------
+
+    /// <summary>
+    /// `cohorts.csv` sums to `run.csv`'s cohort block, every tick, every measure.
+    ///
+    /// This is what says the two-dimensional cut is the same measurement seen twice rather than two
+    /// measurements. `run.csv` did not change to make room for the archetype dimension — V5a's whole
+    /// claim is that it is byte-identical under the identity table — so the long file has to be
+    /// reconcilable with it or the dataset carries two answers.
+    /// </summary>
+    [Fact]
+    public void TheCohortFileSumsToTheRunFile()
+    {
+        InADirectory(directory =>
+        {
+            var typed = Typed();
+
+            Run(directory, ticks: 6, typed);
+
+            var run = Csv.Read(Path.Combine(directory, "run.csv"));
+            var cells = Csv.Read(Path.Combine(directory, "cohorts.csv"));
+            var archetypes = typed.Archetypes.Types.Count;
+
+            Assert.Equal(4, archetypes);
+            Assert.Equal(run.RowCount * 2 * archetypes, cells.RowCount);
+
+            string[] measures =
+            [
+                "households", "cash", "loans_outstanding", "debt_service", "spend", "quality",
+                "wanted", "obtained",
+                "food_wanted", "food_obtained", "food_spend", "food_budget_units",
+                "electronics_obtained", "electronics_premium_units",
+            ];
+
+            foreach (var tick in run.Rows())
+            {
+                foreach (var cohort in new[] { "abstainer", "borrower" })
+                {
+                    var rows = cells
+                        .Where("tick", run.Text(tick, "tick"))
+                        .Where(r => string.Equals(cells.Text(r, "cohort"), cohort, StringComparison.Ordinal))
+                        .ToArray();
+
+                    Assert.Equal(archetypes, rows.Length);
+
+                    foreach (var measure in measures)
+                    {
+                        Assert.Equal(
+                            run.Number(tick, $"{cohort}_{measure}"),
+                            rows.Sum(r => cells.Number(r, measure)),
+                            6);
+                    }
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// The median does not sum, and is not asked to. `run.csv`'s cohort median is the median over
+    /// the cohort's whole population — taken from the summed histogram, not from the cells' answers
+    /// — so it lies between the smallest and the largest of them and generally equals none.
+    /// </summary>
+    [Fact]
+    public void TheCohortMedianIsNotTheSumOfTheCellMedians()
+    {
+        InADirectory(directory =>
+        {
+            Run(directory, ticks: 6, Typed());
+
+            var run = Csv.Read(Path.Combine(directory, "run.csv"));
+            var cells = Csv.Read(Path.Combine(directory, "cohorts.csv"));
+
+            foreach (var tick in run.Rows())
+            {
+                var rows = cells
+                    .Where("tick", run.Text(tick, "tick"))
+                    .Where(r => string.Equals(cells.Text(r, "cohort"), "abstainer", StringComparison.Ordinal))
+                    .ToArray();
+
+                var overall = run.Number(tick, "abstainer_wait_median");
+
+                Assert.InRange(
+                    overall,
+                    rows.Min(r => cells.Number(r, "wait_median")),
+                    rows.Max(r => cells.Number(r, "wait_median")));
+            }
+        });
+    }
+
+    /// <summary>
+    /// **No share is written anywhere but the tier mix.** Counts only, so a share computed from this
+    /// file is necessarily computed *within* a category. Pooling a share across categories reverses
+    /// its sign when exclusion moves units out of the denominator (`01-SIMULATION.md` §10.4), and
+    /// the archetypes were designed to differ in exactly the category weights a pooled figure
+    /// averages over — so this file is where that trap would be laid.
+    /// </summary>
+    [Fact]
+    public void TheCohortFileCarriesNoShares()
+    {
+        InADirectory(directory =>
+        {
+            Run(directory, ticks: 2, Typed());
+
+            var cells = Csv.Read(Path.Combine(directory, "cohorts.csv"));
+
+            Assert.DoesNotContain(cells.Columns, c => c.Contains("share", StringComparison.Ordinal));
+            Assert.Contains("archetype", cells.Columns);
+
+            // And the archetype is on every row, so a reader needs no knowledge of how many
+            // types there were.
+            Assert.All(cells.Rows(), r => Assert.NotEmpty(cells.Text(r, "archetype")));
+        });
+    }
+
+    /// <summary>Under the identity table there is one type, called `average`, and the file is `run.csv` again.</summary>
+    [Fact]
+    public void UnderTheIdentityTableThereIsOneCellPerCohort()
+    {
+        InADirectory(directory =>
+        {
+            Run(directory, ticks: 3);
+
+            var run = Csv.Read(Path.Combine(directory, "run.csv"));
+            var cells = Csv.Read(Path.Combine(directory, "cohorts.csv"));
+
+            Assert.Equal(run.RowCount * 2, cells.RowCount);
+            Assert.All(cells.Rows(), r => Assert.Equal("average", cells.Text(r, "archetype")));
+        });
+    }
+
+    private static SimulationParameters Typed()
+    {
+        var scenario = Scenario.FromFile(
+            Path.Combine(Repo.Root, "config", "scenarios", "typed_credit_high.toml"));
+
+        Assert.True(scenario.IsSuccess, string.Join("; ", scenario.Errors.Select(e => e.Message)));
+
+        return scenario.Value.Parameters;
+    }
+
     // ---- what is written ----------------------------------------------------------------------
 
     /// <summary>Every series the story names is present, and the shelf rows are one per tier per category per tick.</summary>

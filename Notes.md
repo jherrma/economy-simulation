@@ -1,20 +1,25 @@
 # Notes
 
-**State — 2026-09-04.** Epics E0–E8 of 9 are built: the engine, the output writer, the cohort
-metrics and the four validation gates (V2 determinism, V3 neutrality, V4 null run, V5 credit-off
-regression), all green, 423 tests passing. **E9 — the scenario
-definitions and the campaign runner — is not built yet**, so no campaign has been run: every number
-below comes from `tools/Gates … pilot`, a power probe that runs the two arms over the campaign's own
-30 paired seeds at the campaign's own parameters (600 ticks, measured window from tick 241,
-`credit_off` against `credit_high`, θ ~ U(0.4, 0.9)). Only three of the five scenarios of §9 have
-been touched at all.
+**State — 2026-09-04, second entry.** E0–E9 are built and E10 with them: the engine, the output
+writer, the cohort metrics, five validation gates (V2 determinism, V3 neutrality, V4 null run, V5
+credit-off regression, V5a the identity archetype table), the campaign runner, and a population of
+four archetypes. All green, 531 tests. The campaign is thirteen scenarios over thirty seeds — the
+five of §9 plus §3.5's typed sweep, four tables times two arms.
 
-**The engine that produced every number below is `6d18abb`** (E8's last commit,
-`6d18abb0c4bdb623038c39588c51d365a69172c4`). `src/` and `config/` are byte-identical to it at the
-time of writing — the commits since then moved only the spec and the probe — so all of these runs
-are one engine and are directly comparable. The probe reading it was `aa614de` for the headline
-table and `6163635` for the loan-rate sensitivity. Re-run any of it with
-`git checkout <sha> && dotnet run -c Release --project tools/Gates -- pilot [k=… rate=…]`.
+**Two engines produced the numbers below, and the blocks say which.** Everything dated 2026-09-04 in
+the first four sections was measured on `6d18abb` (E8's last commit,
+`6d18abb0c4bdb623038c39588c51d365a69172c4`) with `tools/Gates … pilot`, a power probe that runs the
+two arms over the campaign's own 30 paired seeds at the campaign's own parameters (600 ticks,
+measured window from tick 241, `credit_off` against `credit_high`, θ ~ U(0.4, 0.9)). The probe
+reading it was `aa614de` for the headline table and `6163635` for the loan-rate sensitivity.
+
+**The typed block at the end was measured on E10's engine**, `c612adb` (`c612adb2433d530eb83afe1403d42b978a14ee87`), with the same
+probe over each row of the sweep grid: `pilot table=<row>`. Its `identity` row is the same
+measurement as the older blocks' and reproduces them, which is what makes the two engines
+comparable.
+
+Re-run any of it with
+`git checkout <sha> && dotnet run -c Release --project tools/Gates -- pilot [table=… k=… rate=…]`.
 
 A rough model of what the simulation has said so far — kept for angles, not for accuracy. Every
 number here is measured and every one is provisional; `spec/01-SIMULATION.md` §7.1–§10.4 carries the
@@ -111,6 +116,43 @@ band; no baseline level here is calibrated against anything real.
 - Untested: whether the harm concentrates on the poorest abstainers or spreads evenly across the
   cohort. §10.1 says the excluded households sit at the poor end (median income ~€400 against a mean
   of €650), so this is likely the strongest version of the finding and it is not yet measured.
+
+## What a typed population does to the answer — 2026-09-04
+
+E10 is built: households now come in four archetypes, each with a per-category taste level `w` and a
+per-category quality steepness `kappa`, where v1 had one number for both. The five tables of
+`02-PARAMETERS.md` §3.5 were named before the first typed run. `spec/01-SIMULATION.md` §10.5 carries
+the evidence; this is the shape of it.
+
+**The claim splits in two, and the halves behave differently.** The *price* effect is untouched —
+electronics +11.0% under v1's population, +11.7% under the typed one; appliances +7.5% against
++6.6%. The *access* effect halves: the abstainer's share of wanted units obtained falls 5.61% under
+v1 and 3.08% under the typed table. Both still resolve at eight to twenty times what thirty seeds can
+distinguish from zero, so this is a smaller effect and not a lost one.
+
+**Lead with the price, not with access.** That is the practical consequence for the write-up. "The
+same good becomes more expensive for B" survives a population that wants genuinely different things;
+"and harder for B to get" survives it at half the size. Both are true; one is sturdier.
+
+**The obvious objection to the typed table turns out to be wrong, and it was worth pre-registering.**
+The typed table's average household cares less about quality than v1's implicit one, which could by
+itself have put more households on the cheap shelves and produced the shrinkage without any
+heterogeneity at all. The `typed_kappa_neutral` control rescales that away and gives −3.081% against
+`typed`'s −3.084%. It is heterogeneity, not the level. Had the control not been in the grid, the
+honest thing would have been to say the delta could not be read.
+
+**Why the access effect shrank: there is less borrowing.** A quarter to a third less credit
+outstanding at the same θ. The financing decision is a threshold and spreading taste around its mean
+does not conserve the count of households on the far side of it. Worth a paragraph in the write-up:
+it says something about how a heterogeneous population uses credit that a representative-agent
+version of the same model could not say.
+
+**New and untested.** With types, the abstainer's *quality* index rises slightly under credit
+(+0.31%, t = 15.6) while their unit count is flat — they get about as many things and the things are
+marginally better. Consistent with exclusion falling on the cheap marginal purchases first. Not
+tested; do not quote it as though it were.
+
+---
 
 ---
 

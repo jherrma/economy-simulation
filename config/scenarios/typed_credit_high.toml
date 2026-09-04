@@ -1,9 +1,6 @@
-# typed_credit_off — the four archetypes of §3.5, level and steepness together.
+# typed_credit_high — the four archetypes of §3.5, level and steepness together.
 #
-# Credit stays off: this is the control arm for its own table. It is a *different baseline economy*
-# from the untyped `credit_off`, and that is the point — a typed treatment arm compared against the
-# untyped baseline would measure the table and the credit together and attribute both to credit.
-# Compare typed against typed.
+# Credit on, `theta ~ U(0.4, 0.9)` — the treatment `credit_high` applies, over this table.
 #
 # This is the treatment table of the sweep. Read the two rows of a type together: `prudent` cares
 # less about quality everywhere, `health_conscious` buys the best food rather than more food,
@@ -19,6 +16,11 @@
 # inherits the rule that governs the tier mix: a table adjusted until the headline came out better
 # would turn this model from evidence into an illustration. It is swept, not fitted, and the sweep
 # was named before the first typed run (`02-PARAMETERS.md` §3.5).
+
+[credit]
+credit_enabled = true
+theta_min = 0.4
+theta_max = 0.9
 
 [archetypes.prudent]
 share = 0.30

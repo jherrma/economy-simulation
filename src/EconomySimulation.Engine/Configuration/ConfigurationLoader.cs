@@ -302,6 +302,7 @@ public static class ConfigurationLoader
     {
         // Scalars before Subtables(), which ignores what has already been read.
         var sigmaIdio = section.Double("sigma_idio", basis.Archetypes.SigmaIdio);
+        var normaliseKappa = section.Bool("normalise_kappa", basis.Archetypes.NormaliseKappa);
         var stated = section.Subtables();
         var names = categories.Select(c => c.Name).ToArray();
 
@@ -318,7 +319,8 @@ public static class ConfigurationLoader
         return new ArchetypeParameters
         {
             SigmaIdio = sigmaIdio,
-            Types = Normalise(authored, names, problems),
+            NormaliseKappa = normaliseKappa,
+            Types = Normalise(authored, names, normaliseKappa, problems),
         };
     }
 
@@ -393,6 +395,7 @@ public static class ConfigurationLoader
     private static IReadOnlyList<Archetype> Normalise(
         IReadOnlyList<Archetype> authored,
         IReadOnlyList<string> categories,
+        bool normaliseKappa,
         Validation problems)
     {
         if (authored.Count == 0)
@@ -402,9 +405,14 @@ public static class ConfigurationLoader
         }
 
         var scales = new Dictionary<string, double>(StringComparer.Ordinal);
+        var kappaScales = new Dictionary<string, double>(StringComparer.Ordinal);
 
         foreach (var category in categories)
         {
+            kappaScales[category] = normaliseKappa
+                ? Scale(authored.Sum(a => a.Share * a.ExponentFor(category)))
+                : 1.0;
+
             var scale = authored.Sum(a => a.Share * a.WeightFor(category));
 
             problems.Require(
@@ -414,12 +422,7 @@ public static class ConfigurationLoader
                 + "zeros is a category nobody wants at any price",
                 Format(scale));
 
-            // Snapped, so that normalising an already-normalised table is a no-op to the bit. The
-            // effective configuration prints the normalised weights, and reloading it must give
-            // back the same run rather than one divided by 1.0000000000000002.
-            var usable = scale > 0.0 && double.IsFinite(scale) ? scale : 1.0;
-
-            scales[category] = Math.Abs(usable - 1.0) < 1e-9 ? 1.0 : usable;
+            scales[category] = Scale(scale);
         }
 
         return
@@ -436,7 +439,7 @@ public static class ConfigurationLoader
                 [
                     .. categories
                         .OrderBy(c => c, StringComparer.Ordinal)
-                        .Select(c => new CategoryWeight(c, a.ExponentFor(c))),
+                        .Select(c => new CategoryWeight(c, a.ExponentFor(c) / kappaScales[c])),
                 ],
             }),
         ];
@@ -508,6 +511,20 @@ public static class ConfigurationLoader
 
         section.RejectUnknownKeys();
         return money;
+    }
+
+    /// <summary>
+    /// A column scale, made usable and **snapped**.
+    ///
+    /// Snapped so that normalising an already-normalised table is a no-op to the bit: the effective
+    /// configuration prints the normalised weights, and reloading it must give back the same run
+    /// rather than one divided by 1.0000000000000002.
+    /// </summary>
+    private static double Scale(double scale)
+    {
+        var usable = scale > 0.0 && double.IsFinite(scale) ? scale : 1.0;
+
+        return Math.Abs(usable - 1.0) < 1e-9 ? 1.0 : usable;
     }
 
     /// <summary>`round(households / life)`. Defined once, on the schema, so the loader and a configuration built in code cannot disagree.</summary>
