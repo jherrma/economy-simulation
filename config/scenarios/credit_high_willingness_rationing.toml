@@ -1,0 +1,16 @@
+# credit_high, with a short shelf going to whoever wants it most rather than to whoever arrived
+# first.
+#
+# Expected to strengthen the result and reported separately for exactly that reason (§9). §10.1
+# found the model's rationing is an exclusion rather than a queue, and the excluded sit at the poor
+# end, so who gets picked when the shelf is short is where a fairness argument would live.
+#
+# credit_high's three lines are repeated rather than inherited, as in the other variant.
+
+[credit]
+credit_enabled = true
+theta_min = 0.4
+theta_max = 0.9
+
+[prices]
+rationing = "willingness"

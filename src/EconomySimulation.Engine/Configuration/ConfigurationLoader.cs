@@ -26,8 +26,22 @@ public static class ConfigurationLoader
         return FromToml(File.ReadAllText(path));
     }
 
-    public static Result<SimulationParameters> FromToml(string toml)
+    public static Result<SimulationParameters> FromToml(string toml) =>
+        FromToml(toml, SimulationParameters.Default);
+
+    /// <summary>
+    /// The same load, overlaid on something other than the specification's defaults.
+    ///
+    /// This is what a scenario is: a partial file on top of a basis, with absent keys taken from
+    /// the basis rather than defaulted back to the schema. The distinction only shows when the
+    /// basis is not the defaults — a gate that has already scaled every price, or shortened the
+    /// run, needs the scenario's credit settings applied to *its* parameters and everything else
+    /// left where it put it.
+    /// </summary>
+    public static Result<SimulationParameters> FromToml(string toml, SimulationParameters basis)
     {
+        ArgumentNullException.ThrowIfNull(basis);
+
         TomlTable root;
 
         try
@@ -53,16 +67,16 @@ public static class ConfigurationLoader
                 syntax.Fail("configuration", "valid TOML", malformed.Message);
             }
 
-            return syntax.ToResult<SimulationParameters>(() => SimulationParameters.Default);
+            return syntax.ToResult<SimulationParameters>(() => basis);
         }
 
         var problems = new Validation();
-        var defaults = SimulationParameters.Default;
+        var defaults = basis;
 
         var run = ReadRun(Section(root, "run", problems), defaults.Run);
         var income = ReadIncome(Section(root, "income", problems), defaults.Income);
-        var categories = ReadCategories(Section(root, "categories", problems), run, problems);
-        var tiers = ReadTiers(Section(root, "tiers", problems), problems);
+        var categories = ReadCategories(Section(root, "categories", problems), run, problems, basis);
+        var tiers = ReadTiers(Section(root, "tiers", problems), problems, basis);
         var decision = ReadDecision(Section(root, "decision", problems), defaults.Decision);
         var credit = ReadCredit(Section(root, "credit", problems), defaults.Credit);
         var prices = ReadPrices(Section(root, "prices", problems), defaults.Prices);
@@ -171,14 +185,15 @@ public static class ConfigurationLoader
     private static IReadOnlyList<CategoryParameters> ReadCategories(
         TomlSection section,
         RunParameters run,
-        Validation problems)
+        Validation problems,
+        SimulationParameters basis)
     {
         var stated = section.Subtables();
         var categories = new List<CategoryParameters>();
 
-        foreach (var name in SimulationParameters.Default.Categories.Select(c => c.Name).Concat(stated).Distinct(StringComparer.Ordinal))
+        foreach (var name in basis.Categories.Select(c => c.Name).Concat(stated).Distinct(StringComparer.Ordinal))
         {
-            var known = SimulationParameters.Default.Categories.FirstOrDefault(c => c.Name == name);
+            var known = basis.Categories.FirstOrDefault(c => c.Name == name);
             var table = stated.Contains(name, StringComparer.Ordinal) ? section.Subtable(name) : null;
 
             if (table is null && known is null)
@@ -221,14 +236,17 @@ public static class ConfigurationLoader
     /// The tiers, overlaid the same way, then ordered by price. The ladder is defined by what
     /// things cost, not by the order somebody happened to write the tables in.
     /// </summary>
-    private static IReadOnlyList<TierParameters> ReadTiers(TomlSection section, Validation problems)
+    private static IReadOnlyList<TierParameters> ReadTiers(
+        TomlSection section,
+        Validation problems,
+        SimulationParameters basis)
     {
         var stated = section.Subtables();
         var tiers = new List<TierParameters>();
 
-        foreach (var name in SimulationParameters.Default.Tiers.Select(t => t.Name).Concat(stated).Distinct(StringComparer.Ordinal))
+        foreach (var name in basis.Tiers.Select(t => t.Name).Concat(stated).Distinct(StringComparer.Ordinal))
         {
-            var known = SimulationParameters.Default.Tiers.FirstOrDefault(t => t.Name == name);
+            var known = basis.Tiers.FirstOrDefault(t => t.Name == name);
             var table = stated.Contains(name, StringComparer.Ordinal) ? section.Subtable(name) : null;
 
             if (table is null && known is null)

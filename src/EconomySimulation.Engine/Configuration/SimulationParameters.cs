@@ -207,6 +207,67 @@ public sealed record SimulationParameters
         return toml.ToString();
     }
 
+    /// <summary>
+    /// The fully-qualified keys whose **effective** value differs between two configurations.
+    ///
+    /// Read off <see cref="ToToml"/> rather than off the records, because the resolved TOML is what
+    /// a reader six months from now will compare, and because it catches a difference that no
+    /// single overridden key explains — a scenario that moves `households` also moves six derived
+    /// capacities, and a comparison that only knew about the key that was written would call those
+    /// six a surprise.
+    /// </summary>
+    public IReadOnlyList<string> DifferencesFrom(SimulationParameters other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        var mine = Resolved(ToToml());
+        var theirs = Resolved(other.ToToml());
+
+        return
+        [
+            .. mine.Keys
+                .Union(theirs.Keys, StringComparer.Ordinal)
+                .Where(key => !string.Equals(Value(mine, key), Value(theirs, key), StringComparison.Ordinal))
+                .OrderBy(key => key, StringComparer.Ordinal),
+        ];
+    }
+
+    private static string Value(IReadOnlyDictionary<string, string> from, string key) =>
+        from.TryGetValue(key, out var value) ? value : "absent";
+
+    private static Dictionary<string, string> Resolved(string toml)
+    {
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        var section = string.Empty;
+
+        foreach (var raw in toml.Split('\n'))
+        {
+            var line = raw.Trim();
+
+            if (line.Length == 0 || line[0] == '#')
+            {
+                continue;
+            }
+
+            if (line[0] == '[')
+            {
+                section = line.Trim('[', ']');
+                continue;
+            }
+
+            var separator = line.IndexOf('=', StringComparison.Ordinal);
+
+            if (separator < 1)
+            {
+                continue;
+            }
+
+            values[section + "." + line[..separator].Trim()] = line[(separator + 1)..].Trim();
+        }
+
+        return values;
+    }
+
     private static void Write(StringBuilder toml, string key, int value) =>
         toml.AppendLine(CultureInfo.InvariantCulture, $"{key} = {value}");
 

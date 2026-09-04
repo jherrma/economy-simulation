@@ -1,0 +1,6 @@
+# credit_high — theta ~ U(0.4, 0.9), spec/01-SIMULATION.md §9. The treatment arm.
+
+[credit]
+credit_enabled = true
+theta_min = 0.4
+theta_max = 0.9

@@ -1,0 +1,16 @@
+# credit_high, with lending funded out of the pool rather than created.
+#
+# This is the scenario that separates "more money chasing the same goods" from "the same money
+# reassigned to different people". §7.3 argues the money-creation channel is zero by construction;
+# §10.4 measures a money stock up 0.44% against a CPI up 0.55%, which is close enough in size that
+# the argument deserves a measurement rather than a proof.
+#
+# credit_high's three lines are repeated rather than inherited: there is no include mechanism, and
+# adding one would give a typo a way to silently produce the baseline. A test asserts this file
+# differs from credit_high in money_creation and in nothing else.
+
+[credit]
+credit_enabled = true
+theta_min = 0.4
+theta_max = 0.9
+money_creation = false

@@ -1,0 +1,6 @@
+# credit_off — the baseline, and deliberately empty.
+#
+# The defaults of spec/02-PARAMETERS.md are credit_off, so the control arm is literally the
+# defaults. That is the point: a control defined as "the defaults" cannot drift away from the
+# treatment arm through a change that was only meant to affect one of them, which is the most
+# common way a paired comparison quietly stops being paired.

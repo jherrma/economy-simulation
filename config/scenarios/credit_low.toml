@@ -1,0 +1,10 @@
+# credit_low — theta ~ U(0, 0.2), spec/01-SIMULATION.md §9.
+#
+# theta_min and theta_max are pinned even though they currently equal the defaults. The defaults
+# happen to carry credit_low's theta; unpinned, this scenario would follow the default wherever it
+# went and the experiment would quietly become a different one.
+
+[credit]
+credit_enabled = true
+theta_min = 0.0
+theta_max = 0.2
