@@ -11,16 +11,27 @@ assumed.
 
 ## Status
 
-**Implementation started.** E1 (Foundations), E2 (Configuration and the world) and E3 (The ledger
-and the opening state) are complete, with 218 tests. **V1 — money conservation — is green and stays
-green**, and a 360-tick run completes with every step of the tick present and doing nothing. The
-next epic is the decision, which is most of the model.
+**Eight of nine epics complete**, through E8 (Validation gates), with 423 tests. The model runs:
+a population, a ledger of integer cents, a shopping walk over quality tiers, consumer credit that
+creates money and has to be repaid, and two CSV files of output.
 
-Build and check:
+**All six verification devices are green.** V1 and V6 run inside every tick; V2 to V5 are a program:
 
 ```sh
 dotnet build -warnaserror && dotnet test
+dotnet run --project tools/Gates -- determinism   # V2 — same seed, twice and across threads
+dotnet run --project tools/Gates -- neutrality    # V3 — scale every nominal quantity, nothing real moves
+dotnet run --project tools/Gates -- nullrun       # V4 — the creditless baseline sits still
+dotnet run --project tools/Gates -- creditoff     # V5 — credit off reproduces the baseline, byte for byte
 ```
+
+Three of those gates changed the specification rather than the other way round, which is the point
+of having them: [§7.3](spec/01-SIMULATION.md) (the money-creation channel is zero by construction),
+[§10.2](spec/01-SIMULATION.md) (one cent decorrelates a run, so no result may be read off a single
+seed), and [§10.3](spec/01-SIMULATION.md) (relative prices converge eight times slower than the
+price level — which is why `warmup_ticks` is 240 and not 120).
+
+The remaining epic is E9: the scenario definitions and the campaign runner.
 
 The language is settled (C# on .NET 10).
 
@@ -53,6 +64,8 @@ they will be raised. **Nothing in it is scheduled. Do not implement from it.**
 ### Also here
 
 - [`src/`](src/) and [`tests/`](tests/) — the engine, the runner, the analysers and the tests.
+- [`tools/Gates/`](tools/Gates/) — the validation gates as a runnable program, and the committed
+  baselines V5 compares against.
 - [`docs/REVIEW-CHECKLIST.md`](docs/REVIEW-CHECKLIST.md) — the review items no test can check.
 - [`docs/LANGUAGE-CHOICE.md`](docs/LANGUAGE-CHOICE.md) — how the implementation language was chosen:
   the benchmark, the measurements, and the argument for C#. Settled, and applies to `spec/`.
