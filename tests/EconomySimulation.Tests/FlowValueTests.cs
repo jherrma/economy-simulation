@@ -177,27 +177,28 @@ public sealed class FlowValueTests
     {
         var population = Households.Draw(Defaults, Goods, runSeed: 1);
 
-        // Warm up: the first call may JIT.
-        _ = Valuation.FlowValue(Goods, population, 0, 0, 0);
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var total = Flow.Zero;
 
-        for (var h = 0; h < population.Count; h++)
+        void ValueEveryGood()
         {
-            for (var c = 0; c < Goods.CategoryCount; c++)
+            for (var h = 0; h < population.Count; h++)
             {
-                for (var t = 0; t < Goods.TierCount; t++)
+                for (var c = 0; c < Goods.CategoryCount; c++)
                 {
-                    total += Valuation.FlowValue(Goods, population, h, c, t);
+                    for (var t = 0; t < Goods.TierCount; t++)
+                    {
+                        total += Valuation.FlowValue(Goods, population, h, c, t);
+                    }
                 }
             }
         }
 
-        var after = GC.GetAllocatedBytesForCurrentThread();
+        // The same warm-up as the other allocation tests, and for the same reason: one call
+        // promotes nothing.
+        var allocated = Infrastructure.Allocations.Of(ValueEveryGood, ValueEveryGood);
 
         Assert.True(total.IsPositive);
-        Assert.Equal(0, after - before);
+        Assert.Equal(0, allocated);
     }
 
     // ---- the type -------------------------------------------------------------------------

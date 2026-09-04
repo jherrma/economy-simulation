@@ -193,24 +193,30 @@ public sealed class FlowCostTests
     [Fact]
     public void CostingEveryShelf_AllocatesNothing()
     {
-        _ = Valuation.FinancedCost(Valuation.FlowCost(Market.Price(0, 0), 1), Defaults.Credit.LoanRate, 12);
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var total = Flow.Zero;
 
-        for (var i = 0; i < 1000; i++)
+        void CostEveryShelf()
         {
-            for (var c = 0; c < Goods.CategoryCount; c++)
+            for (var i = 0; i < 1000; i++)
             {
-                for (var t = 0; t < Goods.TierCount; t++)
+                for (var c = 0; c < Goods.CategoryCount; c++)
                 {
-                    var cost = Valuation.FlowCost(Market.Price(c, t), Goods.Categories[c].Life);
-                    total += Valuation.FinancedCost(cost, Defaults.Credit.LoanRate, 24);
+                    for (var t = 0; t < Goods.TierCount; t++)
+                    {
+                        var cost = Valuation.FlowCost(Market.Price(c, t), Goods.Categories[c].Life);
+                        total += Valuation.FinancedCost(cost, Defaults.Credit.LoanRate, 24);
+                    }
                 }
             }
         }
 
+        // Warmed through Allocations, and with the **whole loop** as the warm-up rather than one
+        // call of each method. A single call promotes nothing: tiered compilation needs about
+        // thirty, and a loop this long also draws on-stack replacement into the measured window.
+        // Either landing there is several kilobytes of runtime that belong to no model code.
+        var allocated = Infrastructure.Allocations.Of(CostEveryShelf, CostEveryShelf);
+
         Assert.True(total.IsPositive);
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, allocated);
     }
 }
