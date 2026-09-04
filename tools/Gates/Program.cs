@@ -1,3 +1,4 @@
+using EconomySimulation.Engine;
 using EconomySimulation.Engine.Configuration;
 using static System.FormattableString;
 
@@ -33,7 +34,7 @@ internal static class Program
             "nullrun" => NullRunGate.Run(SimulationParameters.Default, Runs.CampaignSeeds(SimulationParameters.Default), workspace),
             "creditoff" => CreditOffGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "rebaseline" => CreditOffGate.Rebaseline(SimulationParameters.Default, Runs.ShortSeeds),
-            "pilot" => PilotProbe.Run(Speed(args, SimulationParameters.Default), Runs.CampaignSeeds(SimulationParameters.Default), workspace),
+            "pilot" => PilotProbe.Run(Probe(args, SimulationParameters.Default), Runs.CampaignSeeds(SimulationParameters.Default), workspace),
             _ => null,
         };
 
@@ -52,14 +53,35 @@ internal static class Program
         return report.Passed ? 0 : 1;
     }
 
-    /// <summary>`pilot 0.1` reruns the probe at another adjustment speed — the one sensitivity worth asking.</summary>
-    private static SimulationParameters Speed(string[] args, SimulationParameters parameters)
+    /// <summary>
+    /// `pilot k=0.1 rate=13` reruns the probe with one parameter moved. The two sensitivities
+    /// worth asking: the adjustment speed sets the price level (§10.4), and the loan rate is the
+    /// one parameter a reader will check against their own credit card.
+    /// </summary>
+    private static SimulationParameters Probe(string[] args, SimulationParameters parameters)
     {
-        var given = Array.Find(args, a => double.TryParse(a, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _));
+        foreach (var argument in args)
+        {
+            var split = argument.IndexOf('=', StringComparison.Ordinal);
 
-        return given is null
-            ? parameters
-            : parameters with { Prices = parameters.Prices with { K = double.Parse(given, System.Globalization.CultureInfo.InvariantCulture) } };
+            if (split < 1 || !double.TryParse(
+                    argument[(split + 1)..],
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var value))
+            {
+                continue;
+            }
+
+            parameters = argument[..split] switch
+            {
+                "k" => parameters with { Prices = parameters.Prices with { K = value } },
+                "rate" => parameters with { Credit = parameters.Credit with { LoanRate = new Rate(value) } },
+                _ => parameters,
+            };
+        }
+
+        return parameters;
     }
 
     private static int Usage(string problem)

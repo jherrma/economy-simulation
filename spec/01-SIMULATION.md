@@ -105,6 +105,13 @@ flow_cost(g, t)     = price_(g,t) / life_g
 finance_mult(g)     = 1 + loan_rate · term_g / 1200
 ```
 
+**`loan_rate` is a flat add-on rate, not an APR.** `finance_mult` charges the whole term's interest
+on the original principal, and §6 step 2 then spreads it over equal instalments, so a borrower whose
+balance is falling still pays interest on the opening amount. The default `loan_rate = 8.0` over a
+24-month term is `finance_mult = 1.16` — 16% of the price in interest — which is an effective APR
+near **15%**, not 8%. Anyone comparing this to a real card or BNPL rate must convert first: an APR
+of `r` is roughly a flat rate of `r · (n + 1) / 2n`, so a real-world 13% APR is `loan_rate ≈ 6.8`.
+
 `a_g` is a floor in euros per tick that does **not** scale with income; `b_g · income_h` does. The
 split is neutral at the mean income, so it changes only the income gradient of demand. It is not
 optional: with value strictly proportional to income, a household on €450 scores food below λ and
@@ -689,6 +696,28 @@ on lumpy demand does not average to its midpoint. **The difference between the a
 order of magnitude unchanged across a tenfold range. So the comparison is robust and the baseline is
 a calibration. Every reported percentage must be reported **as a difference**, and the write-up owes
 the reader the sensitivity band rather than a single number carrying four digits.
+
+**The loan rate matters, monotonically, and the default is the conservative end.** Re-running the
+probe at `loan_rate` = 6.8, 8, 13, 20 — an effective APR of roughly 13%, 15%, 25%, 38% — makes
+credit steadily less attractive, so less of it is taken (`loans_outstanding` 76.9k, 71.0k, 51.6k,
+32.5k) and the externality shrinks with it:
+
+| `loan_rate` (effective APR) | abstainer appliances | abstainer electronics | `cpi_electronics` |
+|---|---|---|---|
+| 6.8 (≈13%) | −26.0% | −35.8% | +11.6% |
+| **8.0 (≈15%, default)** | **−24.5%** | **−34.3%** | **+11.0%** |
+| 13 (≈25%) | −15.2% | −26.2% | +7.7% |
+| 20 (≈38%) | −9.6% | −14.6% | +3.9% |
+
+The effect survives across the whole range at |t| > 11, and the default sits at the **cautious** end
+of the real-world band rather than the flattering one: at the flat rate matching a typical 13% card
+or BNPL APR the measured harm to abstainers is slightly *larger* than what §10.4 reports.
+
+**Credit is small; the durable shelves are thin.** New lending is **10% of the town's durable
+spending** — a share a reader will recognise from the real world — and debt service is 1.27% of all
+spending, interest 0.18%. That modest a flow moves the abstainer's access to appliances by a
+quarter, because the marginal durable market is where the whole adjustment lands. The leverage, not
+the volume, is the finding.
 
 **Two things the campaign will find missing.** `rationed` — credit rationing, the pool refusing to
 fund — is **identically zero on all sixty runs**: the pool always funds, so `credit_high` is
