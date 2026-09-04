@@ -1,7 +1,7 @@
 # Re-sizing the town: households, warm-up and the thin-shelf check
 
 **Epic:** E11 — Product groups and replacement cycles
-**Depends on:** 11-03, 08-03, 09-02
+**Depends on:** 11-04, 08-03, 09-02
 **New ground:** A shelf-thickness check, and a warm-up set on evidence for the second time
 
 ## Story

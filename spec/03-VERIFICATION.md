@@ -246,10 +246,17 @@ category-shaped:
 
 - The goods table's length is read from the configuration everywhere. A test loads a table of a
   length in neither six nor eighteen and runs a tick.
-- **The harmonic identity.** `Σ_A share_A / d[A][g] = 1` for every good, asserted at load on the
-  normalised table. Getting this wrong is the expensive error of the whole epic: normalising `d`
-  rather than `1/d` gives the population permanently more replacement demand than capacity was
-  sized for, by an amount nothing else measures.
+- **Both identities.** `Σ_A share_A / d[A][g] = 1` for units, and
+  `Σ_A share_A · m[A][g] = 1` for the score level, asserted at load on the normalised tables.
+  The first is the expensive error of the epic: normalising `d` rather than `1/d` gives the
+  population permanently more replacement demand than capacity was sized for, by an amount nothing
+  else measures. The second is what stops a replacement cycle silently cancelling the taste it was
+  meant to accompany — `ŵ = m / d` is derived, so a test must assert the identity on `m` and **not**
+  on `ŵ`, whose share-weighted mean is not 1 and is not meant to be.
+- **The hazard reproduces the deterministic rule in the mean.** Over a long unconstrained run,
+  realised replacement demand per tick per good matches `capacity_g` within sampling error, and
+  the `"failure"` draw is taken for every household, good and tick regardless of ownership. The
+  second half is what makes the arms comparable and it is invisible in any single run.
 - `d ≡ 1` reproduces the same calibration run without `d`, byte for byte.
 - **`capacity` is derived from `households` and `life`, never from the realised population.**
   A test asserts two seeds of one scenario produce identical effective configurations — which is

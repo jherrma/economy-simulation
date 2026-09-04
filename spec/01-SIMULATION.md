@@ -107,7 +107,7 @@ that lasts eight years are on the same footing.
 
 ```
 flow_value(h, g, t) = (a_g + b_g · income_h) · w_h · value_mult_t
-flow_cost(g, t)     = price_(g,t) / life_g
+flow_cost(g, t)     = price_(g,t) / life_g          (life_h,g under §5.5)
 finance_mult(g)     = 1 + loan_rate · term_g / 1200
 ```
 
@@ -423,28 +423,74 @@ Once a category is three cycles, the cycle is something a household can have an 
 longer. `prudent` keeps a phone forty-two months; `gadget` replaces it every twenty.
 `family_practical` wears out underwear in three months and stretches the phone.
 
-**Two questions are open, and 11-03 is blocked until they are answered** (raised 2026-09-04 in
-review, and recorded here rather than assumed).
+#### Wearing out is a hazard, not a calendar — decided 2026-09-04
 
-*Is a household's life an integer?* `CategoryParameters.Life` is `int`, `Households.Age` is `int[]`,
-and a want fires at `Age ≥ life`, so the realised lives in §3.7 — 20.3 months, 4.9 months — have no
-representation. Rounding them per archetype breaks the harmonic identity by **more than the error
-the identity exists to prevent**: on clothing basics, rounding gives 1.040 against arithmetic
-normalisation's 1.025. The identity would still be asserted at load on the unrounded table and pass,
-while the running engine violated it. The candidates are to constrain `d` so that `life × d` is an
-integer and assert the identity on the rounded table (which will then not hold exactly, and the
-authored table has to absorb the difference), or to make the life a per-household draw with the
-right mean reciprocal, or to replace the deterministic `age ≥ life` with a hazard. Each is a
-different model; none is a patch.
+Two questions were open here and both are now answered; the answers turn out to be the same answer
+seen twice.
 
-*Which life enters `flow_cost`?* §5 defines `flow_cost = price / life_g`. If the walk uses the
-household's own life, a `gadget` household's phone costs it ×1.48 per tick and every electronics
-score falls by a factor 0.676 — which almost exactly cancels its 1.55 taste weight, so the
-replacement-cycle table would erase the taste table in the very category the epic is about, while
-`prudent` gains. If the walk keeps the good's nominal life, a household values a phone at €20 a
-month while actually spending €600 every twenty, and §5's "everything is euros per tick" footing
-stops being true of that household. Both are defensible; the choice decides what E11 measures, and
-it is the single most consequential open question in this epic.
+**A durable fails with probability `1 / life_h,g` each tick, rather than at a fixed age.** The
+deterministic rule `age ≥ life` cannot represent §3.7's realised lives at all — `Life` is an `int`,
+`Age` an `int[]`, and 20.3 months is not a number a want can fire at. Rounding per archetype breaks
+the harmonic identity by **more than the error that identity exists to prevent** (clothing basics
+1.040 from rounding, against 1.025 from normalising `d` arithmetically), and worse, the load-time
+assertion would pass on the unrounded table while the running engine violated it. A hazard takes any
+positive real life and the identity then holds **exactly** rather than to within a rounding.
+
+Three things fall out that were not the reason for choosing it:
+
+- **The initialisation sawtooth cannot happen.** The geometric distribution is memoryless, so there
+  is no age to initialise: every household opens owning a working unit of every durable, a fraction
+  `1/life` of them fails in tick 1, and that is already the steady state. 02-04's uniform age draw
+  and the `"initial_age"` purpose exist only to spread the first cohort, and they do not mix the
+  cohorts afterwards — under deterministic replacement a household that replaces in month 7 replaces
+  again in month 7 + life, forever, and only rationing ever decorrelates them. Measured on an
+  unconstrained population of 5,000: deterministic replacement of a four-month good oscillates with
+  a per-tick standard deviation of **500 units** about a mean that never reaches capacity, where the
+  hazard sits at 1250.7 ± 31.2.
+- **The life-1 special case disappears.** `p = 1/life` gives `p = 1` at `life = 1`, so a consumable
+  is consumed every tick by the same rule that fails a washing machine. `wants = life == 1 || age ≥ life`
+  becomes one draw.
+- **`flow_cost = price / life_h,g` becomes literally true.** Under a constant hazard the expected
+  cost per tick of owning the good *is* `price / life_h,g`, rather than an amortisation of a cycle
+  the household is assumed to complete. Which answers the second question below by construction.
+
+The cost is real and is stated so nobody discovers it: per-tick replacement demand is now
+`Binomial(owners, p)` rather than a near-constant. At 5,000 households the relative standard
+deviation is 15.9% for large appliances, 12.7% for the TV, 8.0% for the phone, 2.5% for clothing
+basics — but **0.84%, 0.67%, 0.42% and 0.13%** over a 360-tick measured window, and the failure draw
+is taken **unconditionally**, for every household and every good and every tick, whether or not a
+unit is owned. That is the rule `θ` obeys (§8), and here it means the same households fail in the
+same months in both arms, so the noise cancels in the paired difference rather than merely
+averaging out.
+
+#### `flow_cost` uses the household's own life — decided 2026-09-04
+
+```
+flow_cost(h, g, t) = price_(g,t) / life_h,g
+```
+
+A household that replaces its phone every twenty months is paying for a phone at a higher rate per
+month than one that keeps it forty, and the decision rule should see that. It also keeps §5's
+"everything is euros per tick" footing true of every household rather than of the average one.
+
+**The consequence is that taste and cycle compose, and they must be authored together.** Since
+`score = flow_value / flow_cost`, the score multiplier for archetype `A` in good `g` is
+
+```
+score multiplier = ŵ_g,A · d_g,A
+```
+
+Author them separately and they fight: `gadget` replacing phones 1.48× as often divides its score by
+1.48, which very nearly cancels the 1.55 taste weight meant to make it the top phone bidder — and
+`prudent`, keeping its phone forty-two months, would come out bidding *highest*. That inversion is
+not a defect in the mechanism, it is the model correctly saying that **churning and buying well are
+competing claims on the same budget**, and that a household which does both must value the good a
+great deal.
+
+So the archetype table states the **score multiplier**, which is the quantity with a meaning, and
+`ŵ` is derived from it: `ŵ = m / d`. `02-PARAMETERS.md` §3.5's numbers are unchanged and are now read
+as `m`; where `d = 1` — every life-1 good, and the whole of E10 — the two are identical and nothing
+about §5.4 moves.
 
 **The normalisation is harmonic** — `Σ_A share_A / d[A][g] = 1` — because demand per tick is
 `1 / life`, so it is the reciprocal that must average to one. Normalising `d` itself would hand the
@@ -516,7 +562,8 @@ sums to the interest collected to the cent, and abstainers receive their share l
 ### Step 3 — Wants
 
 For each category, the household wants one unit if `life_g = 1`, or if `age_h,g ≥ life_g`.
-Otherwise it wants nothing. Wants are quantities, not budgets, and never more than one unit of a
+Otherwise it wants nothing. **Under §5.5's hazard the rule is simply that it wants one unit if it
+does not own a working one**, everything else having been decided in step 5. Wants are quantities, not budgets, and never more than one unit of a
 category per tick — the tier, not the count, is where extra income goes.
 
 ### Step 4 — The shopping walk
@@ -592,9 +639,19 @@ any crowding-out that appears is caused by *ability to bid at all*, which is exa
 under test. `rationing = willingness` is available as a variant and is expected to strengthen the
 result; it should be reported separately, never as the default.
 
-### Step 5 — Ageing
+### Step 5 — Ageing, or failure
 
 Every held durable's `age_h,g` increases by one.
+
+**Under §5.5's hazard this step replaces ageing with failure.** Every household draws, for every
+good, from the `"failure"` stream — **unconditionally, whether or not it owns a working unit** — and
+a unit it does own fails when the draw is below `1 / life_h,g`. A life-1 good has `p = 1` and is
+consumed by the same rule. `age_h,g` is kept for reporting and decides nothing.
+
+The draw is unconditional for the reason `θ` is drawn with credit off (§8): a household rationed out
+of a good in one arm and served in the other must still consume the same stream position, or the two
+arms drift onto different worlds and the paired comparison quietly stops being paired. It costs one
+draw per household per durable per tick.
 
 ### Step 6 — Repricing
 
@@ -741,8 +798,9 @@ should be labelled as such rather than as a price effect.
 
 Every draw comes from a stream derived as `hash(run_seed, household_id, purpose)`, where `purpose`
 is a string constant — `"income"`, `"willingness"`, `"theta"`, `"abstainer"`, `"initial_age"`,
-`"finance"`, `"archetype"`, `"taste_idio"` — plus one per-tick stream
-`hash(run_seed, 0, "order", tick)` for the shopping order.
+`"finance"`, `"archetype"`, `"taste_idio"` — plus two per-tick streams,
+`hash(run_seed, 0, "order", tick)` for the shopping order and
+`hash(run_seed, household_id, "failure", tick, good)` for §5.5's failure draw.
 
 There is **no single shared generator**. Adding a new consumer of randomness must not shift any
 existing draw, and a test asserts exactly that by registering an unused purpose and requiring
@@ -758,6 +816,12 @@ Durable ages are drawn **uniformly over each good's life** at initialisation —
 so that with wants asked before ageing the first replacement cohort falls in tick 1 rather than
 tick 2. Without the spread every household replaces its appliances in the same month and the model
 produces a sawtooth that looks like a business cycle and is an artefact of initialisation.
+
+The spread is a **partial** fix and §5.5 explains why: it separates the opening cohorts and then
+nothing ever mixes them, because a household replacing in month 7 replaces again in month 7 + life
+for the life of the run. Only rationing decorrelates them. Under the hazard the question does not
+arise — the geometric distribution is memoryless, so every household opens owning a working unit,
+`"initial_age"` is not consumed, and the steady state is the opening state.
 
 ## 9. Scenarios
 
@@ -1050,6 +1114,14 @@ Every one of these must accompany any number that comes out of it.
   that would never have happened. The "never-would-have" channel is absent entirely.
 - **Waiting is not a decision.** A household that cannot buy simply tries again next tick; it does
   not deliberately save toward a target. Thrift is emergent, not chosen.
+- **Under §5.5 the failure hazard is constant, so nothing wears out.** A washing machine is as likely
+  to fail in its first month as in its hundredth, and replacement timing is therefore more dispersed
+  than in reality, where the hazard rises with age. A Weibull or gamma hazard would be closer and
+  costs one shape parameter and a non-memoryless state; it is not in this version. The sharper
+  limitation is that a hazard models a thing **breaking**, never a household **choosing** to replace
+  something that still works — so `prudent` keeping a phone forty-two months is expressed here as a
+  phone that fails less often, which is not what is meant. Making it a decision needs a second
+  threshold, and that is a mechanism rather than a parameter.
 - **Three qualities per category, fixed.** Producers cannot introduce, drop or reposition a tier,
   so the *supply* of quality is as rigid as the supply of quantity. In reality a shift toward
   financed premium buying pulls production up-market, which would amplify the trade-down effect on

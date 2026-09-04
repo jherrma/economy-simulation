@@ -225,8 +225,9 @@ table below is the `typed` table: it lives in a scenario file, not in the defaul
 | Parameter | Default | Why |
 |---|---|---|
 | `archetypes.<name>.share` | one type at 1.0 | Population share. The shares must sum to 1.0 or the run is rejected |
-| `archetypes.<name>.w.<category>` | 1.0 | Relative taste weight. **Absent means 1.0**, so a type names only the categories it differs in (§2 of `01-SIMULATION.md` on absent-versus-unknown: an absent key defaults, an unknown key is an error) |
+| `archetypes.<name>.w.<category>` | 1.0 | Relative **score multiplier** `m` — how much better or worse than average a candidate in this category scores for this type. **Absent means 1.0**, so a type names only the categories it differs in (§2 of `01-SIMULATION.md` on absent-versus-unknown: an absent key defaults, an unknown key is an error). Under §3.7 the taste weight `ŵ = m / d` is *derived* from it, because a shorter replacement cycle raises the cost per tick and would otherwise cancel the intent; where `d = 1` — every life-1 good, and the whole of this section — the two are the same number |
 | `archetypes.<name>.kappa.<category>` | 1.0 | Quality steepness, applied as `value_mult(tier)^kappa`. Absent means 1.0 |
+| `replacement` | **`deterministic`** | How a durable comes to be wanted again. `deterministic` is v1: `age_h,g ≥ life_g`, with ages drawn uniform at initialisation. `hazard` is `01-SIMULATION.md` §5.5: a per-tick failure probability of `1 / life_h,g`, no age state, no `"initial_age"` draw, and the only setting under which a non-integer life means anything. The grouped calibration requires `hazard`; a configuration that sets a `d` under `deterministic` is rejected rather than rounded |
 | `sigma_idio` | **0.0** | Spread of the per-household, per-category residual `ε`. Zero by default, so taste is perfectly correlated across categories exactly as in v1. Raising it walks that correlation toward zero and is the sweep for "does it matter that the same households want everything" |
 
 `w` is authored as a **relative** weight and normalised by the loader; see the identity below.
@@ -271,9 +272,16 @@ value to justify or lower, not as a safe margin.
 
 #### The taste identity, and what the loader does with it
 
-For every category, the share-weighted mean of `w` must be 1: the table redistributes a category's
-demand across the population, it does not change how much of it there is. `v_g` (§3.1) is the
-parameter for that.
+For every category, the share-weighted mean of the **score multiplier** must be 1:
+
+```
+Σ_A share_A · m_g,A = 1                       equivalently  Σ_A share_A · ŵ_g,A · d_g,A = 1
+```
+
+The table redistributes a category's demand across the population; it does not change how much of it
+there is. `v_g` (§3.1) is the parameter for that, and `base_score` (§3.6) is what the identity keeps
+meaning what it says at the population mean. With `d ≡ 1` this is the plain `Σ share · ŵ = 1` and
+nothing in this section changes.
 
 The authored weights above do not satisfy the identity exactly, and they are not meant to — writing
 a table that does by hand is a pointless arithmetic exercise that hides the intent. **The loader
@@ -544,6 +552,39 @@ A life-1 good has no cycle to stretch, so `d` is only meaningful on the twelve d
 `family_practical` wears out underwear in three months and a washing machine in ten years, and
 stretches the phone — hand-me-downs.
 
+#### Taste and cycle compose: `ŵ = m / d`
+
+`flow_cost` divides by the household's own life (`01-SIMULATION.md` §5.5), so
+`score ∝ ŵ · d` and the two tables multiply. Author them separately and they fight: `gadget`'s phone
+cycle of 0.676 would divide away almost exactly the 1.553 score multiplier meant to make it the top
+phone bidder, and `prudent` at 1.400 would come out bidding highest — the opposite of the intent.
+
+So §3.5's table is the **score multiplier** `m` and the loader derives `ŵ = m / d` per good. The
+derived weights, which are what the effective configuration records:
+
+| Good | `prudent` | `health_conscious` | `gadget` | `family_practical` |
+|---|---|---|---|---|
+| Clothing/basics | 0.684 | 0.966 | 1.014 | 1.389 |
+| Clothing/everyday | 0.676 | 0.995 | 1.160 | 1.271 |
+| Clothing/outerwear | 0.651 | 1.034 | 1.277 | 1.189 |
+| Hobby/equipment | 0.588 | 0.918 | 1.975 | 0.969 |
+| Hobby/big kit | 0.546 | 0.917 | 2.107 | 0.968 |
+| Electronics/phone | 0.555 | 0.855 | **2.299** | 0.914 |
+| Electronics/laptop | 0.601 | 0.861 | 2.027 | 0.965 |
+| Electronics/TV | 0.618 | 0.854 | 1.892 | 1.005 |
+| Appliances/small | 0.697 | 1.057 | 1.006 | 1.303 |
+| Appliances/medium | 0.732 | 1.068 | 1.017 | 1.243 |
+| Appliances/large | 0.711 | 1.078 | 1.027 | 1.255 |
+| Leisure/holiday | 0.564 | 1.057 | 1.351 | 1.244 |
+
+`gadget`'s phone weight of 2.299 is not a typo and is the point: it bids 1.553× on a phone while
+buying phones 48% more often, so it values a phone-month at more than twice the average. **A type
+that both churns and buys well must value the good a great deal** — that is the model saying the two
+are competing claims on one budget, not a defect to normalise away.
+
+Both identities hold exactly and each conserves a different thing: `Σ_A share_A · m = 1` fixes the
+score level, `Σ_A share_A / d = 1` fixes the units. Verified on all twelve rows above.
+
 #### The normalisation is harmonic, and getting it wrong is expensive
 
 Demand per tick is `1 / life`, so what must average to one across the population is the
@@ -561,23 +602,45 @@ The table redistributes *who* replaces early; it does not make the town replace 
 The payoff is that `capacity = round(households / life_g)` **stays correct as written**. Nothing
 downstream has to learn about heterogeneous lives.
 
+**And the identity now holds exactly rather than to within a rounding**, because §5.5 replaced the
+deterministic `age ≥ life` with a per-tick failure hazard of `1 / life_h,g`. A hazard takes any
+positive real life, so the realised 20.3 and 4.9 months above need no integer to land on. Under the
+old rule they had none, and rounding them per archetype broke the identity by more than an
+arithmetic normalisation would have — 1.040 on clothing basics against 1.025 — while a load-time
+assertion on the unrounded table passed.
+
 #### The residue, and why it must not be corrected
 
-The identity holds in expectation, not in a finite draw: assigning 5,000 households to four types by
-share leaves realised shares off nominal by about 0.65 pp, which moves a good's true replacement
-demand by roughly half a percent against the capacity it was sized for.
+Two residues remain, both small and both to be left alone.
+
+**Assignment.** Assigning 5,000 households to four types by share leaves realised shares off nominal
+by about 0.65 pp, which moves a good's true replacement demand by roughly half a percent against the
+capacity it was sized for.
+
+**The hazard itself.** Replacement demand is now `Binomial(owners, 1/life)` rather than a
+near-constant, so it has a per-tick relative standard deviation of 15.9% for large appliances, 12.7%
+for the TV, 8.0% for the phone and 2.5% for clothing basics at 5,000 households — falling to 0.84%,
+0.67%, 0.42% and 0.13% over a 360-tick window. This is **less** noise than the deterministic rule it
+replaces, not more: deterministic replacement preserves its opening cohorts for the life of the run,
+and an unconstrained four-month good oscillates at a per-tick sd of 500 units where the hazard sits
+at 31.2. Memorylessness is what mixes the cohorts.
 
 Do **not** fix this by deriving capacity from the realised population. That would make the goods
 table depend on the seed, and the campaign collector (09-02) refuses a scenario whose seeds ran
 different effective configurations — correctly, since a seed that changes a parameter is a seed that
 has become a parameter. Leave the residue where it is:
 
-- it is a supply-demand mismatch of well under a per cent, which the reprice rule exists to absorb;
-- it is **identical in both arms**, because the archetype assignment is drawn per household and per
-  seed rather than per scenario, so it cancels exactly in the paired difference that is the finding.
+- both are supply-demand mismatches the reprice rule exists to absorb;
+- both are **identical in both arms** — the archetype assignment is drawn per household and per
+  seed rather than per scenario, and the failure draw is taken unconditionally, so the same
+  households fail in the same months in either arm.
 
-It shifts levels, never the headline. Report it once, in the run's opening state, so nobody
-rediscovers it as an anomaly.
+They therefore enter the paired difference as **variance rather than bias**, which is the same class
+as the income draw and is already what §10.2 says about it. Earlier drafts of this section said the
+residue "cancels exactly"; it does not, because a shelf's response to credit depends nonlinearly on
+how tight it is, so per-seed tightness noise survives into the difference. It shifts levels and adds
+spread; it does not move the headline in a direction. Report it once, in the run's opening state, so
+nobody rediscovers it as an anomaly.
 
 ## 4. The decision
 
