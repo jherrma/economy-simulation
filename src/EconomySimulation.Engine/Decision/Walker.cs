@@ -175,6 +175,9 @@ public sealed class Walker
                 // that an ascending sort puts the largest taste weight first.
                 for (var i = 0; i < order.Length; i++)
                 {
+                    // The **shared** level w_h, deliberately: willingness rationing orders whole
+                    // households for a tick, and a household is not more or less willing depending
+                    // on which category it happens to be standing in front of.
                     keenness[i] = -population.TasteWeight[order[i]];
                 }
 

@@ -6,9 +6,14 @@ namespace EconomySimulation.Engine.Decision;
 /// The two sides of the decision, as flows (`01-SIMULATION.md` §5).
 ///
 /// <code>
-/// flow_value(h, g, t) = (a_g + b_g · income_h) · w_h · value_mult_t
+/// flow_value(h, g, t) = (a_g + b_g · income_h) · w_h · ŵ_g,A(h) · ε_h,g · value_mult_t ^ κ_g,A(h)
 /// flow_cost(g, t)     = price_(g,t) / life_g
 /// </code>
+///
+/// The three taste factors are multiplied out once, at initialisation, and read back as
+/// <see cref="Households.Taste"/>; the exponent is folded into
+/// <see cref="Households.ValueMult"/> the same way. Both are fixed for the life of the run.
+/// The exponent is applied to the tier's **value** multiplier and never to a price.
 ///
 /// `a_g` is the Stone-Geary floor: the part of a good's worth that does not scale with income. It
 /// is not a refinement. With value strictly proportional to income every good is a luxury, a
@@ -44,7 +49,7 @@ public static class Valuation
             goods.Floor(category),
             goods.IncomeSlope(category),
             population.Income[household],
-            population.TasteWeight[household]);
+            population.Taste(household, category));
     }
 
     /// <summary>`flow_value` at a tier: the base value times that tier's value multiplier.</summary>
@@ -52,7 +57,8 @@ public static class Valuation
     {
         ArgumentNullException.ThrowIfNull(goods);
 
-        return BaseValue(goods, population, household, category) * goods.Tiers[tier].ValueMult;
+        return BaseValue(goods, population, household, category)
+               * population.ValueMult(household, category, tier);
     }
 
     /// <summary>`flow_cost = price / life`, per tick. Never the purchase price.</summary>

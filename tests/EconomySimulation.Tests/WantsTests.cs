@@ -16,7 +16,7 @@ public sealed class WantsTests
     private const int Appliances = 5;
 
     private static Households One() =>
-        Households.Specified(Goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
+        Households.Specified(Goods, [Money.FromEuros(650)], [1.0]);
 
     // ---- the rule -------------------------------------------------------------------------
 
@@ -246,7 +246,7 @@ public sealed class WantsTests
     {
         var incomes = Enumerable.Repeat(Money.FromEuros(650), Defaults.Run.Households).ToArray();
         var tastes = Enumerable.Repeat(1.0, Defaults.Run.Households).ToArray();
-        var population = Households.Specified(Goods.CategoryCount, incomes, tastes);
+        var population = Households.Specified(Goods, incomes, tastes);
         var life = Goods.Categories[Appliances].Life;
 
         // Ages start at 0, so the spikes fall at ticks life and 2·life: one past the second is enough.

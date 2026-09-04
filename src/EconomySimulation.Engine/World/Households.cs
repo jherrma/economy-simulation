@@ -15,23 +15,40 @@ namespace EconomySimulation.Engine.World;
 /// </summary>
 public sealed class Households
 {
-    private Households(int count, int categoryCount)
+    private readonly double[] categoryTaste;
+    private readonly double[] tierValue;
+
+    private Households(int count, int categoryCount, int tierCount, IReadOnlyList<string> archetypeNames)
     {
         Count = count;
         CategoryCount = categoryCount;
+        TierCount = tierCount;
+        ArchetypeNames = archetypeNames;
 
         Income = new Money[count];
         TasteWeight = new double[count];
         Theta = new double[count];
         IsAbstainer = new bool[count];
+        Archetype = new int[count];
         Age = new int[count * categoryCount];
         Wanted = new bool[count * categoryCount];
         Wait = new int[count * categoryCount];
+        categoryTaste = new double[count * categoryCount];
+
+        // Per archetype rather than per household: `value_mult^kappa` is a property of the type, and
+        // Math.Pow in the walk's inner loop would be ten million calls a run for an answer that
+        // takes four rows of a table.
+        tierValue = new double[archetypeNames.Count * categoryCount * tierCount];
     }
 
     public int Count { get; }
 
     public int CategoryCount { get; }
+
+    public int TierCount { get; }
+
+    /// <summary>The archetype table's types, in the order the loader put them — for reporting.</summary>
+    public IReadOnlyList<string> ArchetypeNames { get; }
 
     /// <summary>Fixed nominal income. There are no wages and no firms, so nothing can change it.</summary>
     public Money[] Income { get; }
@@ -44,6 +61,35 @@ public sealed class Households
 
     /// <summary>The measured cohort: households that never borrow. What happens to them is the finding.</summary>
     public bool[] IsAbstainer { get; }
+
+    /// <summary>
+    /// Which archetype each household is, as an index into <see cref="ArchetypeNames"/>.
+    ///
+    /// Drawn from its own stream in every run, including under the identity table where the answer
+    /// is always zero. See <see cref="Purpose.Archetype"/> for why that draw is not skipped.
+    /// </summary>
+    public int[] Archetype { get; }
+
+    /// <summary>
+    /// `w_h · ŵ_g,A(h) · ε_h,g` — the household's taste for one category, all three levels
+    /// multiplied together (`01-SIMULATION.md` §5.4).
+    ///
+    /// The shared level `w_h` says how keen this household is in general; the archetype's `ŵ` says
+    /// what it is keen *about*; `ε` is the residual that stops every household of a type being the
+    /// same household. All three are fixed for the life of the run, so the product is computed once.
+    /// </summary>
+    public double Taste(int household, int category) => categoryTaste[AgeIndex(household, category)];
+
+    /// <summary>
+    /// What this household thinks a tier is worth: `value_mult(tier)^κ_g,A(h)`.
+    ///
+    /// The exponent goes on the **value** multiplier and never on a price — a price is money and
+    /// money is integer cents. `value_mult(standard)` is 1, and 1 to any power is 1, so the median
+    /// household's standard-tier valuation is invariant to `κ`: the exponent rotates the ladder
+    /// around the standard tier rather than tilting the whole category.
+    /// </summary>
+    public double ValueMult(int household, int category, int tier) =>
+        tierValue[(((Archetype[household] * CategoryCount) + category) * TierCount) + tier];
 
     /// <summary>Opening cash: `income_h · opening_cash_share`, handed to the ledger to hold.</summary>
     public Money[] OpeningCash(double openingCashShare)
@@ -133,8 +179,9 @@ public sealed class Households
     /// abstainers, one θ for all (0 unless given), every durable at age 0. For tests that need a
     /// household on exactly €650 with `w = 1`, which no seed will ever produce.
     /// </summary>
-    internal static Households Specified(int categoryCount, Money[] incomes, double[] tasteWeights, double theta = 0.0)
+    internal static Households Specified(GoodsTable goods, Money[] incomes, double[] tasteWeights, double theta = 0.0)
     {
+        ArgumentNullException.ThrowIfNull(goods);
         ArgumentNullException.ThrowIfNull(incomes);
         ArgumentNullException.ThrowIfNull(tasteWeights);
 
@@ -143,12 +190,51 @@ public sealed class Households
             throw new ArgumentException("One taste weight per income.", nameof(tasteWeights));
         }
 
-        var households = new Households(incomes.Length, categoryCount);
+        var households = new Households(
+            incomes.Length,
+            goods.CategoryCount,
+            goods.TierCount,
+            [Configuration.Archetype.AverageName]);
+
         incomes.CopyTo(households.Income, 0);
         tasteWeights.CopyTo(households.TasteWeight, 0);
         Array.Fill(households.Theta, theta);
 
+        // The identity type: taste is the household's own weight and nothing else, and a tier is
+        // worth what the tier table says it is worth.
+        for (var h = 0; h < households.Count; h++)
+        {
+            for (var c = 0; c < households.CategoryCount; c++)
+            {
+                households.categoryTaste[households.AgeIndex(h, c)] = tasteWeights[h];
+            }
+        }
+
+        households.FillTierValues(goods, [Configuration.Archetype.Identity(goods.Categories.Select(g => g.Name))]);
+
         return households;
+    }
+
+    /// <summary>
+    /// `value_mult(tier)^kappa` for every (archetype, category, tier), computed once at setup.
+    /// </summary>
+    private void FillTierValues(GoodsTable goods, IReadOnlyList<Configuration.Archetype> types)
+    {
+        for (var a = 0; a < types.Count; a++)
+        {
+            for (var c = 0; c < CategoryCount; c++)
+            {
+                var kappa = types[a].ExponentFor(goods.Categories[c].Name);
+
+                for (var t = 0; t < TierCount; t++)
+                {
+                    // Math.Pow(x, 1.0) is exactly x, so the identity table leaves every multiplier
+                    // where it was — which is what V5a rests on.
+                    tierValue[(((a * CategoryCount) + c) * TierCount) + t] =
+                        Math.Pow(goods.Tiers[t].ValueMult, kappa);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -164,7 +250,16 @@ public sealed class Households
         ArgumentNullException.ThrowIfNull(parameters);
         ArgumentNullException.ThrowIfNull(goods);
 
-        var households = new Households(parameters.Run.Households, goods.CategoryCount);
+        var types = parameters.Archetypes.Types;
+
+        var households = new Households(
+            parameters.Run.Households,
+            goods.CategoryCount,
+            goods.TierCount,
+            [.. types.Select(a => a.Name)]);
+
+        households.FillTierValues(goods, types);
+
         var meanIncome = parameters.Income.MeanIncome;
 
         for (var h = 0; h < households.Count; h++)
@@ -178,6 +273,28 @@ public sealed class Households
             households.TasteWeight[h] = RandomStream
                 .ForHousehold(runSeed, h, Purpose.Willingness)
                 .NextLogNormal(1.0, parameters.Decision.SigmaW);
+
+            // Which type this household is, from its own stream and by share. Drawn in every run,
+            // including under the identity table where the answer is always zero — see
+            // Purpose.Archetype. Its own stream is also what keeps it independent of the abstainer
+            // draw: if abstainers were systematically more prudent, the headline would confound
+            // "does not borrow" with "wants less" and no invariant here would notice.
+            var archetype = Assign(types, RandomStream.ForHousehold(runSeed, h, Purpose.Archetype).NextDouble());
+
+            households.Archetype[h] = archetype;
+
+            // The three levels of taste, multiplied out (§5.4). At sigma_idio = 0 the residual is
+            // exactly 1 — Math.Exp(0) — and the draw still happens, so the stream is the same
+            // length whatever the setting.
+            var residual = RandomStream.ForHousehold(runSeed, h, Purpose.TasteIdiosyncratic);
+
+            for (var c = 0; c < goods.CategoryCount; c++)
+            {
+                var epsilon = residual.NextLogNormal(1.0, parameters.Archetypes.SigmaIdio);
+
+                households.categoryTaste[households.AgeIndex(h, c)] =
+                    households.TasteWeight[h] * types[archetype].WeightFor(goods.Categories[c].Name) * epsilon;
+            }
 
             // Drawn per household rather than by assigning an exact count, so that adding a
             // household disturbs nobody else's draw. Cohort size then varies a little by seed,
@@ -220,5 +337,29 @@ public sealed class Households
         }
 
         return households;
+    }
+
+    /// <summary>
+    /// Which type a draw in [0, 1) lands in, walking the shares in table order.
+    ///
+    /// The table is ordered by name at load, so the assignment depends on the population and not on
+    /// the order somebody typed the sections in. The last type absorbs the floating-point tail: the
+    /// shares sum to 1 to within 1e-9, which is not the same as summing to 1.
+    /// </summary>
+    private static int Assign(IReadOnlyList<Configuration.Archetype> types, double draw)
+    {
+        var cumulative = 0.0;
+
+        for (var a = 0; a < types.Count - 1; a++)
+        {
+            cumulative += types[a].Share;
+
+            if (draw < cumulative)
+            {
+                return a;
+            }
+        }
+
+        return types.Count - 1;
     }
 }

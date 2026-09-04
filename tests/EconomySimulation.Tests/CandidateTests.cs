@@ -24,7 +24,7 @@ public sealed class CandidateTests
     private const int Appliances = 5;
 
     private static Households One(int euros, double taste = 1.0) =>
-        Households.Specified(Goods.CategoryCount, [Money.FromEuros(euros)], [taste]);
+        Households.Specified(Goods, [Money.FromEuros(euros)], [taste]);
 
     private static Candidate[] LadderFor(Households population, int category, Market? market = null)
     {
@@ -162,7 +162,7 @@ public sealed class CandidateTests
             };
             var goods = new GoodsTable(parameters);
             var market = new Market(goods);
-            var population = Households.Specified(goods.CategoryCount, [income], [taste]);
+            var population = Households.Specified(goods, [income], [taste]);
 
             Ladder.Build(goods, market, population, 0, category, buffer);
 

@@ -20,7 +20,7 @@ public sealed class LambdaTests
     {
         var goods = new GoodsTable(parameters);
         var market = new Market(goods);
-        var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(incomeEuros)], [1.0]);
+        var population = Households.Specified(goods, [Money.FromEuros(incomeEuros)], [1.0]);
         var books = Ledger.Open([Money.FromEuros(cashEuros)], Money.FromEuros(1_000_000));
         var walker = new Walker(parameters, goods, market, population, books, new LoanBook(population.Count, 1), runSeed: 1);
         population.RefreshWant(0, Food, 1);

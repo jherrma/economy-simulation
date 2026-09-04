@@ -136,7 +136,7 @@ public sealed class MoneyCreationSwitchTests
         };
         var goods = new GoodsTable(parameters);
         var market = new Market(goods);
-        var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(1000), Money.FromEuros(1000)], [1.0, 1.0], theta: 1.0);
+        var population = Households.Specified(goods, [Money.FromEuros(1000), Money.FromEuros(1000)], [1.0, 1.0], theta: 1.0);
         var books = Ledger.Open([Money.Zero, Money.Zero], Money.FromEuros(400));
         var loans = new LoanBook(population, 4);
         var walker = new Walker(parameters, goods, market, population, books, loans, runSeed: 1);

@@ -1,5 +1,8 @@
 using System.Globalization;
+using EconomySimulation.Engine;
 using EconomySimulation.Engine.Configuration;
+using EconomySimulation.Engine.Decision;
+using EconomySimulation.Engine.World;
 using EconomySimulation.Tests.Infrastructure;
 
 namespace EconomySimulation.Tests;
@@ -522,5 +525,315 @@ public sealed class ArchetypeTests
             """);
 
         Assert.Equal(["alpha", "zebra"], written.Archetypes.Types.Select(a => a.Name));
+    }
+
+    // ---- assignment, and the taste vector: spec/stories/10-02 -------------------------------------
+
+    private const int Seed = 4242;
+
+    private static Households Draw(SimulationParameters parameters, int seed = Seed) =>
+        Households.Draw(parameters, new GoodsTable(parameters), seed);
+
+    /// <summary>The typed population at a bigger town, for the draws whose claim is statistical.</summary>
+    private static SimulationParameters TypedWith(int households)
+    {
+        var typed = Typed();
+
+        return typed with { Run = typed.Run with { Households = households } };
+    }
+
+    /// <summary>
+    /// The archetype is drawn from its own stream in every run, so the same household is the same
+    /// type in both arms of a pair. Exactly what 02-04 asserts for the abstainer set, and for the
+    /// same reason: the difference between two runs has to be the mechanism, not the population.
+    /// </summary>
+    [Fact]
+    public void TheSameHouseholdIsTheSameTypeInEveryScenario()
+    {
+        var typed = Typed();
+        var off = Draw(typed);
+        var on = Draw(typed with { Credit = typed.Credit with { CreditEnabled = true, ThetaMax = 0.6 } });
+
+        Assert.Equal(off.Archetype, on.Archetype);
+        Assert.Equal(off.Income, on.Income);
+        Assert.Equal(off.IsAbstainer, on.IsAbstainer);
+
+        // And the assignment, not the count per type: equal counts are not the same claim.
+        Assert.Contains(off.Archetype, a => a != off.Archetype[0]);
+    }
+
+    /// <summary>
+    /// The archetype draw is independent of the abstainer draw.
+    ///
+    /// If abstainers were systematically more prudent, the headline would confound "does not
+    /// borrow" with "wants less" and no invariant in the project would notice. Somebody may want to
+    /// run that deliberately one day — it is an interesting scenario — but it has to be something a
+    /// configuration says out loud, never something the draw order arranges by accident.
+    /// </summary>
+    [Fact]
+    public void TheArchetypeDrawIsIndependentOfTheAbstainerDraw()
+    {
+        var population = Draw(TypedWith(100_000));
+        var types = population.ArchetypeNames.Count;
+
+        var abstainers = new int[types];
+        var everyone = new int[types];
+
+        for (var h = 0; h < population.Count; h++)
+        {
+            everyone[population.Archetype[h]]++;
+
+            if (population.IsAbstainer[h])
+            {
+                abstainers[population.Archetype[h]]++;
+            }
+        }
+
+        var abstainerCount = abstainers.Sum();
+
+        for (var a = 0; a < types; a++)
+        {
+            var share = (double)everyone[a] / population.Count;
+            var among = (double)abstainers[a] / abstainerCount;
+
+            // Three standard errors of a binomial at this cohort size: about 0.6 points at p = 0.3.
+            var error = 3.0 * Math.Sqrt(share * (1.0 - share) / abstainerCount);
+
+            Assert.Equal(share, among, error);
+        }
+    }
+
+    /// <summary>And the shares themselves are the table's shares.</summary>
+    [Fact]
+    public void TheAssignmentFollowsTheTablesShares()
+    {
+        var typed = TypedWith(100_000);
+        var population = Draw(typed);
+        var counts = new int[population.ArchetypeNames.Count];
+
+        foreach (var archetype in population.Archetype)
+        {
+            counts[archetype]++;
+        }
+
+        for (var a = 0; a < counts.Length; a++)
+        {
+            var share = typed.Archetypes.Types[a].Share;
+
+            Assert.Equal(share, (double)counts[a] / population.Count, 3.0 * Math.Sqrt(share * (1.0 - share) / population.Count));
+        }
+    }
+
+    /// <summary>
+    /// Under the identity table every household is type 0 — and the draw still happens. Removing it
+    /// there is the natural optimisation for somebody reading this code later, and it is the one
+    /// that quietly ends the experiment: a typed scenario and its own `credit_off` would then sit on
+    /// different random worlds, every household would be a different household, and the paired
+    /// comparison would keep returning numbers that look plausible.
+    /// </summary>
+    [Fact]
+    public void UnderTheIdentityTableEveryHouseholdIsTheOneType()
+    {
+        var population = Draw(SimulationParameters.Default);
+
+        Assert.All(population.Archetype, a => Assert.Equal(0, a));
+        Assert.Equal([Archetype.AverageName], population.ArchetypeNames);
+    }
+
+    // ---- the three levels of taste ----------------------------------------------------------------
+
+    /// <summary>
+    /// `w_h · ŵ_g,A(h) · ε_h,g`, and at `sigma_idio = 0` the residual is exactly 1 — not nearly 1.
+    /// </summary>
+    [Fact]
+    public void TasteIsTheSharedLevelTimesTheTypesWeight()
+    {
+        var typed = Typed();
+        var goods = new GoodsTable(typed);
+        var population = Households.Draw(typed, goods, Seed);
+
+        for (var h = 0; h < 200; h++)
+        {
+            var type = typed.Archetypes.Types[population.Archetype[h]];
+
+            for (var c = 0; c < goods.CategoryCount; c++)
+            {
+                var expected = population.TasteWeight[h] * type.WeightFor(goods.Categories[c].Name);
+
+                Assert.Equal(expected, population.Taste(h, c));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The residual has mean 1 when it is switched on — the same `− σ²/2` correction as `w_h` — and
+    /// it decorrelates taste across categories, which is the whole point of having it.
+    /// </summary>
+    [Fact]
+    public void TheResidualHasMeanOneAndDecorrelatesTheCategories()
+    {
+        var typed = Typed();
+        var spread = typed with
+        {
+            Run = typed.Run with { Households = 100_000 },
+            Archetypes = typed.Archetypes with { SigmaIdio = 0.25 },
+        };
+
+        var goods = new GoodsTable(spread);
+        var population = Households.Draw(spread, goods, Seed);
+
+        var total = 0.0;
+        var differ = 0;
+
+        for (var h = 0; h < population.Count; h++)
+        {
+            var type = typed.Archetypes.Types[population.Archetype[h]];
+
+            var food = population.Taste(h, 0) / (population.TasteWeight[h] * type.WeightFor(goods.Categories[0].Name));
+            var leisure = population.Taste(h, 1) / (population.TasteWeight[h] * type.WeightFor(goods.Categories[1].Name));
+
+            total += food;
+
+            if (Math.Abs(food - leisure) > 1e-12)
+            {
+                differ++;
+            }
+        }
+
+        Assert.Equal(1.0, total / population.Count, 0.01);
+        Assert.Equal(population.Count, differ);
+    }
+
+    /// <summary>
+    /// Raising `sigma_idio` moves the residual and **nothing else**: the income, the shared taste
+    /// weight, the abstainer set, θ and the opening ages are all where they were, because each comes
+    /// from its own stream. The draw is consumed at every setting, including zero.
+    /// </summary>
+    [Fact]
+    public void RaisingSigmaIdio_MovesNothingElse()
+    {
+        var typed = Typed();
+        var flat = Draw(typed);
+        var spread = Draw(typed with { Archetypes = typed.Archetypes with { SigmaIdio = 0.25 } });
+
+        Assert.Equal(flat.Income, spread.Income);
+        Assert.Equal(flat.TasteWeight, spread.TasteWeight);
+        Assert.Equal(flat.IsAbstainer, spread.IsAbstainer);
+        Assert.Equal(flat.Theta, spread.Theta);
+        Assert.Equal(flat.Archetype, spread.Archetype);
+        Assert.Equal(flat.Age, spread.Age);
+
+        Assert.NotEqual(flat.Taste(0, 0), spread.Taste(0, 0));
+    }
+
+    // ---- the exponent goes on the value multiplier -------------------------------------------------
+
+    /// <summary>
+    /// `value_mult(standard)` is 1, and 1 to any power is 1, so the standard tier's valuation is
+    /// invariant to `kappa`. That is what makes the exponent a *rotation* of the ladder around the
+    /// standard tier rather than a tilt of the whole category — and it is why `kappa` can be left
+    /// unnormalised without changing what `v_g` means for the median household.
+    /// </summary>
+    [Fact]
+    public void TheStandardTiersValueIsIndependentOfKappa()
+    {
+        var typed = Typed();
+        var goods = new GoodsTable(typed);
+        var population = Households.Draw(typed, goods, Seed);
+        var standard = goods.Tiers.Select((t, i) => (t, i)).Single(x => x.t.ValueMult == 1.0).i;
+
+        for (var h = 0; h < 200; h++)
+        {
+            for (var c = 0; c < goods.CategoryCount; c++)
+            {
+                Assert.Equal(1.0, population.ValueMult(h, c, standard));
+
+                Assert.Equal(
+                    Valuation.BaseValue(goods, population, h, c),
+                    Valuation.FlowValue(goods, population, h, c, standard));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The exponent is applied where the tier multiplier is read, never by pre-multiplying it into
+    /// the taste weight. They are different numbers doing different jobs — the level decides whether
+    /// the category is worth entering at all, the steepness decides how far up its ladder the
+    /// household climbs — and collapsing them is exactly the conflation §5.4 exists to undo.
+    /// </summary>
+    [Fact]
+    public void TheExponentIsOnTheTierMultiplierAndNotOnTheTaste()
+    {
+        var typed = Typed();
+        var goods = new GoodsTable(typed);
+        var population = Households.Draw(typed, goods, Seed);
+
+        for (var h = 0; h < 200; h++)
+        {
+            var type = typed.Archetypes.Types[population.Archetype[h]];
+
+            for (var c = 0; c < goods.CategoryCount; c++)
+            {
+                var kappa = type.ExponentFor(goods.Categories[c].Name);
+
+                for (var t = 0; t < goods.TierCount; t++)
+                {
+                    Assert.Equal(Math.Pow(goods.Tiers[t].ValueMult, kappa), population.ValueMult(h, c, t), 12);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// And a price is untouched by any of it. Money is integer cents; the exponent lives in the
+    /// valuation, which is euros per tick.
+    /// </summary>
+    [Fact]
+    public void NoPriceMovesUnderTheTypedTable()
+    {
+        var typed = Typed();
+        var goods = new GoodsTable(typed);
+        var plain = new GoodsTable(SimulationParameters.Default);
+
+        for (var c = 0; c < goods.CategoryCount; c++)
+        {
+            for (var t = 0; t < goods.TierCount; t++)
+            {
+                Assert.Equal(plain.OpeningPrice(c, t), goods.OpeningPrice(c, t));
+                Assert.Equal(plain.Units(c, t), goods.Units(c, t));
+            }
+        }
+    }
+
+    /// <summary>
+    /// V6's monotonicity assertion, per household and per category, under the typed table. The
+    /// `kappa` bound is what makes this hold, and the reason the loader computes it from the tier
+    /// table rather than trusting the author.
+    /// </summary>
+    [Fact]
+    public void UpgradeScoresStayMonotone_ForEveryTypedHousehold()
+    {
+        var typed = Typed();
+        var goods = new GoodsTable(typed);
+        var market = new Market(goods);
+        var population = Households.Draw(typed, goods, Seed);
+        var buffer = new Candidate[goods.TierCount];
+
+        for (var h = 0; h < population.Count; h++)
+        {
+            for (var c = 0; c < goods.CategoryCount; c++)
+            {
+                Ladder.Build(goods, market, population, h, c, buffer);
+
+                for (var t = 1; t < goods.TierCount; t++)
+                {
+                    Assert.True(
+                        buffer[t].Score < buffer[t - 1].Score,
+                        $"household {h} ({population.ArchetypeNames[population.Archetype[h]]}), "
+                        + $"{goods.Categories[c].Name}: step {t} scores {buffer[t].Score:0.0000} "
+                        + $"against {buffer[t - 1].Score:0.0000} below it");
+                }
+            }
+        }
     }
 }

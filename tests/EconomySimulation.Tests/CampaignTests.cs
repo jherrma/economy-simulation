@@ -110,6 +110,37 @@ public sealed class CampaignTests
         Assert.Contains("not paired", paired.Errors[0].Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The same for the archetype assignment. A treatment arm carrying a different table from its
+    /// own control is the mistake §3.5 warns about — it measures the table and the credit together
+    /// and attributes both to credit — and this is where a campaign notices.
+    /// </summary>
+    [Fact]
+    public void ThePairingCheck_CatchesAMovedArchetypeAssignment()
+    {
+        var scenarios = Scenarios();
+
+        var retyped = Scenario.FromToml(
+            "retyped",
+            """
+            [archetypes.a]
+            share = 0.5
+            [archetypes.b]
+            share = 0.5
+            """);
+
+        Assert.True(retyped.IsSuccess, string.Join("; ", retyped.Errors.Select(e => e.Message)));
+
+        var paired = Pairing.Check([scenarios[0], retyped.Value], [1, 2]);
+
+        Assert.True(paired.IsFailed);
+        Assert.Contains("archetypes", paired.Errors[0].Message, StringComparison.Ordinal);
+        Assert.Contains("changed type", paired.Errors[0].Message, StringComparison.Ordinal);
+
+        // And the abstainer set is untouched, so the two checks really are separate claims.
+        Assert.DoesNotContain(paired.Errors, e => e.Message.Contains("abstainers", StringComparison.Ordinal));
+    }
+
     // ---- the marker ----------------------------------------------------------------------------
 
     [Fact]

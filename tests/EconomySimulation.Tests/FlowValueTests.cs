@@ -17,7 +17,7 @@ public sealed class FlowValueTests
 
     /// <summary>One household on exactly the given income with `w = 1`. No seed produces one.</summary>
     private static Households One(int euros, double taste = 1.0) =>
-        Households.Specified(Goods.CategoryCount, [Money.FromEuros(euros)], [taste]);
+        Households.Specified(Goods, [Money.FromEuros(euros)], [taste]);
 
     // ---- the formula ----------------------------------------------------------------------
 
@@ -154,7 +154,7 @@ public sealed class FlowValueTests
             foreach (var income in incomes)
             {
                 var before = One(income, taste);
-                var after = Households.Specified(Goods.CategoryCount, [Money.FromEuros(income * 2)], [taste]);
+                var after = Households.Specified(Goods, [Money.FromEuros(income * 2)], [taste]);
 
                 for (var c = 0; c < Goods.CategoryCount; c++)
                 {

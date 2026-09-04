@@ -58,7 +58,7 @@ public sealed class FlowCostTests
 
         // And the value side is also per tick, so the ratio is comparable: at the median both
         // base scores sit in the same band (1.343 and 1.248, from 02-PARAMETERS.md §3.4).
-        var population = Households.Specified(Goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
+        var population = Households.Specified(Goods, [Money.FromEuros(650)], [1.0]);
         var foodScore = Valuation.Score(Valuation.BaseValue(Goods, population, 0, Food), foodCost);
         var phoneScore = Valuation.Score(Valuation.BaseValue(Goods, population, 0, Electronics), phoneCost);
 
@@ -101,7 +101,7 @@ public sealed class FlowCostTests
 
         foreach (var income in incomes)
         {
-            var population = Households.Specified(Goods.CategoryCount, [Money.FromEuros(income)], [1.0]);
+            var population = Households.Specified(Goods, [Money.FromEuros(income)], [1.0]);
 
             for (var c = 0; c < Goods.CategoryCount; c++)
             {
@@ -135,7 +135,7 @@ public sealed class FlowCostTests
     [Fact]
     public void FinancingLowersScoresWithoutReorderingThem()
     {
-        var population = Households.Specified(Goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
+        var population = Households.Specified(Goods, [Money.FromEuros(650)], [1.0]);
         var rate = Defaults.Credit.LoanRate;
 
         var cash = new double[Goods.GoodCount];

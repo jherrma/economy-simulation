@@ -138,7 +138,7 @@ public sealed class WalkTests
     {
         var goods = new GoodsTable(Defaults);
         var market = new Market(goods);
-        var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
+        var population = Households.Specified(goods, [Money.FromEuros(650)], [1.0]);
         var books = Ledger.Open([Money.FromEuros(400)], Money.FromEuros(1_000_000));
         var walker = new Walker(Defaults, goods, market, population, books, new LoanBook(population.Count, 1), runSeed: 1);
 
@@ -285,7 +285,7 @@ public sealed class WalkTests
     {
         var goods = new GoodsTable(Defaults);
         var market = new Market(goods);
-        var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
+        var population = Households.Specified(goods, [Money.FromEuros(650)], [1.0]);
         var books = Ledger.Open([Money.Zero], Money.FromEuros(1_000_000));
         var walker = new Walker(Defaults, goods, market, population, books, new LoanBook(population.Count, 1), runSeed: 1);
         population.RefreshWant(0, Food, 1);
@@ -312,7 +312,7 @@ public sealed class WalkTests
         var market = new Market(goods);
         market.SetPrice(Food, 2, Money.FromEuros(250)); // premium below standard's 300
 
-        var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
+        var population = Households.Specified(goods, [Money.FromEuros(650)], [1.0]);
         var books = Ledger.Open([Money.FromEuros(1000)], Money.FromEuros(1_000_000));
         var walker = new Walker(Defaults, goods, market, population, books, new LoanBook(population.Count, 1), runSeed: 1);
         population.RefreshWant(0, Food, 1);

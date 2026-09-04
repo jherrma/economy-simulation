@@ -36,7 +36,7 @@ public sealed class FinanceDecisionTests
             Parameters = parameters;
             Goods = new GoodsTable(parameters);
             Market = new Market(Goods);
-            Population = Households.Specified(Goods.CategoryCount, incomes, incomes.Select(_ => 1.0).ToArray(), theta);
+            Population = Households.Specified(Goods, incomes, incomes.Select(_ => 1.0).ToArray(), theta);
             Books = Ledger.Open(cash, Money.FromEuros(1_000_000));
             Loans = new LoanBook(Population, 8);
             Walker = new Walker(parameters, Goods, Market, Population, Books, Loans, runSeed: 1);

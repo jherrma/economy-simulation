@@ -45,7 +45,9 @@ public static class Ladder
 
         for (var t = 0; t < goods.TierCount; t++)
         {
-            var mult = goods.Tiers[t].ValueMult;
+            // The household's own view of the tier: value_mult^kappa (§5.4). Under the identity
+            // table kappa is 1 and this is the tier table's number, to the bit.
+            var mult = population.ValueMult(household, category, t);
             var price = market.Price(category, t);
 
             var deltaValue = baseValue * (mult - previousMult);

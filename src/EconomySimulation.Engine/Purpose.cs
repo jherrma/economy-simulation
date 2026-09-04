@@ -44,6 +44,26 @@ public sealed class Purpose
     /// <summary>Per household, per candidate: the θ_h coin flip inside the walk.</summary>
     public static readonly Purpose Finance = Register("finance");
 
+    // ---- E10 -----------------------------------------------------------------------------
+
+    /// <summary>
+    /// Per household, once: which archetype it is (`01-SIMULATION.md` §5.4).
+    ///
+    /// Drawn in **every** run, including under the identity table where there is one type and the
+    /// answer is always the same. Skipping it there is the natural optimisation and it is the one
+    /// that quietly ends the experiment: a typed scenario and its own `credit_off` would then sit
+    /// on different random worlds. Same argument as θ's, and it costs one draw per household.
+    /// </summary>
+    public static readonly Purpose Archetype = Register("archetype");
+
+    /// <summary>
+    /// Per household, per category: `ε_h,g`, the residual on top of the archetype's taste.
+    ///
+    /// At the default `sigma_idio = 0` it is exactly 1 and changes nothing — but the draw still
+    /// happens, for the same reason θ's does.
+    /// </summary>
+    public static readonly Purpose TasteIdiosyncratic = Register("taste_idio");
+
     /// <summary>
     /// Per tick: the order households shop in.
     ///

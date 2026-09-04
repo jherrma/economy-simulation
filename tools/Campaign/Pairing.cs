@@ -6,12 +6,16 @@ using static System.FormattableString;
 namespace EconomySimulation.Campaign;
 
 /// <summary>
-/// The same households abstain in every scenario, seed by seed.
+/// The same households abstain, and are the same type, in every scenario, seed by seed.
 ///
 /// This is the entire statistical strategy: the same twenty per cent of the town, the same seeds,
 /// one mechanism changed. It fails silently — a campaign whose abstainer draw moved between arms
 /// produces a perfectly well-formed dataset in which the headline difference is partly a different
 /// set of people — so it is checked on every campaign rather than once in a test.
+///
+/// The archetype assignment (E10) is checked the same way and for the same reason. Note that it is
+/// the **assignment** that is compared, household by household, not the count per type: two arms
+/// with three hundred prudent households each can still be two different three hundred.
 /// </summary>
 public static class Pairing
 {
@@ -36,20 +40,32 @@ public static class Pairing
 
         foreach (var seed in seeds)
         {
-            var expected = Abstainers(baseline.Parameters, seed);
+            var expected = Opening(baseline.Parameters, seed);
 
             foreach (var scenario in scenarios.Skip(1))
             {
-                var actual = Abstainers(scenario.Parameters, seed);
+                var actual = Opening(scenario.Parameters, seed);
 
-                if (!expected.SetEquals(actual))
+                if (!expected.Abstainers.SetEquals(actual.Abstainers))
                 {
-                    var moved = expected.Count == actual.Count
-                        ? Invariant($"{expected.Except(actual).Count()} of {expected.Count} households swapped")
-                        : Invariant($"{expected.Count} against {actual.Count} households");
+                    var moved = expected.Abstainers.Count == actual.Abstainers.Count
+                        ? Invariant($"{expected.Abstainers.Except(actual.Abstainers).Count()} of {expected.Abstainers.Count} households swapped")
+                        : Invariant($"{expected.Abstainers.Count} against {actual.Abstainers.Count} households");
 
                     problems.Add(new Error(Invariant(
                         $"seed {seed}: the abstainers of {scenario.Name} are not those of {baseline.Name} ({moved}) — the comparison is not paired and the campaign is void")));
+                }
+
+                // The assignment, not the count per type. Equal counts are not the same claim, and
+                // a table whose types were reordered between two arms would produce exactly that.
+                if (!expected.Archetypes.SequenceEqual(actual.Archetypes))
+                {
+                    var swapped = expected.Archetypes.Length == actual.Archetypes.Length
+                        ? Invariant($"{expected.Archetypes.Where((a, h) => a != actual.Archetypes[h]).Count()} of {expected.Archetypes.Length} households changed type")
+                        : Invariant($"{expected.Archetypes.Length} against {actual.Archetypes.Length} households");
+
+                    problems.Add(new Error(Invariant(
+                        $"seed {seed}: the archetypes of {scenario.Name} are not those of {baseline.Name} ({swapped}) — the comparison is not paired and the campaign is void")));
                 }
             }
         }
@@ -57,7 +73,7 @@ public static class Pairing
         return problems.Count > 0 ? Result.Fail(problems) : Result.Ok();
     }
 
-    private static HashSet<int> Abstainers(SimulationParameters parameters, int seed)
+    private static (HashSet<int> Abstainers, int[] Archetypes) Opening(SimulationParameters parameters, int seed)
     {
         var simulation = new Simulation(parameters, seed);
         var opened = simulation.Start();
@@ -78,6 +94,6 @@ public static class Pairing
             }
         }
 
-        return abstainers;
+        return (abstainers, [.. simulation.Population.Archetype]);
     }
 }

@@ -180,7 +180,7 @@ public sealed class CohortMetricsTests
     public void ACohortThatKeepsItsUnitsButBuysWorse_ShowsAFallenQualityIndex()
     {
         var goods = new GoodsTable(Defaults);
-        var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
+        var population = Households.Specified(goods, [Money.FromEuros(650)], [1.0]);
         var metrics = new CohortMetrics(goods, population, ticks: 10);
 
         metrics.OpenTick();
@@ -213,7 +213,7 @@ public sealed class CohortMetricsTests
     public void UnmetWantsAreCountedAtTheirCurrentAge()
     {
         var goods = new GoodsTable(Defaults);
-        var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650), Money.FromEuros(650)], [1.0, 1.0]);
+        var population = Households.Specified(goods, [Money.FromEuros(650), Money.FromEuros(650)], [1.0, 1.0]);
         Array.Fill(population.IsAbstainer, true);
 
         var books = Ledger.Open([Money.Zero, Money.Zero], Money.Zero);
@@ -239,7 +239,7 @@ public sealed class CohortMetricsTests
     public void TheWaitIsAboutDurablesOnly()
     {
         var goods = new GoodsTable(Defaults);
-        var population = Households.Specified(goods.CategoryCount, [Money.FromEuros(650)], [1.0]);
+        var population = Households.Specified(goods, [Money.FromEuros(650)], [1.0]);
         Array.Fill(population.IsAbstainer, true);
 
         var books = Ledger.Open([Money.Zero], Money.Zero);
