@@ -100,6 +100,24 @@ public sealed class SchemaTests
         }
     }
 
+    // ---- §3.5 archetypes ----------------------------------------------------------------------
+
+    /// <summary>
+    /// The defaults of §3.5, and the rule that makes them the baseline: the default table is the
+    /// identity, so a configuration naming no archetype is v1 and there is no switch to set.
+    /// </summary>
+    [Fact]
+    public void ArchetypeParameters_MatchTheSpecification()
+    {
+        var spec = SpecFile.Defaults("#### Parameters");
+
+        Assert.Equal(SpecFile.Number(spec["sigma_idio"]), Defaults.Archetypes.SigmaIdio);
+        Assert.Equal(1.0, SpecFile.Number(spec["archetypes.<name>.w.<category>"]));
+        Assert.Equal(1.0, SpecFile.Number(spec["archetypes.<name>.kappa.<category>"]));
+
+        Assert.True(Defaults.Archetypes.IsIdentity);
+    }
+
     // ---- §4, §5, §6 --------------------------------------------------------------------------
 
     [Fact]
@@ -201,7 +219,7 @@ public sealed class SchemaTests
         var toml = Defaults.ToToml();
 
         foreach (var section in
-                 new[] { "[run]", "[income]", "[categories.food]", "[tiers.budget]", "[decision]", "[credit]", "[prices]", "[money]" })
+                 new[] { "[run]", "[income]", "[categories.food]", "[tiers.budget]", "[archetypes]", "[archetypes.average]", "[decision]", "[credit]", "[prices]", "[money]" })
         {
             Assert.Contains(section, toml, StringComparison.Ordinal);
         }

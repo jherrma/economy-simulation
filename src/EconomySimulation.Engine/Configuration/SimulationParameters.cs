@@ -26,6 +26,12 @@ public sealed record SimulationParameters
 
     public IReadOnlyList<TierParameters> Tiers { get; init; } = TierParameters.Default;
 
+    /// <summary>
+    /// §3.5 — the population's types. The default is the identity table, which is v1 exactly, so
+    /// the default configuration is still the baseline and the byte-for-byte rule needs no switch.
+    /// </summary>
+    public ArchetypeParameters Archetypes { get; init; } = new();
+
     public DecisionParameters Decision { get; init; } = new();
 
     public CreditParameters Credit { get; init; } = new();
@@ -50,6 +56,7 @@ public sealed record SimulationParameters
         && Income == other.Income
         && Categories.SequenceEqual(other.Categories)
         && Tiers.SequenceEqual(other.Tiers)
+        && Archetypes == other.Archetypes
         && Decision == other.Decision
         && Credit == other.Credit
         && Prices == other.Prices
@@ -71,6 +78,7 @@ public sealed record SimulationParameters
             hash.Add(tier);
         }
 
+        hash.Add(Archetypes);
         hash.Add(Decision);
         hash.Add(Credit);
         hash.Add(Prices);
@@ -179,6 +187,21 @@ public sealed record SimulationParameters
             toml.AppendLine();
         }
 
+        toml.AppendLine("[archetypes]");
+        Write(toml, "sigma_idio", Archetypes.SigmaIdio);
+        toml.AppendLine();
+
+        // The **normalised** weights, not the authored ones: the campaign manifest hashes this
+        // file, and what a reader six months from now needs is the table that ran.
+        foreach (var type in Archetypes.Types)
+        {
+            toml.AppendLine(CultureInfo.InvariantCulture, $"[archetypes.{type.Name}]");
+            Write(toml, "share", type.Share);
+            WriteWeights(toml, "w", type.W);
+            WriteWeights(toml, "kappa", type.Kappa);
+            toml.AppendLine();
+        }
+
         toml.AppendLine("[decision]");
         Write(toml, "lambda", Decision.Lambda);
         Write(toml, "sigma_w", Decision.SigmaW);
@@ -281,6 +304,32 @@ public sealed record SimulationParameters
         toml.AppendLine(
             CultureInfo.InvariantCulture,
             $"{key} = {value.ToString("0.0###", CultureInfo.InvariantCulture)}");
+
+    /// <summary>An inline table of per-category numbers, in name order: `w = { food = 1.0, … }`.</summary>
+    private static void WriteWeights(StringBuilder toml, string key, IReadOnlyList<CategoryWeight> weights)
+    {
+        var entries = weights.Select(w =>
+            string.Create(CultureInfo.InvariantCulture, $"{w.Category} = {RoundTrip(w.Value)}"));
+
+        toml.AppendLine(CultureInfo.InvariantCulture, $"{key} = {{ {string.Join(", ", entries)} }}");
+    }
+
+    /// <summary>
+    /// A weight printed so that reading it back gives the same double, to the bit.
+    ///
+    /// Every other number in this file is printed to a few decimals, because every other number was
+    /// typed by a person. A normalised weight was *computed* — 0.90 / 1.015 — and the effective
+    /// configuration is the record of what ran, so it is printed round-trip. Truncating it would
+    /// mean a run reloaded from its own effective config was a slightly different run, and the
+    /// difference would be invisible in exactly the comparison V5a exists to make.
+    ///
+    /// An integral value keeps its `.0`, so that the identity table reads as `1.0` rather than as
+    /// the integer `1`.
+    /// </summary>
+    private static string RoundTrip(double value) =>
+        value == Math.Floor(value) && Math.Abs(value) < 1e15
+            ? value.ToString("0.0", CultureInfo.InvariantCulture)
+            : value.ToString("R", CultureInfo.InvariantCulture);
 
     /// <summary>Money is written in euros, because that is how the specification quotes it.</summary>
     private static void Write(StringBuilder toml, string key, Money value) =>

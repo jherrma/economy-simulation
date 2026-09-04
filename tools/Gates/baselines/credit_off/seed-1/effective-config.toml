@@ -84,6 +84,14 @@ price_mult = 1.8
 value_mult = 1.4
 unit_share = 0.2
 
+[archetypes]
+sigma_idio = 0.0
+
+[archetypes.average]
+share = 1.0
+w = { appliances = 1.0, clothing = 1.0, electronics = 1.0, food = 1.0, hobby = 1.0, leisure = 1.0 }
+kappa = { appliances = 1.0, clothing = 1.0, electronics = 1.0, food = 1.0, hobby = 1.0, leisure = 1.0 }
+
 [decision]
 lambda = 1.0
 sigma_w = 0.2

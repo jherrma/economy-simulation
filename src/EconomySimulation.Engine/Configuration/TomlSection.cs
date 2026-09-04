@@ -92,12 +92,29 @@ internal sealed class TomlSection
         return null;
     }
 
+    /// <summary>
+    /// Every subtable of this section, in **name order**, ignoring keys already read as scalars.
+    ///
+    /// Name order rather than file order, because for `[archetypes]` the order of the types decides
+    /// which household is assigned to which. Two files stating the same types in a different order
+    /// have to be the same population, or a scenario and its own control could diverge over nothing
+    /// but the order somebody typed the sections in.
+    ///
+    /// Skipping keys already read is what lets a section hold both scalars and subtables —
+    /// `[archetypes]` has a `sigma_idio` and a table per type. It means this must be called
+    /// **after** the section's own scalars, which is the natural order anyway.
+    /// </summary>
     internal IReadOnlyList<string> Subtables()
     {
         var names = new List<string>();
 
         foreach (var entry in table)
         {
+            if (read.Contains(entry.Key))
+            {
+                continue;
+            }
+
             if (entry.Value is TomlTable)
             {
                 names.Add(entry.Key);
@@ -108,6 +125,8 @@ internal sealed class TomlSection
                 validation.Fail($"{path}.{entry.Key}", "a table", Describe(entry.Value));
             }
         }
+
+        names.Sort(StringComparer.Ordinal);
 
         return names;
     }

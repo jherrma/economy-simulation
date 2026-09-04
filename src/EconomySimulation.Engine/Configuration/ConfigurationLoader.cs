@@ -77,6 +77,7 @@ public static class ConfigurationLoader
         var income = ReadIncome(Section(root, "income", problems), defaults.Income);
         var categories = ReadCategories(Section(root, "categories", problems), run, problems, basis);
         var tiers = ReadTiers(Section(root, "tiers", problems), problems, basis);
+        var archetypes = ReadArchetypes(Section(root, "archetypes", problems), problems, basis, categories);
         var decision = ReadDecision(Section(root, "decision", problems), defaults.Decision);
         var credit = ReadCredit(Section(root, "credit", problems), defaults.Credit);
         var prices = ReadPrices(Section(root, "prices", problems), defaults.Prices);
@@ -96,6 +97,7 @@ public static class ConfigurationLoader
             Income = income,
             Categories = categories,
             Tiers = tiers,
+            Archetypes = archetypes,
             Decision = decision,
             Credit = credit,
             Prices = prices,
@@ -132,7 +134,7 @@ public static class ConfigurationLoader
     }
 
     private static readonly string[] KnownSections =
-        ["run", "income", "categories", "tiers", "decision", "credit", "prices", "money"];
+        ["run", "income", "categories", "tiers", "archetypes", "decision", "credit", "prices", "money"];
 
     private static TomlSection Section(TomlTable root, string name, Validation problems)
     {
@@ -277,6 +279,169 @@ public static class ConfigurationLoader
         return [.. tiers.OrderBy(t => t.PriceMult)];
     }
 
+    /// <summary>
+    /// The archetype table (§3.5), authored as **relative** weights and normalised here.
+    ///
+    /// Writing a table whose columns already average to one by hand is arithmetic busywork that
+    /// hides what the author meant, so the file states what makes a type different and the loader
+    /// does the division. That has a consequence worth being deliberate about: what the author
+    /// wrote and what the model ran are then different numbers, and it is the second that goes into
+    /// the effective configuration — which is what the campaign manifest hashes. Same reasoning as
+    /// `capacity` in §3.1: derive what is derivable, and record the derived value where a reader
+    /// will find it.
+    ///
+    /// Unlike categories and tiers this is **not** an overlay per type. A file that names any
+    /// archetype states the whole table, because the shares have to sum to one and a table half
+    /// from the basis and half from the file would be a population nobody wrote down.
+    /// </summary>
+    private static ArchetypeParameters ReadArchetypes(
+        TomlSection section,
+        Validation problems,
+        SimulationParameters basis,
+        IReadOnlyList<CategoryParameters> categories)
+    {
+        // Scalars before Subtables(), which ignores what has already been read.
+        var sigmaIdio = section.Double("sigma_idio", basis.Archetypes.SigmaIdio);
+        var stated = section.Subtables();
+        var names = categories.Select(c => c.Name).ToArray();
+
+        var authored = stated.Count == 0
+            ? basis.Archetypes.Types
+            : stated
+                .Select(name => ReadArchetype(section, name, names, problems))
+                .Where(type => type is not null)
+                .Select(type => type!)
+                .ToArray();
+
+        section.RejectUnknownKeys();
+
+        return new ArchetypeParameters
+        {
+            SigmaIdio = sigmaIdio,
+            Types = Normalise(authored, names, problems),
+        };
+    }
+
+    private static Archetype? ReadArchetype(
+        TomlSection section,
+        string name,
+        IReadOnlyList<string> categories,
+        Validation problems)
+    {
+        var table = section.Subtable(name);
+
+        if (table is null)
+        {
+            return null;
+        }
+
+        var row = new TomlSection(table, $"archetypes.{name}", problems);
+        var share = row.Double("share", 0.0);
+        var w = ReadWeights(row, "w", $"archetypes.{name}.w", categories, problems);
+        var kappa = ReadWeights(row, "kappa", $"archetypes.{name}.kappa", categories, problems);
+
+        row.RejectUnknownKeys();
+
+        return new Archetype { Name = name, Share = share, W = w, Kappa = kappa };
+    }
+
+    /// <summary>
+    /// One `w` or `kappa` row: a number per category, **absent meaning 1.0** and an unknown
+    /// category name an error.
+    ///
+    /// That asymmetry is 02-02's, inherited rather than re-implemented — reading the row through a
+    /// <see cref="TomlSection"/> is what buys it. A type that is average in leisure should not have
+    /// to say so; a type that says `leasure` must not quietly be average in leisure too.
+    /// </summary>
+    private static IReadOnlyList<CategoryWeight> ReadWeights(
+        TomlSection row,
+        string key,
+        string path,
+        IReadOnlyList<string> categories,
+        Validation problems)
+    {
+        var table = row.Subtable(key);
+
+        if (table is null)
+        {
+            return Archetype.Ones(categories);
+        }
+
+        var weights = new TomlSection(table, path, problems);
+
+        var stated = categories
+            .OrderBy(c => c, StringComparer.Ordinal)
+            .Select(c => new CategoryWeight(c, weights.Double(c, 1.0)))
+            .ToArray();
+
+        weights.RejectUnknownKeys();
+
+        return stated;
+    }
+
+    /// <summary>
+    /// Divides each column by its share-weighted mean, so that `Σ_A share_A · m_g,A = 1` holds by
+    /// construction (§3.5).
+    ///
+    /// The identity is what keeps `v_g` meaning what it says: a table redistributes a category's
+    /// demand across the population, it does not change how much of it there is. Applied to a table
+    /// that already satisfies it, every scale is 1 and nothing moves — which is why the identity
+    /// table survives this untouched, and why V5a can be a byte-for-byte comparison.
+    ///
+    /// `kappa` gets no such treatment: see <see cref="Archetype.Kappa"/>.
+    /// </summary>
+    private static IReadOnlyList<Archetype> Normalise(
+        IReadOnlyList<Archetype> authored,
+        IReadOnlyList<string> categories,
+        Validation problems)
+    {
+        if (authored.Count == 0)
+        {
+            problems.Fail("archetypes", "at least one household type", "none");
+            return authored;
+        }
+
+        var scales = new Dictionary<string, double>(StringComparer.Ordinal);
+
+        foreach (var category in categories)
+        {
+            var scale = authored.Sum(a => a.Share * a.WeightFor(category));
+
+            problems.Require(
+                scale > 0.0 && double.IsFinite(scale),
+                $"archetypes.w.{category}",
+                "a positive share-weighted mean — the column is divided by it, and a column of "
+                + "zeros is a category nobody wants at any price",
+                Format(scale));
+
+            // Snapped, so that normalising an already-normalised table is a no-op to the bit. The
+            // effective configuration prints the normalised weights, and reloading it must give
+            // back the same run rather than one divided by 1.0000000000000002.
+            var usable = scale > 0.0 && double.IsFinite(scale) ? scale : 1.0;
+
+            scales[category] = Math.Abs(usable - 1.0) < 1e-9 ? 1.0 : usable;
+        }
+
+        return
+        [
+            .. authored.Select(a => a with
+            {
+                W =
+                [
+                    .. categories
+                        .OrderBy(c => c, StringComparer.Ordinal)
+                        .Select(c => new CategoryWeight(c, a.WeightFor(c) / scales[c])),
+                ],
+                Kappa =
+                [
+                    .. categories
+                        .OrderBy(c => c, StringComparer.Ordinal)
+                        .Select(c => new CategoryWeight(c, a.ExponentFor(c))),
+                ],
+            }),
+        ];
+    }
+
     private static DecisionParameters ReadDecision(TomlSection section, DecisionParameters defaults)
     {
         var decision = new DecisionParameters
@@ -397,6 +562,68 @@ public static class ConfigurationLoader
 
         CheckCategories(p, problems);
         CheckTiers(p, problems);
+        CheckArchetypes(p, problems);
+    }
+
+    /// <summary>
+    /// The table has to be a population, and every exponent has to leave the ladder a ladder.
+    /// </summary>
+    private static void CheckArchetypes(SimulationParameters p, Validation problems)
+    {
+        var archetypes = p.Archetypes;
+
+        problems.Require(
+            archetypes.SigmaIdio >= 0.0 && double.IsFinite(archetypes.SigmaIdio),
+            "archetypes.sigma_idio",
+            "zero or more (zero switches the residual off, which is v1)",
+            archetypes.SigmaIdio);
+
+        if (archetypes.Types.Count == 0)
+        {
+            // Already reported by Normalise; one complaint per mistake.
+            return;
+        }
+
+        foreach (var type in archetypes.Types)
+        {
+            problems.Require(
+                type.Share > 0.0 && type.Share <= 1.0,
+                $"archetypes.{type.Name}.share",
+                "a share in (0, 1] — a type nobody is cannot be assigned to anybody",
+                type.Share);
+        }
+
+        var shares = archetypes.Types.Sum(a => a.Share);
+
+        problems.Require(
+            Math.Abs(shares - 1.0) < 1e-9,
+            "archetypes.share",
+            "shares summing to exactly 1 — they split the population",
+            Format(shares));
+
+        // The bound is read off the tier table, never written down: a literal would be correct
+        // today and silently wrong the first time somebody edits a tier multiplier.
+        var maxExponent = QualityLadder.MaxExponent(p.Tiers);
+
+        if (double.IsNaN(maxExponent))
+        {
+            // The tier ladder is already broken and CheckTiers is saying so. A bound derived from
+            // it would be a second, confusing complaint about the same mistake.
+            return;
+        }
+
+        foreach (var type in archetypes.Types)
+        {
+            foreach (var exponent in type.Kappa)
+            {
+                problems.Require(
+                    exponent.Value > 0.0 && exponent.Value < maxExponent,
+                    $"archetypes.{type.Name}.kappa.{exponent.Category}",
+                    $"a steepness in (0, {Format(maxExponent)}) — above that this tier table's "
+                    + "upgrade ladder inverts and buying the budget unit scores below upgrading it",
+                    exponent.Value);
+            }
+        }
     }
 
     private static void CheckCategories(SimulationParameters p, Validation problems)
@@ -496,20 +723,21 @@ public static class ConfigurationLoader
         var previous = double.PositiveInfinity;
         var previousTier = "nothing";
 
+        // The same step ratios QualityLadder.MaxExponent walks, at kappa = 1. One definition of
+        // value-for-money, two readers: this one says which step went wrong, that one finds the
+        // exponent at which the ordering breaks.
+        var ratios = QualityLadder.StepRatios(p.Tiers, 1.0);
+
         for (var i = 0; i < p.Tiers.Count; i++)
         {
             var tier = p.Tiers[i];
+            var ratio = ratios[i];
 
-            var deltaValue = i == 0 ? tier.ValueMult : tier.ValueMult - p.Tiers[i - 1].ValueMult;
-            var deltaPrice = i == 0 ? tier.PriceMult : tier.PriceMult - p.Tiers[i - 1].PriceMult;
-
-            if (deltaPrice <= 0)
+            if (double.IsNaN(ratio))
             {
-                // Already reported by the ladder check above.
+                // A step that costs nothing: already reported by the ladder check above.
                 return;
             }
-
-            var ratio = deltaValue / deltaPrice;
 
             problems.Require(
                 ratio < previous,
