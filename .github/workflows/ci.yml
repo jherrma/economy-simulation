@@ -32,8 +32,8 @@ jobs:
       - name: gate — determinism (V2)
         run: dotnet run --project tools/Gates -c Release --no-build -- determinism
 
-      # V3. Longer than V2 — it needs a measured window, so it runs the full 360 ticks on eight
-      # seeds — and about forty seconds.
+      # V3. Longer than V2 — it needs a measured window, so it runs the full length on eight
+      # seeds — and about a minute.
       - name: gate — nominal neutrality (V3)
         run: dotnet run --project tools/Gates -c Release --no-build -- neutrality
 
@@ -46,3 +46,17 @@ jobs:
       # credit off is not the attributed effect of credit. Seconds.
       - name: gate — credit-off regression (V5)
         run: dotnet run --project tools/Gates -c Release --no-build -- creditoff
+
+      # The campaign itself: five scenarios over thirty seeds, one process each, collected into one
+      # dataset. It runs here because it is the only thing in the project that has to work end to
+      # end, and because a collector that has quietly stopped refusing partial runs looks exactly
+      # like one that works. About seventy seconds.
+      - name: campaign
+        run: dotnet run --project tools/Campaign -c Release --no-build -- --all
+
+      # Provenance is the point of the manifest, so a campaign that produced one without a commit
+      # in it has produced a dataset nobody can cite.
+      - name: manifest
+        run: |
+          cat campaign/manifest.toml
+          grep -q 'engine_commit = "[0-9a-f]\{40\}"' campaign/manifest.toml

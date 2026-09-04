@@ -23,6 +23,10 @@
     <!-- The validation gates are programs, and these tests are what says the gates themselves can
          fail: a comparison that passes because it read the wrong directory is worse than none. -->
     <ProjectReference Include="..\..\tools\Gates\Gates.csproj" />
+
+    <!-- The campaign is a program too, and its refusals are the interesting part: a collector that
+         absorbs a halted run produces a number that is wrong for a reason nobody can find. -->
+    <ProjectReference Include="..\..\tools\Campaign\Campaign.csproj" />
   </ItemGroup>
 
 </Project>

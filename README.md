@@ -11,9 +11,19 @@ assumed.
 
 ## Status
 
-**Eight of nine epics complete**, through E8 (Validation gates), with 423 tests. The model runs:
-a population, a ledger of integer cents, a shopping walk over quality tiers, consumer credit that
-creates money and has to be repaid, and two CSV files of output.
+**All nine epics complete**, with 463 tests. The model runs: a population, a ledger of integer
+cents, a shopping walk over quality tiers, consumer credit that creates money and has to be repaid,
+and two CSV files of output. The campaign runs it five scenarios wide and thirty seeds deep, one
+process per run, and collects one dataset:
+
+```sh
+dotnet run --project tools/Campaign -- --all
+```
+
+150 runs in about seventy seconds, into `campaign/` — the measured window of every run, with the
+scenario and the seed on every row, beside a manifest naming the engine commit and the hash of the
+effective configuration each scenario actually ran. Nothing is differenced, averaged or plotted:
+the campaign produces a dataset, not a result.
 
 **All six verification devices are green.** V1 and V6 run inside every tick; V2 to V5 are a program:
 
@@ -31,7 +41,12 @@ of having them: [§7.3](spec/01-SIMULATION.md) (the money-creation channel is ze
 seed), and [§10.3](spec/01-SIMULATION.md) (relative prices converge eight times slower than the
 price level — which is why `warmup_ticks` is 240 and not 120).
 
-The remaining epic is E9: the scenario definitions and the campaign runner.
+A fourth finding came out of E9's own dry run rather than a gate: [§10.4](spec/01-SIMULATION.md)
+measures the headline at ten to sixty times the spread across thirty seeds, and corrects two ways of
+reading it that would have reported the wrong sign or the wrong size.
+
+What remains is the analysis and the write-up, neither of which lives in this repository. The
+[Notes](Notes.md) are the working model of what has been found so far.
 
 The language is settled (C# on .NET 10).
 
