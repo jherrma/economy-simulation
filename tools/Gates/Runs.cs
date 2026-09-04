@@ -48,12 +48,27 @@ public static class Runs
         return [.. Enumerable.Range(1, parameters.Run.Seeds)];
     }
 
-    /// <summary>The parameters of a short run: the given configuration, over <see cref="ShortTicks"/> ticks.</summary>
+    /// <summary>
+    /// The parameters of a short run: the given configuration over <see cref="ShortTicks"/> ticks,
+    /// with the warm-up shortened in the same proportion.
+    ///
+    /// The warm-up has to come with it. It is not that forty-eight ticks of warm-up would be
+    /// economically meaningful — nothing has converged by then, and the gates that use this compare
+    /// bytes rather than equilibria — but a configuration whose warm-up outlasts its run is one the
+    /// loader rightly refuses, and a stored baseline has to be a configuration that still loads.
+    /// </summary>
     public static SimulationParameters Short(SimulationParameters parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
 
-        return parameters with { Run = parameters.Run with { Ticks = ShortTicks } };
+        var warmup = parameters.Run.Ticks < 1
+            ? 0
+            : (int)Math.Round((double)ShortTicks * parameters.Run.WarmupTicks / parameters.Run.Ticks, MidpointRounding.AwayFromZero);
+
+        return parameters with
+        {
+            Run = parameters.Run with { Ticks = ShortTicks, WarmupTicks = Math.Clamp(warmup, 0, ShortTicks - 1) },
+        };
     }
 
     /// <summary>

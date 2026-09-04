@@ -31,6 +31,8 @@ internal static class Program
             "determinism" => DeterminismGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "neutrality" => NeutralityGate.Run(SimulationParameters.Default, Runs.WindowSeeds, workspace),
             "nullrun" => NullRunGate.Run(SimulationParameters.Default, Runs.CampaignSeeds(SimulationParameters.Default), workspace),
+            "creditoff" => CreditOffGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
+            "rebaseline" => CreditOffGate.Rebaseline(SimulationParameters.Default, Runs.ShortSeeds),
             _ => null,
         };
 
@@ -57,6 +59,8 @@ internal static class Program
         Console.Error.WriteLine("  determinism   V2 — the same seed produces the same run, twice and across threads");
         Console.Error.WriteLine("  neutrality    V3 — multiply every nominal quantity by c and nothing real moves");
         Console.Error.WriteLine("  nullrun       V4 — the creditless baseline sits still after the warm-up");
+        Console.Error.WriteLine("  creditoff     V5 — credit_high with theta = 0 reproduces credit_off, byte for byte");
+        Console.Error.WriteLine("  rebaseline    write new committed baselines for V5 — deliberate, never automatic");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  --keep        leave the runs on disk instead of removing them");
 

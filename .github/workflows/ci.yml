@@ -41,3 +41,8 @@ jobs:
       # fifth is a baseline that drifts. About twenty seconds.
       - name: gate — the null run (V4)
         run: dotnet run --project tools/Gates -c Release --no-build -- nullrun
+
+      # V5. The measurement instrument: until this holds, the difference between credit on and
+      # credit off is not the attributed effect of credit. Seconds.
+      - name: gate — credit-off regression (V5)
+        run: dotnet run --project tools/Gates -c Release --no-build -- creditoff

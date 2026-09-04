@@ -1,0 +1,107 @@
+# The effective configuration of this run: the input file with every
+# absent key filled from spec/02-PARAMETERS.md. Defaults change; a CSV
+# whose parameters cannot be recovered is not a result.
+
+[run]
+households = 1000
+abstainer_share = 0.2
+ticks = 48
+warmup_ticks = 19
+seeds = 30
+scenario = "credit_off"
+
+[income]
+mean_income = 650.00
+sigma_income = 0.35
+opening_cash_share = 1.0
+
+[categories.food]
+life = 1
+capacity = 1000
+price_ref = 300.00
+v = 0.62
+necessity = 0.7
+financeable = false
+term = 0
+
+[categories.leisure]
+life = 1
+capacity = 1000
+price_ref = 200.00
+v = 0.4
+necessity = 0.35
+financeable = false
+term = 0
+
+[categories.clothing]
+life = 6
+capacity = 167
+price_ref = 400.00
+v = 0.11
+necessity = 0.5
+financeable = false
+term = 0
+
+[categories.hobby]
+life = 12
+capacity = 83
+price_ref = 600.00
+v = 0.088
+necessity = 0.15
+financeable = true
+term = 12
+
+[categories.electronics]
+life = 36
+capacity = 28
+price_ref = 900.00
+v = 0.048
+necessity = 0.25
+financeable = true
+term = 24
+
+[categories.appliances]
+life = 96
+capacity = 10
+price_ref = 800.00
+v = 0.016
+necessity = 0.45
+financeable = true
+term = 24
+
+[tiers.budget]
+price_mult = 0.6
+value_mult = 0.68
+unit_share = 0.4
+
+[tiers.standard]
+price_mult = 1.0
+value_mult = 1.0
+unit_share = 0.4
+
+[tiers.premium]
+price_mult = 1.8
+value_mult = 1.4
+unit_share = 0.2
+
+[decision]
+lambda = 1.0
+sigma_w = 0.2
+subsistence_share = 0.55
+buffer_months = 2.0
+affordability_horizon = "myopic"
+
+[credit]
+credit_enabled = false
+loan_rate = 8.0
+money_creation = true
+theta_min = 0.0
+theta_max = 0.2
+
+[prices]
+k = 0.05
+price_floor = 1.00
+rationing = "random"
+
+[money]
+opening_pool_months = 24
