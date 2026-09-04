@@ -180,7 +180,22 @@ public sealed record SimulationParameters
             Write(toml, "life", category.Life);
             Write(toml, "capacity", category.Capacity);
             Write(toml, "price_ref", category.PriceRef);
-            Write(toml, "v", category.V);
+
+            // Round-trip precision on both, and only on these two, for the reason the archetype
+            // weights get it: `v` is *derived* from `base_score` wherever one is authored, and a
+            // configuration rebuilt from a four-decimal print of a derived number is refused by the
+            // very check that makes the derivation worth having. Everything else in this file was
+            // typed by a person and is printed the way a person would read it.
+            if (category.BaseScore > 0.0)
+            {
+                WriteExactly(toml, "base_score", category.BaseScore);
+                WriteExactly(toml, "v", category.V);
+            }
+            else
+            {
+                Write(toml, "v", category.V);
+            }
+
             Write(toml, "necessity", category.Necessity);
             Write(toml, "financeable", category.Financeable);
             Write(toml, "term", category.Term);
@@ -336,6 +351,10 @@ public sealed record SimulationParameters
     /// An integral value keeps its `.0`, so that the identity table reads as `1.0` rather than as
     /// the integer `1`.
     /// </summary>
+    /// <summary>A number printed so that reading it back gives the same double, to the bit.</summary>
+    private static void WriteExactly(StringBuilder toml, string key, double value) =>
+        toml.AppendLine(CultureInfo.InvariantCulture, $"{key} = {RoundTrip(value)}");
+
     private static string RoundTrip(double value) =>
         value == Math.Floor(value) && Math.Abs(value) < 1e15
             ? value.ToString("0.0", CultureInfo.InvariantCulture)

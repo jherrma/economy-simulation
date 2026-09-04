@@ -357,42 +357,38 @@ public sealed class CandidateTests
     public void BuildingEveryLadderForEveryHousehold_AllocatesNothing()
     {
         var population = Households.Draw(Defaults, Goods, runSeed: 2);
-        Span<Candidate> buffer = stackalloc Candidate[Goods.ShelfCount];
 
-        // Warmed past tiered compilation's promotion threshold before anything is measured: a
-        // promotion landing inside the loop is several kilobytes of the runtime's, not the model's
-        // (Infrastructure/Allocation.cs).
-        for (var i = 0; i < Infrastructure.Allocations.WarmupCalls; i++)
-        {
-            var warm = 0;
-
-            for (var c = 0; c < Goods.CategoryCount; c++)
-            {
-                warm += Ladder.Build(Goods, Opening, population, i, c, buffer[warm..]);
-            }
-
-            _ = Ladder.UnconstrainedTier(buffer[..Goods.TierCount], Lambda);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        // Heap rather than stackalloc so the same body can be the warm-up and the measurement; the
+        // array is allocated once, here, outside the window.
+        var buffer = new Candidate[Goods.ShelfCount];
         var taken = 0;
         var written = 0;
 
         // No assertions inside the loop: xunit's Assert.Equal allocates, and would be measured.
-        for (var h = 0; h < population.Count; h++)
+        void EveryLadder()
         {
-            var n = 0;
+            taken = 0;
+            written = 0;
 
-            for (var c = 0; c < Goods.CategoryCount; c++)
+            for (var h = 0; h < population.Count; h++)
             {
-                n += Ladder.Build(Goods, Opening, population, h, c, buffer[n..]);
-            }
+                var n = 0;
 
-            written += n;
-            taken += Ladder.UnconstrainedTier(buffer[..Goods.TierCount], Lambda) + 1;
+                for (var c = 0; c < Goods.CategoryCount; c++)
+                {
+                    n += Ladder.Build(Goods, Opening, population, h, c, buffer.AsSpan(n));
+                }
+
+                written += n;
+                taken += Ladder.UnconstrainedTier(buffer.AsSpan(0, Goods.TierCount), Lambda) + 1;
+            }
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        // The measured body is also the warm-up body, and that is the whole trick. Warming a
+        // *different* loop leaves this one to be promoted by tiered compilation inside the
+        // measurement, which is several kilobytes of the runtime's and none of the model's
+        // (Infrastructure/Allocation.cs). It passed for weeks that way and then did not.
+        var allocated = Infrastructure.Allocations.Of(EveryLadder, EveryLadder);
 
         Assert.Equal(Goods.ShelfCount * population.Count, written);
         Assert.True(taken > 0);

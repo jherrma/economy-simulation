@@ -75,7 +75,7 @@ public static class ConfigurationLoader
 
         var run = ReadRun(Section(root, "run", problems), defaults.Run);
         var income = ReadIncome(Section(root, "income", problems), defaults.Income);
-        var categories = ReadCategories(Section(root, "categories", problems), run, problems, basis);
+        var categories = ReadCategories(Section(root, "categories", problems), run, income, problems, basis);
         var tiers = ReadTiers(Section(root, "tiers", problems), problems, basis);
         var archetypes = ReadArchetypes(Section(root, "archetypes", problems), problems, basis, categories);
         var decision = ReadDecision(Section(root, "decision", problems), defaults.Decision);
@@ -198,6 +198,7 @@ public static class ConfigurationLoader
     private static IReadOnlyList<CategoryParameters> ReadCategories(
         TomlSection section,
         RunParameters run,
+        IncomeParameters income,
         Validation problems,
         SimulationParameters basis)
     {
@@ -226,6 +227,18 @@ public static class ConfigurationLoader
 
             var row = new TomlSection(table, $"categories.{name}", problems);
             var life = row.Int("life", known?.Life ?? 0);
+            var priceRef = row.Money("price_ref", known?.PriceRef ?? Engine.Money.Zero);
+            var baseScore = row.Double("base_score", known?.BaseScore ?? 0.0);
+
+            // `v` is derived from the base score wherever one is authored, and re-derived here
+            // rather than inherited: an overlay that moves `price_ref` and kept the basis's `v`
+            // would be a row whose score silently stopped being the score it states.
+            // A life of zero is a row that is broken for a different reason, and CheckCategories is
+            // already going to say so; dividing by it here would add a second complaint about one
+            // mistake, and an infinite `v` besides.
+            var derived = baseScore > 0.0 && life >= 1
+                ? CategoryParameters.DeriveV(baseScore, priceRef, life, income.MeanIncome)
+                : known?.V ?? 0.0;
 
             var category = new CategoryParameters
             {
@@ -237,8 +250,9 @@ public static class ConfigurationLoader
                 // capacity is round(households / life) by definition, so it is derived unless the
                 // file states it — and if it does, Check makes sure it states the right value.
                 Capacity = row.Int("capacity", DerivedCapacity(run.Households, life)),
-                PriceRef = row.Money("price_ref", known?.PriceRef ?? Engine.Money.Zero),
-                V = row.Double("v", known?.V ?? 0.0),
+                PriceRef = priceRef,
+                BaseScore = baseScore,
+                V = row.Double("v", derived),
                 Necessity = row.Double("necessity", known?.Necessity ?? 0.0),
                 Financeable = row.Bool("financeable", known?.Financeable ?? false),
                 Term = row.Int("term", known?.Term ?? 0),
@@ -679,6 +693,27 @@ public static class ConfigurationLoader
                 .Require(!category.PriceRef.IsNegative && !category.PriceRef.IsZero, $"{key}.price_ref", "more than zero", category.PriceRef.ToCsv())
                 .Require(category.V > 0, $"{key}.v", "more than zero", category.V)
                 .Require(Share(category.Necessity), $"{key}.necessity", "a share in [0, 1]", category.Necessity);
+
+            problems.Require(
+                category.BaseScore >= 0.0 && double.IsFinite(category.BaseScore),
+                $"{key}.base_score",
+                "zero or more (zero means this row states v directly)",
+                category.BaseScore);
+
+            // `v` is a definition wherever a base score is authored, and the rule is capacity's:
+            // omit it and it is computed, state it and it has to be right. The tolerance is
+            // relative and tiny — this catches a number somebody rounded, not a number somebody
+            // typed a digit wrong in, and both are the same mistake for these purposes.
+            if (category.BaseScore > 0.0 && category.Life >= 1 && !p.Income.MeanIncome.IsZero)
+            {
+                var derived = category.DerivedV(p.Income.MeanIncome);
+
+                problems.Require(
+                    Math.Abs(category.V - derived) <= 1e-9 * Math.Max(derived, 1e-9),
+                    $"{key}.v",
+                    $"base_score × price_ref / (life × mean_income) = {derived.ToString("R", CultureInfo.InvariantCulture)} — omit it and it is computed",
+                    Format(category.V));
+            }
 
             // capacity is a definition, not a choice: round(households / life).
             if (category.Life >= 1 && p.Run.Households > 0)

@@ -263,6 +263,24 @@ category-shaped:
 - **The table replaces rather than merges when it says so.** `replace = true` is what makes an
   eighteen-good file eighteen goods; without it the same file is twenty-four and costs twice the
   mean income per tick. A test asserts both numbers, because the failure is a run that starts.
+- **`v` is derived from `base_score`, and stating it wrong is refused.** **Done 2026-09-04**
+  (11-02). Two things follow that are worth naming. Nominal neutrality survives the derivation —
+  `price_ref` and `mean_income` are both money and scale together — which is what makes the base
+  score authorable at all rather than a parameter of the numeraire. And both numbers go into the
+  effective configuration at round-trip precision: printed to four decimals, a run rebuilt from its
+  own output fails the very check that makes the derivation worth having.
+- **§3.4's three design requirements are assertions on the grouped table, not prose.** Eighteen base
+  scores is a lot of freedom, and freedom plus a headline is how a calibration gets nudged. The
+  second requirement is checked over the **four large financeable durables** by name — phone,
+  laptop, medium and large appliances — because hobby equipment (0.896), the TV (0.880) and hobby
+  big kit (0.816) are financeable and deliberately not on that margin, so a check phrased over "the
+  financeable durables" would reject §3.6's table.
+- **The opening pressure of both calibrations is measured by one method**, 200,000 draws at opening
+  prices ignoring cash, and the grouped table is asserted to open three to four points *lower*
+  rather than equal. A number computed one way against a sentence written another way is not a
+  comparison, and §3.3's "about 23% below income" was prose.
+- **Every published entry income and base-score crossing of §3.6 is read out of the specification
+  and put to the engine.** That found two goods missing from §3.6's entry table.
 - **Both identities.** `Σ_A share_A / d[A][g] = 1` for units, and
   `Σ_A share_A · m[A][g] = 1` for the score level, asserted at load on the normalised tables.
   The first is the expensive error of the epic: normalising `d` rather than `1/d` gives the

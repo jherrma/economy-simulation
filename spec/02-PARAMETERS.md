@@ -433,6 +433,18 @@ v_g = base_score_g · price_ref_g / (life_g · mean_income)
 — the rule `capacity` already obeys (§3.1). Nominal neutrality survives, because `price_ref` and
 `mean_income` scale together and `v_g` is invariant (V3).
 
+**Built 2026-09-04** (11-02): `base_score` is a goods-table field, the loader derives `v`, and the
+effective configuration carries both — the authored number so a reader can see what was claimed, the
+derived one because that is what ran. Both are printed at round-trip precision, which is not a
+detail: printed to four decimals, a configuration rebuilt from its own output fails the very check
+that makes the derivation worth having. The four-decimal column above is exactly such a rounding,
+and the loader refuses it.
+
+One consequence of `a_g` being money: the Stone-Geary floor is rounded to the cent, so the base
+score a household actually faces sits up to half a cent per tick from the authored one — at most
+0.0010, on small appliances, whose €3.33 a tick is the smallest flow cost in the table. Everyday
+clothing attains the bound exactly, its floor landing on 1092.5 cents.
+
 | | `v_g` | | `v_g` | | `v_g` |
 |---|---|---|---|---|---|
 | groceries | 0.4588 | basics | 0.0240 | phone | 0.0382 |
@@ -462,8 +474,10 @@ small appliances at                EUR 788      TV at                        EUR
 laptop at                          EUR 835      big kit at                   EUR 1,008
 ```
 
-Requirement 1 holds at €300 but **narrowly**: small appliances' budget candidate is 0.997 and the
-phone's 0.989, so two euros of income or one tick of repricing moves the boundary. It is true as
+Requirement 1 holds at €300 but **narrowly**: small appliances' budget candidate is 0.996 and the
+phone's 0.989, so two euros of income or one tick of repricing moves the boundary. (0.996 rather
+than the 0.997 an earlier draft quoted: the engine rounds `a_g` to the cent, and small appliances'
+floor is 173.33 of them. Corrected 2026-09-04 against the engine's own valuation.) It is true as
 stated and fragile as a design requirement, which is why the check in 11-02 asserts the four named
 goods rather than "nothing else clears λ".
 
@@ -485,14 +499,19 @@ goods **enter the basket at different incomes**:
 | Bought at any income | Enters around | | | |
 |---|---|---|---|---|
 | groceries, consumables, clothing basics | large appliances | €115 | hobby supplies | €448 |
-| | small appliances | €302 | outerwear | €477 |
-| | phone, medium appliances | €309 | hobby equipment | €493 |
-| | everyday clothing | €348 | TV | €499 |
-| | going out | €352 | holiday | €535 |
-| | events | €461 | eating out | €592 |
+| | small appliances | €302 | events | €461 |
+| | phone, medium appliances | €309 | outerwear | €477 |
+| | everyday clothing | €348 | hobby equipment | €493 |
+| | going out | €352 | TV | €499 |
+| | laptop | €410 | holiday | €535 |
+| | | | hobby big kit | €555 |
+| | | | eating out | €592 |
 
-A household below about €590 never eats out and never takes a holiday, while it replaces its fridge
-at any income at all. That is Engel's law with a shape rather than a slope, and it matters here: the
+(Laptop and hobby big kit were missing from this table until 2026-09-04; it now names all fifteen
+goods that enter somewhere, and 11-02 asserts every row of it against the engine.)
+
+A household below about €590 never eats out, and one below about €535 never takes a holiday, while
+it replaces its fridge at any income at all. That is Engel's law with a shape rather than a slope, and it matters here: the
 cohort `01-SIMULATION.md` §10.1 found to be permanently excluded sits at a median income near €400,
 which is exactly the region this table resolves and §3.1 did not.
 
@@ -555,7 +574,7 @@ replace = true
 category    = "electronics"
 life        = 30
 price_ref   = 600.00
-v           = 0.0381538462
+base_score  = 1.24
 necessity   = 0.45
 financeable = true
 term        = 24
@@ -581,9 +600,9 @@ scenario rather than to the goods table.
 (`abstainer_appliance_large_wanted`). The table above calls them "small", "medium", "large" within a
 category; the file carries the category where the bare word would not survive being read alone.
 
-`v` is stated at full precision rather than at the four decimals of the table above. The rounded
-column sums to 1.2557 where the exact table sums to 1.2555, which is the argument for moving the
-derivation into the loader (11-02) rather than leaving it in a person's calculator.
+`v` is not stated at all: the loader derives it from `base_score` and writes it into the effective
+configuration. The four-decimal column above sums to 1.2557 where the exact table sums to 1.2555,
+which is the argument for the derivation living in the loader rather than in a person's calculator.
 
 ### 3.7 Replacement cycles by archetype — added 2026-09-04
 

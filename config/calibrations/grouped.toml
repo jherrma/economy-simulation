@@ -25,13 +25,19 @@
 # derives it, so this table is independent of how big the town is. §3.6 asks for 5,000 households on
 # the thin-shelf evidence, and that belongs to the scenario rather than to the goods table.
 #
-# `v` is stated here at full precision. §3.6 authors it as a **base score** — `v_g =
-# base_score_g * price_ref_g / (life_g * mean_income)` — because nobody has an intuition about
-# `v = 0.0141` and everybody has one about "this good scores 1.10 for a household on the mean
-# income". Story 11-02 moves the derivation into the loader and this table with it, and the numbers
-# below are what it should then produce. §3.6's four-decimal `v` column is a rounding of them: it
-# sums to 1.2557 where the exact table sums to 1.2555, which is why the derivation belongs in the
-# loader rather than in a person's calculator.
+# `base_score` is what this table authors, and `v` is **derived**: `v_g = base_score_g *
+# price_ref_g / (life_g * mean_income)`. Nobody has an intuition about `v = 0.0141`; everybody has
+# one about "this good scores 1.24 at the mean income", because that says directly where the good
+# sits relative to lambda, and the tier a median household reaches follows by arithmetic off the
+# tier table: x 1.133 for the budget unit, x 0.800 for the standard upgrade, x 0.500 for premium.
+# So the authored number is the one a reader can disagree with and the derived number is the one
+# the engine uses. `v` may still be written down, and if it is it must equal the derived value or
+# the run is refused — the rule `capacity` already obeys. §3.6's four-decimal `v` column is a
+# rounding of these: it sums to 1.2557 where the exact table sums to 1.2555, which is the argument
+# for the derivation living in the loader rather than in a person's calculator.
+#
+# Nominal neutrality survives it (V3): `price_ref` and `mean_income` are both money and scale
+# together, so `v` is invariant under a change of unit.
 
 [categories]
 replace = true
@@ -42,7 +48,7 @@ replace = true
 category    = "food"
 life        = 1
 price_ref   = 210.00
-v           = 0.4587692308
+base_score  = 1.42
 necessity   = 0.85
 financeable = false
 term        = 0
@@ -51,7 +57,7 @@ term        = 0
 category    = "food"
 life        = 3
 price_ref   = 90.00
-v           = 0.0623076923
+base_score  = 1.35
 necessity   = 0.75
 financeable = false
 term        = 0
@@ -60,7 +66,7 @@ term        = 0
 category    = "food"
 life        = 1
 price_ref   = 60.00
-v           = 0.0876923077
+base_score  = 0.95
 necessity   = 0.20
 financeable = false
 term        = 0
@@ -71,7 +77,7 @@ term        = 0
 category    = "leisure"
 life        = 1
 price_ref   = 120.00
-v           = 0.2400000000
+base_score  = 1.3
 necessity   = 0.30
 financeable = false
 term        = 0
@@ -80,7 +86,7 @@ term        = 0
 category    = "leisure"
 life        = 3
 price_ref   = 150.00
-v           = 0.0884615385
+base_score  = 1.15
 necessity   = 0.20
 financeable = false
 term        = 0
@@ -89,7 +95,7 @@ term        = 0
 category    = "leisure"
 life        = 12
 price_ref   = 360.00
-v           = 0.0484615385
+base_score  = 1.05
 necessity   = 0.10
 financeable = false
 term        = 0
@@ -100,7 +106,7 @@ term        = 0
 category    = "clothing"
 life        = 4
 price_ref   = 48.00
-v           = 0.0240000000
+base_score  = 1.3
 necessity   = 0.75
 financeable = false
 term        = 0
@@ -109,7 +115,7 @@ term        = 0
 category    = "clothing"
 life        = 8
 price_ref   = 152.00
-v           = 0.0336153846
+base_score  = 1.15
 necessity   = 0.50
 financeable = false
 term        = 0
@@ -118,7 +124,7 @@ term        = 0
 category    = "clothing"
 life        = 24
 price_ref   = 576.00
-v           = 0.0387692308
+base_score  = 1.05
 necessity   = 0.40
 financeable = false
 term        = 0
@@ -129,7 +135,7 @@ term        = 0
 category    = "hobby"
 life        = 3
 price_ref   = 27.00
-v           = 0.0166153846
+base_score  = 1.2
 necessity   = 0.15
 financeable = false
 term        = 0
@@ -138,7 +144,7 @@ term        = 0
 category    = "hobby"
 life        = 18
 price_ref   = 216.00
-v           = 0.0206769231
+base_score  = 1.12
 necessity   = 0.12
 financeable = true
 term        = 12
@@ -147,7 +153,7 @@ term        = 12
 category    = "hobby"
 life        = 60
 price_ref   = 540.00
-v           = 0.0141230769
+base_score  = 1.02
 necessity   = 0.08
 financeable = true
 term        = 24
@@ -163,7 +169,7 @@ term        = 24
 category    = "electronics"
 life        = 30
 price_ref   = 600.00
-v           = 0.0381538462
+base_score  = 1.24
 necessity   = 0.45
 financeable = true
 term        = 24
@@ -172,7 +178,7 @@ term        = 24
 category    = "electronics"
 life        = 54
 price_ref   = 900.00
-v           = 0.0312820513
+base_score  = 1.22
 necessity   = 0.25
 financeable = true
 term        = 24
@@ -181,7 +187,7 @@ term        = 24
 category    = "electronics"
 life        = 84
 price_ref   = 700.00
-v           = 0.0141025641
+base_score  = 1.1
 necessity   = 0.15
 financeable = true
 term        = 24
@@ -197,7 +203,7 @@ term        = 24
 category    = "appliances"
 life        = 36
 price_ref   = 120.00
-v           = 0.0066666667
+base_score  = 1.3
 necessity   = 0.40
 financeable = false
 term        = 0
@@ -206,7 +212,7 @@ term        = 0
 category    = "appliances"
 life        = 96
 price_ref   = 640.00
-v           = 0.0127179487
+base_score  = 1.24
 necessity   = 0.45
 financeable = true
 term        = 24
@@ -215,7 +221,7 @@ term        = 24
 category    = "appliances"
 life        = 144
 price_ref   = 1440.00
-v           = 0.0190769231
+base_score  = 1.24
 necessity   = 0.65
 financeable = true
 term        = 36

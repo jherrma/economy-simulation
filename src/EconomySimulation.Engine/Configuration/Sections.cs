@@ -98,7 +98,27 @@ public sealed record CategoryParameters
     /// <summary>The standard tier's opening price. The other two are derived from it.</summary>
     public required Money PriceRef { get; init; }
 
-    /// <summary>The category's share of a mean household's flow value.</summary>
+    /// <summary>
+    /// What a candidate in this good scores for a household at the mean income, before the tier
+    /// multipliers — the number a reader can argue with, and the one §3.6 authors.
+    ///
+    /// Nobody has an intuition about `v = 0.0141`. Everybody has one about "this good scores 1.10
+    /// at the mean income", because it says directly where the good sits relative to λ, and the
+    /// tier a median household reaches follows from it by arithmetic: × 1.133 for the budget unit,
+    /// × 0.800 for the standard upgrade, × 0.500 for premium, all three read off the tier table.
+    ///
+    /// **Zero means the row authors <see cref="V"/> directly instead**, which is what §3.1's six
+    /// rows do and will keep doing. It is not a flag but the absence of a number: the good still
+    /// has a base score either way, and it is `Valuation.Score` of the base value over the flow
+    /// cost at the mean income, which is where that arithmetic lives and stays.
+    /// </summary>
+    public double BaseScore { get; init; }
+
+    /// <summary>
+    /// The good's share of a mean household's flow value. **Derived from <see cref="BaseScore"/>
+    /// where that is authored**, and a stated `v` must then equal the derived value or the run is
+    /// refused — the rule `capacity` already obeys.
+    /// </summary>
     public required double V { get; init; }
 
     /// <summary>How much of `v` does **not** scale with income. This is Engel's law.</summary>
@@ -120,6 +140,20 @@ public sealed record CategoryParameters
 
     /// <summary>The income-linked part: `(1 − necessity) · v`.</summary>
     public double IncomeSlope => (1.0 - Necessity) * V;
+
+    /// <summary>
+    /// `v_g = base_score_g · price_ref_g / (life_g · mean_income)` — the derivation, in one place.
+    ///
+    /// **Nominal neutrality survives it** (V3): `price_ref` and `mean_income` are both money and
+    /// scale together, so `v` is invariant under a change of unit. That is the whole reason the
+    /// base score can be authored at all — a scored quantity that moved when the currency was
+    /// redenominated would be a parameter of the numeraire rather than of the household.
+    /// </summary>
+    public double DerivedV(Money meanIncome) => DeriveV(BaseScore, PriceRef, Life, meanIncome);
+
+    /// <summary>The same, before there is a row to hang it on.</summary>
+    public static double DeriveV(double baseScore, Money priceRef, int life, Money meanIncome) =>
+        baseScore * priceRef.Cents / (life * (double)meanIncome.Cents);
 
     /// <summary>The specification's six categories, in the order §3.1 lists them.</summary>
     public static IReadOnlyList<CategoryParameters> Default { get; } =
