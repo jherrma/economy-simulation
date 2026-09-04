@@ -13,7 +13,8 @@ two arms over the campaign's own 30 paired seeds at the campaign's own parameter
 measured window from tick 241, `credit_off` against `credit_high`, θ ~ U(0.4, 0.9)). The probe
 reading it was `aa614de` for the headline table and `6163635` for the loan-rate sensitivity.
 
-**The typed block at the end was measured on E10's engine**, `c612adb` (`c612adb2433d530eb83afe1403d42b978a14ee87`), with the same
+**The typed block at the end was measured on E10's engine**, `3201746` (`32017468a688c208d3b801edd91dd0162f3432f3` — this file's
+own commit records the sha of the one before it, which is the engine), with the same
 probe over each row of the sweep grid: `pilot table=<row>`. Its `identity` row is the same
 measurement as the older blocks' and reproduces them, which is what makes the two engines
 comparable.
