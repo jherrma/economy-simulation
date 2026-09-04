@@ -14,6 +14,7 @@ As the model author, I want a population of named archetypes with a per-category
 - [ ] The **default is the identity table**: one type, share 1.0, every `w` and every `kappa` at 1.0. A configuration that names no archetype gets it, and there is no `archetypes_enabled` boolean anywhere.
 - [ ] Shares must sum to 1.0 or loading fails, naming the sum it got.
 - [ ] **The loader normalises each `w` column** by its share-weighted mean, so `Σ_A share_A · ŵ_g,A = 1` holds by construction. A test asserts the identity on the `typed` table of §3.5 and on a random table.
+- [ ] §3.5 calls that number the **score multiplier `m`**, because under E11 the taste weight `ŵ = m / d` is derived from it. **In E10 `d ≡ 1`, so `m` and `ŵ` are the same number** and this story implements the plain reading. Nothing here anticipates E11; the name is there so the two epics do not disagree later.
 - [ ] The **normalised** weights are what `ToToml()` and the effective configuration emit, so the campaign manifest hashes what actually ran (09-02) rather than what was written.
 - [ ] `kappa` is **not** normalised, and a test asserts that a table with mean `kappa` ≠ 1 loads unchanged.
 - [ ] `kappa` is rejected outside `0 < kappa < kappa_max`, where `kappa_max` is **computed from the tier table** and not written as a literal. A test changes a tier multiplier and asserts the accepted range moves with it.
