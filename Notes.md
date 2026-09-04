@@ -2,12 +2,19 @@
 
 **State — 2026-09-04.** Epics E0–E8 of 9 are built: the engine, the output writer, the cohort
 metrics and the four validation gates (V2 determinism, V3 neutrality, V4 null run, V5 credit-off
-regression), all green, 423 tests passing, spec and engine at `6163635`. **E9 — the scenario
+regression), all green, 423 tests passing. **E9 — the scenario
 definitions and the campaign runner — is not built yet**, so no campaign has been run: every number
 below comes from `tools/Gates … pilot`, a power probe that runs the two arms over the campaign's own
 30 paired seeds at the campaign's own parameters (600 ticks, measured window from tick 241,
 `credit_off` against `credit_high`, θ ~ U(0.4, 0.9)). Only three of the five scenarios of §9 have
 been touched at all.
+
+**The engine that produced every number below is `6d18abb`** (E8's last commit,
+`6d18abb0c4bdb623038c39588c51d365a69172c4`). `src/` and `config/` are byte-identical to it at the
+time of writing — the commits since then moved only the spec and the probe — so all of these runs
+are one engine and are directly comparable. The probe reading it was `aa614de` for the headline
+table and `6163635` for the loan-rate sensitivity. Re-run any of it with
+`git checkout <sha> && dotnet run -c Release --project tools/Gates -- pilot [k=… rate=…]`.
 
 A rough model of what the simulation has said so far — kept for angles, not for accuracy. Every
 number here is measured and every one is provisional; `spec/01-SIMULATION.md` §7.1–§10.4 carries the
