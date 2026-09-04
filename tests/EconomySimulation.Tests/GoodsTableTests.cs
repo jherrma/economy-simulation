@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using EconomySimulation.Engine;
 using EconomySimulation.Engine.Configuration;
 using EconomySimulation.Engine.World;
@@ -215,7 +217,7 @@ public sealed class GoodsTableTests
         var table = new GoodsTable(result.Value);
 
         Assert.Equal(7, table.CategoryCount);
-        Assert.Equal(21, table.GoodCount);
+        Assert.Equal(21, table.ShelfCount);
 
         var gadgets = table.CategoryCount - 1;
         Assert.Equal(42, result.Value.Categories[gadgets].Capacity);       // round(1000 / 24)
@@ -227,6 +229,74 @@ public sealed class GoodsTableTests
 
         Assert.True(table.IsDurable(gadgets));
         Assert.True(table.IsFinanceable(gadgets));
+    }
+
+    /// <summary>
+    /// Eleven goods — neither six nor eighteen — run a tick.
+    ///
+    /// The count is the point. §3.1 has six rows and §3.6 has eighteen, and either could be read
+    /// off a buffer sized once and reused, so a table of a length nobody designed for is the only
+    /// thing that says nothing reads a fixed count. Eleven also makes `capacity` split unevenly
+    /// across three tiers, which is where a table sized by `round(share × capacity)` rather than by
+    /// the largest-remainder rule stops summing to capacity.
+    /// </summary>
+    [Fact]
+    public void AGoodsTableOfAnyLength_RunsATick()
+    {
+        var lives = new[] { 1, 1, 2, 3, 4, 5, 7, 11, 19, 37, 61 };
+
+        var toml = new StringBuilder();
+        toml.AppendLine("[run]");
+        toml.AppendLine("households = 400");
+        toml.AppendLine("ticks = 12");
+        toml.AppendLine("warmup_ticks = 4");
+        toml.AppendLine();
+        toml.AppendLine("[categories]");
+        toml.AppendLine("replace = true");
+
+        // Sum price_ref / life comes to the mean income, so the town is calibrated like any other.
+        // 650 / 11 each, priced so that every row's flow cost is the same.
+        foreach (var (life, i) in lives.Select((l, i) => (l, i)))
+        {
+            toml.AppendLine();
+            toml.AppendLine(CultureInfo.InvariantCulture, $"[categories.good_{i}]");
+            toml.AppendLine(CultureInfo.InvariantCulture, $"category = \"group_{i % 3}\"");
+            toml.AppendLine(CultureInfo.InvariantCulture, $"life = {life}");
+            toml.AppendLine(CultureInfo.InvariantCulture, $"price_ref = {650.0 / lives.Length * life:0.00}");
+            toml.AppendLine(CultureInfo.InvariantCulture, $"v = {1.2 / lives.Length:0.000000}");
+            toml.AppendLine("necessity = 0.4");
+            toml.AppendLine("financeable = false");
+            toml.AppendLine("term = 0");
+        }
+
+        var loaded = ConfigurationLoader.FromToml(toml.ToString());
+
+        Assert.True(loaded.IsSuccess, string.Join("; ", loaded.Errors.Select(e => e.Message)));
+
+        var parameters = loaded.Value;
+        var table = new GoodsTable(parameters);
+
+        Assert.Equal(11, table.CategoryCount);
+        Assert.Equal(33, table.ShelfCount);
+        Assert.Equal(3, table.Labels.Count);
+
+        for (var c = 0; c < table.CategoryCount; c++)
+        {
+            var units = Enumerable.Range(0, table.TierCount).Sum(t => table.Units(c, t));
+
+            Assert.Equal(parameters.Categories[c].Capacity, units);
+        }
+
+        var simulation = new Simulation(parameters, 1);
+
+        Assert.True(simulation.Start().IsSuccess);
+
+        for (var tick = 1; tick <= 3; tick++)
+        {
+            var ran = simulation.RunTick(tick);
+
+            Assert.True(ran.IsSuccess, ran.IsFailed ? ran.Errors[0].Message : "");
+        }
     }
 
     /// <summary>

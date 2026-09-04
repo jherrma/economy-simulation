@@ -357,7 +357,7 @@ public sealed class CandidateTests
     public void BuildingEveryLadderForEveryHousehold_AllocatesNothing()
     {
         var population = Households.Draw(Defaults, Goods, runSeed: 2);
-        Span<Candidate> buffer = stackalloc Candidate[Goods.GoodCount];
+        Span<Candidate> buffer = stackalloc Candidate[Goods.ShelfCount];
 
         // Warmed past tiered compilation's promotion threshold before anything is measured: a
         // promotion landing inside the loop is several kilobytes of the runtime's, not the model's
@@ -394,7 +394,7 @@ public sealed class CandidateTests
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        Assert.Equal(Goods.GoodCount * population.Count, written);
+        Assert.Equal(Goods.ShelfCount * population.Count, written);
         Assert.True(taken > 0);
         Assert.Equal(0, allocated);
     }

@@ -17,14 +17,16 @@ public sealed class TickRecord
 {
     private readonly Money[] pricesTraded;
     private readonly double[] categoryIndices;
+    private readonly double[] labelIndices;
 
     public TickRecord(GoodsTable goods)
     {
         ArgumentNullException.ThrowIfNull(goods);
 
         Goods = goods;
-        pricesTraded = new Money[goods.GoodCount];
+        pricesTraded = new Money[goods.ShelfCount];
         categoryIndices = new double[goods.CategoryCount];
+        labelIndices = new double[goods.Labels.Count];
     }
 
     public GoodsTable Goods { get; }
@@ -58,8 +60,11 @@ public sealed class TickRecord
     /// </summary>
     public double Cpi { get; private set; }
 
-    /// <summary>One category's price index, on the same basis.</summary>
+    /// <summary>One row's price index, on the same basis.</summary>
     public double CategoryIndex(int category) => categoryIndices[category];
+
+    /// <summary>One category label's price index — the unit-weighted roll-up of its rows.</summary>
+    public double LabelIndex(int label) => labelIndices[label];
 
     /// <summary>The price the tick actually traded at, before step 6 moved it.</summary>
     public Money PriceTraded(int category, int tier) => pricesTraded[Goods.Index(category, tier)];
@@ -87,6 +92,11 @@ public sealed class TickRecord
         for (var c = 0; c < Goods.CategoryCount; c++)
         {
             categoryIndices[c] = PriceIndex.ForCategory(Goods, c, pricesTraded);
+        }
+
+        for (var l = 0; l < labelIndices.Length; l++)
+        {
+            labelIndices[l] = PriceIndex.ForLabel(Goods, l, pricesTraded);
         }
     }
 

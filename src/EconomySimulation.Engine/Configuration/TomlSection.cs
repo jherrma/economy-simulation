@@ -106,6 +106,25 @@ internal sealed class TomlSection
     /// </summary>
     internal IReadOnlyList<string> Subtables()
     {
+        var names = new List<string>(SubtablesInFileOrder());
+
+        names.Sort(StringComparer.Ordinal);
+
+        return names;
+    }
+
+    /// <summary>
+    /// The same, in the order the file states them.
+    ///
+    /// The goods table is a **list** where the archetype table is a set, and the difference is not
+    /// cosmetic: rows are walked in order (the shopping walk, the per-good residual draw), so
+    /// sorting them by name would silently make §3.1's `food, leisure, clothing, hobby,
+    /// electronics, appliances` into `appliances, clothing, …` and change every run. The order a
+    /// calibration is written in is part of what it says, the effective configuration records it,
+    /// and a reload therefore gives back the same table rather than an alphabetised one.
+    /// </summary>
+    internal IReadOnlyList<string> SubtablesInFileOrder()
+    {
         var names = new List<string>();
 
         foreach (var entry in table)
@@ -125,8 +144,6 @@ internal sealed class TomlSection
                 validation.Fail($"{path}.{entry.Key}", "a table", Describe(entry.Value));
             }
         }
-
-        names.Sort(StringComparer.Ordinal);
 
         return names;
     }

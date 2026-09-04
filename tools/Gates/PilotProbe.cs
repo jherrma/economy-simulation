@@ -85,16 +85,29 @@ public static class PilotProbe
         }
     }
 
-    private static readonly string[] Categories =
-        ["food", "leisure", "clothing", "hobby", "electronics", "appliances"];
+    /// <summary>
+    /// The goods and tiers to cut the probe by, **read off the table being run**.
+    ///
+    /// This was six names and three written out by hand, which was true of every configuration that
+    /// existed and stopped being true the moment §3.6 shipped eighteen goods. A hard-coded list does
+    /// not fail when it goes stale — it silently sums a share over the six columns it knows and
+    /// reports a denominator missing two thirds of the town.
+    /// </summary>
+    private sealed record Cuts(IReadOnlyList<string> Goods, IReadOnlyList<string> Tiers)
+    {
+        public static Cuts Of(SimulationParameters parameters) =>
+            new(
+                [.. parameters.Categories.Select(c => c.Name)],
+                [.. parameters.Tiers.Select(t => t.Name)]);
 
-    private static IEnumerable<string> Units(string cohort, string tier) =>
-        Categories.Select(c => Invariant($"{cohort}_{c}_{tier}_units"));
+        public IEnumerable<string> Units(string cohort, string tier) =>
+            Goods.Select(g => Invariant($"{cohort}_{g}_{tier}_units"));
 
-    private static IEnumerable<string> AllUnits(string cohort) =>
-        new[] { "budget", "standard", "premium" }.SelectMany(t => Units(cohort, t));
+        public IEnumerable<string> AllUnits(string cohort) =>
+            Tiers.SelectMany(t => Units(cohort, t));
+    }
 
-    private static Measure[] Measures()
+    private static Measure[] Measures(Cuts cuts)
     {
         var measures = new List<Measure>
         {
@@ -105,22 +118,22 @@ public static class PilotProbe
             new("abstainer spend / tick", r => r.Mean("abstainer_spend")),
             new("abstainer cash", r => r.Mean("abstainer_cash")),
             new("abstainer wait_median", r => r.Mean("abstainer_wait_median")),
-            new("abstainer budget share", r => r.Share(Units("abstainer", "budget"), AllUnits("abstainer"))),
-            new("abstainer premium share", r => r.Share(Units("abstainer", "premium"), AllUnits("abstainer"))),
+            new("abstainer budget share", r => r.Share(cuts.Units("abstainer", "budget"), cuts.AllUnits("abstainer"))),
+            new("abstainer premium share", r => r.Share(cuts.Units("abstainer", "premium"), cuts.AllUnits("abstainer"))),
         };
 
-        measures.AddRange(Categories.Select(c => new Measure(
-            Invariant($"  abstainer {c} obtained"),
-            r => r.Share(Invariant($"abstainer_{c}_obtained"), Invariant($"abstainer_{c}_wanted")))));
+        measures.AddRange(cuts.Goods.Select(g => new Measure(
+            Invariant($"  abstainer {g} obtained"),
+            r => r.Share(Invariant($"abstainer_{g}_obtained"), Invariant($"abstainer_{g}_wanted")))));
 
-        measures.AddRange(Categories.Select(c => new Measure(
-            Invariant($"  cpi_{c}"),
-            r => r.Mean(Invariant($"cpi_{c}")))));
+        measures.AddRange(cuts.Goods.Select(g => new Measure(
+            Invariant($"  cpi_{g}"),
+            r => r.Mean(Invariant($"cpi_{g}")))));
 
         measures.AddRange(
         [
             new("borrower share obtained", r => r.Share("borrower_obtained", "borrower_wanted")),
-            new("borrower premium share", r => r.Share(Units("borrower", "premium"), AllUnits("borrower"))),
+            new("borrower premium share", r => r.Share(cuts.Units("borrower", "premium"), cuts.AllUnits("borrower"))),
             new("loans_outstanding", r => r.Mean("loans_outstanding")),
             new("money_stock", r => r.Mean("money_stock")),
             new("rationed / tick", r => r.Mean("rationed")),
@@ -191,7 +204,7 @@ public static class PilotProbe
 
         resolution.Observe(Invariant($"measure | {row.Scenarios[0]} | {row.Scenarios[1]} | diff | diff % | paired sd % | t | MDE % | unpaired MDE %"));
 
-        foreach (var measure in Measures())
+        foreach (var measure in Measures(Cuts.Of(control)))
         {
             var left = offReadings.Select(measure.Of).ToList();
             var right = highReadings.Select(measure.Of).ToList();

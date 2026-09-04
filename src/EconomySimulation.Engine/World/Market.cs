@@ -24,12 +24,12 @@ public sealed class Market
 
         this.goods = goods;
 
-        prices = new Money[goods.GoodCount];
-        stock = new int[goods.GoodCount];
-        sold = new int[goods.GoodCount];
-        blocked = new int[goods.GoodCount];
-        unaffordable = new int[goods.GoodCount];
-        priceFactor = new double[goods.GoodCount];
+        prices = new Money[goods.ShelfCount];
+        stock = new int[goods.ShelfCount];
+        sold = new int[goods.ShelfCount];
+        blocked = new int[goods.ShelfCount];
+        unaffordable = new int[goods.ShelfCount];
+        priceFactor = new double[goods.ShelfCount];
 
         // Opening prices are price_ref · price_mult, and none of them is tuned. At t = 0 the
         // premium tiers sit in heavy surplus, because supply is 40/40/20 while most households

@@ -175,14 +175,25 @@ public static class ConfigurationLoader
     }
 
     /// <summary>
-    /// The goods table, as an **overlay** on the specification's six categories.
+    /// The goods table, as an **overlay** on the specification's six rows — unless the file says
+    /// `replace = true`, and then as the whole table.
     ///
-    /// A `[categories.food]` table changes food and leaves the other five alone. It does not
-    /// replace the table — a file that mentioned one category and silently got a one-category
-    /// economy would run, and produce a number, and look like the run that was asked for.
+    /// A `[categories.food]` table changes food and leaves the other five alone. That is the right
+    /// default and it stays the default: a file that mentioned one category and silently got a
+    /// one-category economy would run, and produce a number, and look like the run that was asked
+    /// for. A name the specification does not know is a new row, and then every field is the file's
+    /// responsibility. That is how a seventh row is added without touching the engine.
     ///
-    /// A name the specification does not know is a new category, and then every field is the
-    /// file's responsibility. That is how a seventh category is added without touching the engine.
+    /// **`replace = true` is what a second calibration needs**, and E11 is why it exists. §3.6's
+    /// eighteen goods are not an edit to §3.1's six — they are a different table for the same town,
+    /// and overlaid they load as *twenty-four* rows whose `Σ price_ref / life` comes to 1,300
+    /// against a mean income of 650. There is no removal syntax and inventing one would be worse:
+    /// six `[categories.food] delete = true` stanzas is a file that says what it is not. Saying
+    /// "this section is the table" once, at the top, is a file that says what it is.
+    ///
+    /// It is stated per file rather than inferred from how many rows are present, because inferring
+    /// it is the failure: a file naming eighteen goods is indistinguishable from a file editing
+    /// eighteen of them, and guessing wrong is silent in both directions.
     /// </summary>
     private static IReadOnlyList<CategoryParameters> ReadCategories(
         TomlSection section,
@@ -190,12 +201,15 @@ public static class ConfigurationLoader
         Validation problems,
         SimulationParameters basis)
     {
-        var stated = section.Subtables();
+        // The scalar before Subtables(), which ignores what has already been read.
+        var replace = section.Bool("replace", false);
+        var stated = section.SubtablesInFileOrder();
         var categories = new List<CategoryParameters>();
+        IReadOnlyList<CategoryParameters> inherited = replace ? [] : basis.Categories;
 
-        foreach (var name in basis.Categories.Select(c => c.Name).Concat(stated).Distinct(StringComparer.Ordinal))
+        foreach (var name in inherited.Select(c => c.Name).Concat(stated).Distinct(StringComparer.Ordinal))
         {
-            var known = basis.Categories.FirstOrDefault(c => c.Name == name);
+            var known = inherited.FirstOrDefault(c => c.Name == name);
             var table = stated.Contains(name, StringComparer.Ordinal) ? section.Subtable(name) : null;
 
             if (table is null && known is null)
@@ -216,6 +230,9 @@ public static class ConfigurationLoader
             var category = new CategoryParameters
             {
                 Name = name,
+                // Resolved here and nowhere else, so every row that came from a file carries its
+                // label spelled out and two tables are equal when they say the same thing.
+                Category = row.Text("category", known?.Label ?? name),
                 Life = life,
                 // capacity is round(households / life) by definition, so it is derived unless the
                 // file states it — and if it does, Check makes sure it states the right value.

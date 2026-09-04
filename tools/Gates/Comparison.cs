@@ -95,6 +95,36 @@ public static class Comparison
     ///
     /// Columns are matched by name, not by position, and the row count still has to agree.
     /// </summary>
+    /// <summary>
+    /// The columns <paramref name="left"/> has that <paramref name="right"/> does not — for a gate
+    /// comparing on shared columns, the ones whose absence is a finding rather than a version.
+    /// </summary>
+    public static IReadOnlyList<string> ColumnsMissing(string left, string right, string file)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(left);
+        ArgumentException.ThrowIfNullOrWhiteSpace(right);
+
+        var leftPath = Path.Combine(left, file);
+        var rightPath = Path.Combine(right, file);
+
+        if (!File.Exists(leftPath) || !File.Exists(rightPath))
+        {
+            return [];
+        }
+
+        var leftHeader = Header(leftPath);
+        var rightHeader = Header(rightPath).ToHashSet(StringComparer.Ordinal);
+
+        return [.. leftHeader.Where(c => !rightHeader.Contains(c))];
+    }
+
+    private static string[] Header(string path)
+    {
+        using var reader = new StreamReader(path);
+
+        return reader.ReadLine()?.Split(',') ?? [];
+    }
+
     public static Difference? FirstDifferenceOnSharedColumns(
         string left,
         string right,

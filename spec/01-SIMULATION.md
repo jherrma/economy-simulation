@@ -378,15 +378,27 @@ tier overlay is untouched, `Σ_t units(g,t) = capacity_g` still holds per row, 1
 reprice where 18 did, and `GoodsTable`, `Market`, `MetricsWriter` and `CohortMetrics` already read
 their length from the configuration. `02-PARAMETERS.md` §3.6 is the table.
 
-**The loader is a different story, and an earlier draft of this section was wrong about it.**
-`ConfigurationLoader.ReadCategories` *merges*: a category the file does not name is kept from the
-basis, by design, so that `[categories.food]` changes food and leaves the other five alone (02-02).
-A file naming eighteen goods therefore loads as **twenty-four**, and `Σ price_ref / life` comes to
-1,300 rather than 650. There is no removal syntax, `Scenario.FromToml` overlays on
-`SimulationParameters.Default` unconditionally, and `Scenario.All` loads five hard-coded names. So
-E11 does need a genuinely new mechanism — replace-semantics for the goods table, or a calibration
-basis plumbed through the loader, the runner and the campaign — and 11-01 owns it. It is a day's
-work, not a concept, but it is not nothing and it must not be discovered during 11-02.
+**The loader was a different story, and an earlier draft of this section was wrong about it.**
+`ConfigurationLoader.ReadCategories` *merges*: a row the file does not name is kept from the basis,
+by design, so that `[categories.food]` changes food and leaves the other five alone (02-02). A file
+naming eighteen goods therefore loaded as **twenty-four**, and `Σ price_ref / life` came to 1,300
+rather than 650 — a run that starts, produces numbers and looks like the one that was asked for.
+
+**Resolved 2026-09-04 by `replace = true`** (11-01), a scalar in `[categories]` that says "this
+section is the table" rather than "these are edits to it". The alternative, a removal syntax, is
+worse in a way worth naming: six `[categories.food] delete = true` stanzas is a file that says what
+it is not. It is stated per file rather than inferred from how many rows are present, because
+inferring it is the failure mode — a file naming eighteen goods is indistinguishable from a file
+editing eighteen of them, and guessing wrong is silent in both directions. The overlay stays the
+default, so every scenario file already written means what it always meant.
+
+Two things fell out of building it. The goods table is now read in **file order** rather than sorted
+by name (`[archetypes]` still sorts, because there the order decides which household is assigned to
+which type, and two files stating the same population differently have to be the same population).
+Rows are walked in order — the shopping walk, the per-good residual draw — so sorting them would
+turn §3.1's `food, leisure, …` into `appliances, clothing, …` and change every run. And an effective
+configuration now always carries `replace = true`, because a resolved configuration that has to be
+overlaid on the right basis to mean what it says is not a resolved configuration.
 
 The label earns its keep twice. It is the level at which output is rolled up — a CPI for
 *electronics* is what a reader can hold in their head, not one for laptops — and it is the level at
@@ -843,6 +855,16 @@ makes the comparison paired rather than merely averaged.
 Aggregate, per tick: `cpi`, money stock, `loans_outstanding`, pool balance, and per good the price,
 units sold, blocked units and unaffordable units.
 
+**Every series is reported per good and per category** (E11, §5.5). A good is a row of the goods
+table; a category is the label rows are grouped under, and under §3.1 the two coincide, so
+`cpi_food` and `cpi_category_food` carry the same number for that calibration and always will. The
+duplication is deliberate: a schema that emitted the roll-up only where it differed from a good
+would be a schema a reader has to inspect the goods table to parse. The roll-up is **unit-weighted**
+— the weights are the supply units, the same fixed basket the index itself uses — so a €1,440
+washing machine replaced every twelve years counts for its seven units rather than for its price.
+Value-weighting instead would let one expensive, rarely-replaced good speak for a category of three,
+and the two diverge sharply on exactly the categories §3.6 splits.
+
 ```
 cpi_t = Σ_g price_g,t · supply_g  /  Σ_g price_g,0 · supply_g
 ```
@@ -858,9 +880,10 @@ that cannot be argued with.
 - **`wait`**: for each durable want, the number of ticks between first wanting a unit and obtaining
   one. Reported as a cohort median. This is the cleanest available statement of the timing channel —
   the borrower gets it now, the abstainer gets it later or not at all.
-- **`tier_mix`**: the share of each cohort's purchases at each tier, **per category, never pooled
-  across them** (§10.4 — pooled, it reports the trade-down with the wrong sign). **This is the
-  trade-down finding.** If credit moves borrowers up the ladder and abstainers down it, that shows
+- **`tier_mix`**: the share of each cohort's purchases at each tier, **within a good or within a
+  category, never pooled across categories** (§10.4 — pooled, it reports the trade-down with the
+  wrong sign). One category is the widest denominator this model will report a share over.
+  **This is the trade-down finding.** If credit moves borrowers up the ladder and abstainers down it, that shows
   here before it shows anywhere else, and it is a more concrete claim than a price index.
 - **`real_units`**: total units obtained, per category and in total.
 - **`quality_index`**: units obtained weighted by `value_mult`, so a cohort that keeps its unit count

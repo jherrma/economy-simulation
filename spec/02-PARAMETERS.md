@@ -543,6 +543,48 @@ than off `round(share × capacity)`.
 | `households` | 1000 | **5000** | Every premium shelf reaches 7 units or more; no shelf is under 7. The walk scales with households × candidates, so the 150-run campaign goes from about 70 seconds to roughly ten to fifteen minutes — the price of admission for 54 shelves |
 | `warmup_ticks` | 240 | **set on the null run** | §10.3 found relative prices converge eight times slower than the level with 18 shelves. Fifty-four repricing independently will be slower again. This number is **measured, not guessed** — the same rule that set 240 |
 
+#### Configuration shape — added 2026-09-04
+
+`config/calibrations/grouped.toml`. The table it states is the whole table, and it has to say so:
+
+```toml
+[categories]
+replace = true
+
+[categories.phone]
+category    = "electronics"
+life        = 30
+price_ref   = 600.00
+v           = 0.0381538462
+necessity   = 0.45
+financeable = true
+term        = 24
+```
+
+`replace = true` is the mechanism 11-01 built and the reason this file can exist at all. Without it
+the goods table is an **overlay** — `[categories.food]` edits food and leaves the other five alone,
+which is right and stays the default — so these eighteen rows load as twenty-four, six of them
+§3.1's, and `Σ price_ref / life` comes to 1,300 against a mean income of 650. Nothing in the run
+would complain.
+
+`category` is a **label** and nothing else: rows sharing it are a category, nothing else defines one,
+and absent means the row's own name — which is what makes §3.1 six categories of one good each and
+every file written before E11 mean exactly what it always meant. The engine never branches on it.
+It decides how the output rolls up (`01-SIMULATION.md` §10) and, per §3.5, the level at which
+archetype taste is authored.
+
+`capacity` is omitted throughout, because it is `round(households / life)` and the loader derives it
+— so this table is independent of how big the town is, and the 5,000 households below belong to the
+scenario rather than to the goods table.
+
+**Row names are globally unique and readable on their own**, because each becomes an output column
+(`abstainer_appliance_large_wanted`). The table above calls them "small", "medium", "large" within a
+category; the file carries the category where the bare word would not survive being read alone.
+
+`v` is stated at full precision rather than at the four decimals of the table above. The rounded
+column sums to 1.2557 where the exact table sums to 1.2555, which is the argument for moving the
+derivation into the loader (11-02) rather than leaving it in a person's calculator.
+
 ### 3.7 Replacement cycles by archetype — added 2026-09-04
 
 Once a category is three goods with three cycles, the cycle itself becomes something a household can

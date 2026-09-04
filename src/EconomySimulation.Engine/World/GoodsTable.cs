@@ -3,7 +3,14 @@ using EconomySimulation.Engine.Configuration;
 namespace EconomySimulation.Engine.World;
 
 /// <summary>
-/// The goods of the town: six categories as data, eighteen shelves as a consequence.
+/// The goods of the town: six rows as data, eighteen shelves as a consequence.
+///
+/// **A row is a good.** `01-SIMULATION.md` §5.5 also calls it a product group; §3.1 called it a
+/// category, because there every good was the only good in its category, and <see cref="Categories"/>
+/// keeps that spelling for the same reason the TOML section does. What a row is grouped *under* is
+/// its <see cref="CategoryParameters.Label"/>, and <see cref="Labels"/> is the list of those — six
+/// of them under §3.1, six under §3.6's eighteen goods. A shelf is a (row, tier) pair, which is why
+/// the count of them is <see cref="ShelfCount"/> and not something with "good" in the name.
 ///
 /// Nothing here is stored per category and per tier that could be derived from a category and a
 /// tier. A tier's opening price is `price_ref · price_mult`, its value multiplier is the tier's,
@@ -15,6 +22,7 @@ public sealed class GoodsTable
 {
     private readonly Money[] openingPrices;
     private readonly int[] units;
+    private readonly int[] labelOf;
     private readonly Money[] floors;
     private readonly double[] incomeSlopes;
 
@@ -35,10 +43,29 @@ public sealed class GoodsTable
         Tiers = parameters.Tiers;
         MeanIncome = parameters.Income.MeanIncome;
 
-        openingPrices = new Money[GoodCount];
-        units = new int[GoodCount];
+        openingPrices = new Money[ShelfCount];
+        units = new int[ShelfCount];
         floors = new Money[CategoryCount];
         incomeSlopes = new double[CategoryCount];
+        labelOf = new int[CategoryCount];
+
+        var labels = new List<string>();
+
+        for (var c = 0; c < CategoryCount; c++)
+        {
+            var label = Categories[c].Label;
+            var at = labels.IndexOf(label);
+
+            if (at < 0)
+            {
+                at = labels.Count;
+                labels.Add(label);
+            }
+
+            labelOf[c] = at;
+        }
+
+        Labels = labels;
 
         var shares = Tiers.Select(t => t.UnitShare).ToArray();
 
@@ -77,8 +104,20 @@ public sealed class GoodsTable
 
     public int TierCount => Tiers.Count;
 
-    /// <summary>Every shelf in the town: one per category per tier.</summary>
-    public int GoodCount => CategoryCount * TierCount;
+    /// <summary>Every shelf in the town: one per row per tier. Eighteen under §3.1, fifty-four under §3.6.</summary>
+    public int ShelfCount => CategoryCount * TierCount;
+
+    /// <summary>
+    /// The distinct category labels, in the order their first row appears.
+    ///
+    /// First-appearance order rather than alphabetical, because it is the order the goods table
+    /// states, and the output columns derived from it should read the way the calibration does.
+    /// Under §3.1 this is the six row names again, which is what keeps that output unchanged.
+    /// </summary>
+    public IReadOnlyList<string> Labels { get; }
+
+    /// <summary>Which entry of <see cref="Labels"/> a row rolls up into.</summary>
+    public int LabelOf(int category) => labelOf[category];
 
     /// <summary>
     /// Where a (category, tier) pair lives in the flat arrays. Category-major, so a household

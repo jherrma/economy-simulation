@@ -1,6 +1,7 @@
 using EconomySimulation.Engine;
 using EconomySimulation.Engine.Configuration;
 using EconomySimulation.Engine.Output;
+using EconomySimulation.Engine.World;
 using EconomySimulation.Tests.Infrastructure;
 
 namespace EconomySimulation.Tests;
@@ -193,6 +194,191 @@ public sealed class MetricsWriterTests
         return scenario.Value.Parameters;
     }
 
+    /// <summary>The grouped calibration of §3.6: eighteen goods rolling up into six categories.</summary>
+    private static SimulationParameters Grouped()
+    {
+        var loaded = ConfigurationLoader.FromFile(
+            Path.Combine(Repo.Root, "config", "calibrations", "grouped.toml"));
+
+        Assert.True(loaded.IsSuccess, string.Join("; ", loaded.Errors.Select(e => e.Message)));
+
+        return loaded.Value with { Run = loaded.Value.Run with { Ticks = 12, WarmupTicks = 4 } };
+    }
+
+    // ---- the category roll-up (11-01) -------------------------------------------------------------
+
+    /// <summary>
+    /// `cpi_category_x` is the unit-weighted roll-up of the `cpi_g` of the goods labelled `x`.
+    ///
+    /// Unit-weighted, and the test says so in the arithmetic rather than in a comment: the weights
+    /// are each good's opening value at supply, so a €1,440 washing machine replaced every twelve
+    /// years counts for its seven units. Value-weighting instead would let one expensive,
+    /// rarely-replaced good speak for a category of three, and the two diverge sharply on exactly
+    /// the categories §3.6 splits.
+    /// </summary>
+    [Fact]
+    public void TheCategoryIndexIsTheUnitWeightedRollUpOfItsGoods()
+    {
+        InADirectory(directory =>
+        {
+            var parameters = Grouped();
+
+            Run(directory, ticks: 8, parameters);
+
+            var goods = new GoodsTable(parameters);
+            var run = Csv.Read(Path.Combine(directory, "run.csv"));
+            var tiers = Csv.Read(Path.Combine(directory, "tiers.csv"));
+
+            Assert.Equal(18, goods.CategoryCount);
+            Assert.Equal(6, goods.Labels.Count);
+
+            // Rebuilt from the shelf prices rather than from the per-good index, so that the two
+            // sides of this assertion do not share an intermediate. `cpi_g` is written to six
+            // decimals, and a roll-up of six-decimal numbers is not the roll-up.
+            var traded = new Dictionary<(string Tick, string Good, string Tier), double>();
+
+            foreach (var row in tiers.Rows())
+            {
+                traded[(tiers.Text(row, "tick"), tiers.Text(row, "good"), tiers.Text(row, "tier"))] =
+                    tiers.Number(row, "price");
+            }
+
+            foreach (var tick in run.Rows())
+            {
+                var when = run.Text(tick, "tick");
+
+                for (var l = 0; l < goods.Labels.Count; l++)
+                {
+                    var now = 0.0;
+                    var opening = 0.0;
+
+                    for (var c = 0; c < goods.CategoryCount; c++)
+                    {
+                        if (goods.LabelOf(c) != l)
+                        {
+                            continue;
+                        }
+
+                        for (var t = 0; t < goods.TierCount; t++)
+                        {
+                            var units = goods.Units(c, t);
+
+                            now += traded[(when, parameters.Categories[c].Name, parameters.Tiers[t].Name)] * units;
+                            opening += goods.OpeningPrice(c, t).Cents / 100.0 * units;
+                        }
+                    }
+
+                    Assert.Equal(now / opening, run.Number(tick, "cpi_category_" + goods.Labels[l]), 6);
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Under §3.1 every row is its own category, so the roll-up is the good's own index — the one
+    /// table where it cannot be wrong, which is what makes it worth asserting.
+    /// </summary>
+    [Fact]
+    public void UnderTheDefaultCalibrationTheRollUpIsTheGoodItself()
+    {
+        InADirectory(directory =>
+        {
+            Run(directory, ticks: 4);
+
+            var run = Csv.Read(Path.Combine(directory, "run.csv"));
+            var tiers = Csv.Read(Path.Combine(directory, "tiers.csv"));
+
+            foreach (var good in Defaults.Categories.Select(c => c.Name))
+            {
+                foreach (var tick in run.Rows())
+                {
+                    Assert.Equal(run.Text(tick, "cpi_" + good), run.Text(tick, "cpi_category_" + good));
+                }
+            }
+
+            // And the same of the tier mix, and of the two columns naming the row.
+            foreach (var row in tiers.Rows())
+            {
+                Assert.Equal(tiers.Text(row, "category"), tiers.Text(row, "good"));
+                Assert.Equal(tiers.Text(row, "mix_share"), tiers.Text(row, "category_mix_share"));
+            }
+        });
+    }
+
+    /// <summary>
+    /// The tier mix is reported **within** a good and **within** a category, and the two are
+    /// different numbers once a category holds more than one good.
+    ///
+    /// Both denominators are checked, because the failure this guards is not an arithmetic slip —
+    /// it is a share whose denominator is wider than it looks. §10.4 found a pooled tier share
+    /// reporting the effect backwards when exclusion moved units out of the denominator, and one
+    /// category is the widest denominator this model will report a share over.
+    /// </summary>
+    [Fact]
+    public void TheTierMixIsReportedWithinAGoodAndWithinACategory()
+    {
+        InADirectory(directory =>
+        {
+            var parameters = Grouped();
+
+            Run(directory, ticks: 8, parameters);
+
+            var goods = new GoodsTable(parameters);
+            var tiers = Csv.Read(Path.Combine(directory, "tiers.csv"));
+
+            Assert.Equal(18 * 3 * 8, tiers.RowCount);
+
+            var names = parameters.Categories.Select(c => c.Name).ToList();
+
+            var perGood = new Dictionary<(string Tick, string Good), double>();
+
+            // Keyed by tier as well, because `category_mix_share` is a property of the category and
+            // is written on all three of its goods' rows. Summing the column would count it thrice.
+            var perCategory = new Dictionary<(string Tick, string Category, string Tier), double>();
+            var differs = 0;
+
+            foreach (var row in tiers.Rows())
+            {
+                var tick = tiers.Text(row, "tick");
+                var good = tiers.Text(row, "good");
+                var category = tiers.Text(row, "category");
+                var tier = tiers.Text(row, "tier");
+                var within = tiers.Number(row, "mix_share");
+                var across = tiers.Number(row, "category_mix_share");
+
+                perGood.TryGetValue((tick, good), out var g);
+                perGood[(tick, good)] = g + within;
+
+                if (perCategory.TryGetValue((tick, category, tier), out var seen))
+                {
+                    Assert.Equal(seen, across);
+                }
+
+                perCategory[(tick, category, tier)] = across;
+
+                Assert.Equal(goods.Labels[goods.LabelOf(names.IndexOf(good))], category);
+
+                if (Math.Abs(within - across) > 1e-9)
+                {
+                    differs++;
+                }
+            }
+
+            var categoryTotals = perCategory
+                .GroupBy(e => (e.Key.Tick, e.Key.Category))
+                .Select(g => g.Sum(e => e.Value));
+
+            // Each denominator sums to 1 over its own tiers, or to 0 where nothing sold at all.
+            foreach (var total in perGood.Values.Concat(categoryTotals))
+            {
+                Assert.True(Math.Abs(total - 1.0) < 1e-5 || Math.Abs(total) < 1e-9, $"a mix share summed to {total}");
+            }
+
+            // Three goods per category, so the two shares are genuinely different numbers.
+            Assert.True(differs > 0, "the within-good and within-category tier shares never differed");
+        });
+    }
+
     // ---- what is written ----------------------------------------------------------------------
 
     /// <summary>Every series the story names is present, and the shelf rows are one per tier per category per tick.</summary>
@@ -206,7 +392,7 @@ public sealed class MetricsWriterTests
             var tiers = Csv.Read(Path.Combine(directory, "tiers.csv"));
             var run = Csv.Read(Path.Combine(directory, "run.csv"));
 
-            foreach (var column in new[] { "scenario", "seed", "tick", "warmup", "category", "tier", "price", "units", "sold", "blocked", "unaffordable", "mix_share" })
+            foreach (var column in new[] { "scenario", "seed", "tick", "warmup", "category", "good", "tier", "price", "units", "sold", "blocked", "unaffordable", "mix_share", "category_mix_share" })
             {
                 Assert.True(tiers.Has(column), $"tiers.csv has no column '{column}'");
             }

@@ -237,6 +237,19 @@ The paired-seed check in the campaign runner (09-02) therefore compares **archet
 across arms as well as the abstainer set, and compares the assignment itself rather than the count
 of each type — equal counts are not the same claim as the same households.
 
+**The projection was relaxed on 2026-09-04, and it is worth saying what was given up.** Through E10
+the gate compared `run.csv` and `tiers.csv` whole, byte for byte, on the ground that E10 added no
+column to either and that adding one would be the failure the gate exists for. E11 adds columns to
+both on purpose — `tiers.csv` gains `good` and `category_mix_share`, `run.csv` gains a
+`cpi_category_*` block — so both moved onto the shared-columns rule, where every column the fixture
+knows is still compared to the character and a new one is named and skipped. A column **added** to
+`run.csv` is therefore no longer caught here. A column that **disappears** still is, and explicitly:
+comparing on shared columns would otherwise let the output shrink one column at a time until the
+gate compares four keys and passes. The fixture itself is unchanged and is still never regenerated.
+When 11-01 landed, that comparison reported six new columns in `run.csv` and two in `tiers.csv`, and
+every other number identical across both arms and four seeds — which is the evidence that E11's
+output change is additive.
+
 ### V5b — The grouped calibration is a configuration — added 2026-09-04
 
 `01-SIMULATION.md` §5.5 needs no switch either, for a different reason from V5a's: the eighteen-good
@@ -245,7 +258,11 @@ V5 keeps its meaning untouched. What must be checked instead is that the *engine
 category-shaped:
 
 - The goods table's length is read from the configuration everywhere. A test loads a table of a
-  length in neither six nor eighteen and runs a tick.
+  length in neither six nor eighteen and runs a tick. **Done 2026-09-04** (11-01): eleven goods with
+  lives 1, 1, 2, 3, 4, 5, 7, 11, 19, 37, 61 across three category labels.
+- **The table replaces rather than merges when it says so.** `replace = true` is what makes an
+  eighteen-good file eighteen goods; without it the same file is twenty-four and costs twice the
+  mean income per tick. A test asserts both numbers, because the failure is a run that starts.
 - **Both identities.** `Σ_A share_A / d[A][g] = 1` for units, and
   `Σ_A share_A · m[A][g] = 1` for the score level, asserted at load on the normalised tables.
   The first is the expensive error of the epic: normalising `d` rather than `1/d` gives the

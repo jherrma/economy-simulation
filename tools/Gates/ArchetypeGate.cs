@@ -43,10 +43,21 @@ public static class ArchetypeGate
     // ---- the projection ---------------------------------------------------------------------
 
     /// <summary>
-    /// Compared **whole**, byte for byte. E10 adds no column to either of these, and if it ever
-    /// does, that is the failure this gate is for.
+    /// Compared **whole**, byte for byte — and after E11 there is nothing left in it.
+    ///
+    /// `run.csv` and `tiers.csv` were here through E10, on the ground that E10 added no column to
+    /// either and that adding one would be the failure this gate is for. E11 adds columns to both
+    /// on purpose: `tiers.csv` gains `good` and `category_mix_share`, `run.csv` gains a
+    /// `cpi_category_*` block. So they move to <see cref="SharedColumnsRule"/>, where every column
+    /// the fixture knows is still compared to the character and a new one is named and skipped.
+    ///
+    /// What that gives up is worth writing down: a column **added** to `run.csv` is no longer
+    /// caught here. What it keeps is the claim the gate exists for — that under the identity table
+    /// every number the pre-archetype model produced is still the same number. A column that
+    /// *disappears* is still a failure, and <see cref="Difference"/> reports it by name rather than
+    /// letting it vanish into the count of things not compared.
     /// </summary>
-    public static IReadOnlyList<string> Whole { get; } = ["run.csv", "tiers.csv"];
+    public static IReadOnlyList<string> Whole { get; } = [];
 
     /// <summary>
     /// The completion marker, compared on the keys the fixture states.
@@ -113,7 +124,9 @@ public static class ArchetypeGate
         }
 
         against.Observe(Provenance(baselines));
-        against.Observe("compared whole: " + string.Join(", ", Whole));
+        against.Observe(Whole.Count == 0
+            ? "compared whole: nothing — see ArchetypeGate.Whole for why E11 emptied it"
+            : "compared whole: " + string.Join(", ", Whole));
         against.Observe($"{Marker}: the keys the fixture states");
         against.Observe("not compared: " + string.Join(", ", NotCompared));
         against.Observe(SharedColumnsRule);
@@ -278,11 +291,14 @@ public static class ArchetypeGate
         string arm,
         HashSet<string> said)
     {
-        var whole = Comparison.FirstDifference(stored, run, Whole);
-
-        if (whole is not null)
+        if (Whole.Count > 0)
         {
-            return whole;
+            var whole = Comparison.FirstDifference(stored, run, Whole);
+
+            if (whole is not null)
+            {
+                return whole;
+            }
         }
 
         var marker = Comparison.FirstDifferenceOnSharedKeys(stored, run, Marker, out var newKeys);
@@ -310,6 +326,17 @@ public static class ArchetypeGate
                     $"{arm}: {file} is present only in the {side} and is not compared — the fixture cannot speak to a file that did not exist when it was taken"));
 
                 continue;
+            }
+
+            var lost = Comparison.ColumnsMissing(stored, run, file);
+
+            if (lost.Count > 0)
+            {
+                // Not "not compared": a column the fixture has and the run does not is a column the
+                // model stopped producing, and skipping it quietly is how a gate that compares
+                // shared columns stops comparing anything at all.
+                check.Fail(Invariant(
+                    $"{arm}: {file} no longer has {string.Join(", ", lost)}, which the fixture recorded. A column may be added; one that disappears is a run that cannot be compared with the ones already published."));
             }
 
             var shared = Comparison.FirstDifferenceOnSharedColumns(stored, run, file, out var dropped);

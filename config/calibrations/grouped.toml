@@ -1,0 +1,221 @@
+# The grouped calibration — `02-PARAMETERS.md` §3.6.
+#
+# Eighteen goods, three per category, each with its own life and price. This is a **second
+# calibration, not a replacement**: §3.1's six rows stay the default, so every number in
+# `01-SIMULATION.md` §10 keeps its referent. A finding whose calibration was replaced underneath it
+# is a finding nobody can check.
+#
+# `replace = true` is why this file can exist at all. The goods table is otherwise an *overlay* —
+# `[categories.food]` edits food and leaves the other five alone — so without it these eighteen rows
+# would load as twenty-four, six of them §3.1's, and `Sum price_ref / life` would come to 1,300
+# against a mean income of 650. The run would start, produce numbers, and look like the one that was
+# asked for.
+#
+# `category` is a **label** and nothing else. Rows sharing it are a category; the engine never
+# branches on it; it decides how the output rolls up (a reader can hold an electronics price index
+# in their head, not a laptop one) and, from §3.5, the level at which archetype taste is authored.
+# Splitting a category is a redistribution of its budget, never an addition to it: the four durable
+# categories were reweighted within their EUR 150 (`01-SIMULATION.md` §5.5).
+#
+# Row names are globally unique and readable alone, because each becomes an output column
+# (`abstainer_appliance_large_wanted`). §3.6's table calls them "small", "medium", "large" within a
+# category; here they carry the category where the bare word would not survive being read on its own.
+#
+# `capacity` is omitted throughout: it is `round(households / life)` by definition and the loader
+# derives it, so this table is independent of how big the town is. §3.6 asks for 5,000 households on
+# the thin-shelf evidence, and that belongs to the scenario rather than to the goods table.
+#
+# `v` is stated here at full precision. §3.6 authors it as a **base score** — `v_g =
+# base_score_g * price_ref_g / (life_g * mean_income)` — because nobody has an intuition about
+# `v = 0.0141` and everybody has one about "this good scores 1.10 for a household on the mean
+# income". Story 11-02 moves the derivation into the loader and this table with it, and the numbers
+# below are what it should then produce. §3.6's four-decimal `v` column is a rounding of them: it
+# sums to 1.2557 where the exact table sums to 1.2555, which is why the derivation belongs in the
+# loader rather than in a person's calculator.
+
+[categories]
+replace = true
+
+# ---- food: EUR 300.00 per tick ---------------------------------------------------------------
+
+[categories.groceries]
+category    = "food"
+life        = 1
+price_ref   = 210.00
+v           = 0.4587692308
+necessity   = 0.85
+financeable = false
+term        = 0
+
+[categories.consumables]
+category    = "food"
+life        = 3
+price_ref   = 90.00
+v           = 0.0623076923
+necessity   = 0.75
+financeable = false
+term        = 0
+
+[categories.eating_out]
+category    = "food"
+life        = 1
+price_ref   = 60.00
+v           = 0.0876923077
+necessity   = 0.20
+financeable = false
+term        = 0
+
+# ---- leisure: EUR 200.00 per tick --------------------------------------------------------------
+
+[categories.going_out]
+category    = "leisure"
+life        = 1
+price_ref   = 120.00
+v           = 0.2400000000
+necessity   = 0.30
+financeable = false
+term        = 0
+
+[categories.events]
+category    = "leisure"
+life        = 3
+price_ref   = 150.00
+v           = 0.0884615385
+necessity   = 0.20
+financeable = false
+term        = 0
+
+[categories.holiday]
+category    = "leisure"
+life        = 12
+price_ref   = 360.00
+v           = 0.0484615385
+necessity   = 0.10
+financeable = false
+term        = 0
+
+# ---- clothing: EUR 55.00 per tick, up from §3.1's 66.67 ----------------------------------------
+
+[categories.clothing_basics]
+category    = "clothing"
+life        = 4
+price_ref   = 48.00
+v           = 0.0240000000
+necessity   = 0.75
+financeable = false
+term        = 0
+
+[categories.clothing_everyday]
+category    = "clothing"
+life        = 8
+price_ref   = 152.00
+v           = 0.0336153846
+necessity   = 0.50
+financeable = false
+term        = 0
+
+[categories.outerwear]
+category    = "clothing"
+life        = 24
+price_ref   = 576.00
+v           = 0.0387692308
+necessity   = 0.40
+financeable = false
+term        = 0
+
+# ---- hobby: EUR 30.00 per tick, down from §3.1's 50.00 -----------------------------------------
+
+[categories.hobby_supplies]
+category    = "hobby"
+life        = 3
+price_ref   = 27.00
+v           = 0.0166153846
+necessity   = 0.15
+financeable = false
+term        = 0
+
+[categories.hobby_equipment]
+category    = "hobby"
+life        = 18
+price_ref   = 216.00
+v           = 0.0206769231
+necessity   = 0.12
+financeable = true
+term        = 12
+
+[categories.hobby_big_kit]
+category    = "hobby"
+life        = 60
+price_ref   = 540.00
+v           = 0.0141230769
+necessity   = 0.08
+financeable = true
+term        = 24
+
+# ---- electronics: EUR 45.00 per tick, up from §3.1's 25.00 -------------------------------------
+#
+# A EUR 600 phone every thirty months is EUR 20 a month on its own, four fifths of what §3.1 allotted
+# the whole category. This is the clearest case for the split, and it is about falsifiability rather
+# than realism: "EUR 900 every 36 months" is a number nobody can look at and call wrong, and "a
+# EUR 600 phone every 30 months" is checkable against a shop window.
+
+[categories.phone]
+category    = "electronics"
+life        = 30
+price_ref   = 600.00
+v           = 0.0381538462
+necessity   = 0.45
+financeable = true
+term        = 24
+
+[categories.laptop]
+category    = "electronics"
+life        = 54
+price_ref   = 900.00
+v           = 0.0312820513
+necessity   = 0.25
+financeable = true
+term        = 24
+
+[categories.tv]
+category    = "electronics"
+life        = 84
+price_ref   = 700.00
+v           = 0.0141025641
+necessity   = 0.15
+financeable = true
+term        = 24
+
+# ---- appliances: EUR 20.00 per tick, up from §3.1's 8.33 ---------------------------------------
+#
+# EUR 8.33 a month was modelling a household that owns one appliance rather than a fridge, a washing
+# machine, an oven, a dishwasher and a kettle. Small appliances are **not** financeable: nobody takes
+# a loan for a kettle, and the flag says what happens in the world rather than what the experiment
+# would find convenient.
+
+[categories.appliance_small]
+category    = "appliances"
+life        = 36
+price_ref   = 120.00
+v           = 0.0066666667
+necessity   = 0.40
+financeable = false
+term        = 0
+
+[categories.appliance_medium]
+category    = "appliances"
+life        = 96
+price_ref   = 640.00
+v           = 0.0127179487
+necessity   = 0.45
+financeable = true
+term        = 24
+
+[categories.appliance_large]
+category    = "appliances"
+life        = 144
+price_ref   = 1440.00
+v           = 0.0190769231
+necessity   = 0.65
+financeable = true
+term        = 36

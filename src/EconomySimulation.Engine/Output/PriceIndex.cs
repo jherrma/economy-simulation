@@ -48,7 +48,46 @@ public static class PriceIndex
         return Ratio(now, opening);
     }
 
-    /// <summary>One category's index, on the same basis and over that category's three tiers.</summary>
+    /// <summary>
+    /// One category label's index — the same basket, restricted to the shelves of every row
+    /// carrying that label.
+    ///
+    /// **Unit-weighted, and that is a choice worth stating.** The weights are the supply units, so
+    /// a category's index is the roll-up of its goods' indices weighted by opening value, and a
+    /// €1,440 washing machine replaced every twelve years counts for its seven units rather than
+    /// for its price. Value-weighting instead would let one expensive, rarely-replaced good speak
+    /// for a category of five, and the two diverge sharply on exactly the categories §3.6 splits.
+    ///
+    /// Under §3.1 every row is its own category and this is <see cref="ForCategory"/> again, which
+    /// is what makes the roll-up checkable against a table where it cannot be wrong.
+    /// </summary>
+    public static double ForLabel(GoodsTable goods, int label, ReadOnlySpan<Money> traded)
+    {
+        ArgumentNullException.ThrowIfNull(goods);
+
+        var now = 0L;
+        var opening = 0L;
+
+        for (var c = 0; c < goods.CategoryCount; c++)
+        {
+            if (goods.LabelOf(c) != label)
+            {
+                continue;
+            }
+
+            for (var t = 0; t < goods.TierCount; t++)
+            {
+                var units = goods.Units(c, t);
+
+                now = checked(now + (traded[goods.Index(c, t)].Cents * units));
+                opening = checked(opening + (goods.OpeningPrice(c, t).Cents * units));
+            }
+        }
+
+        return Ratio(now, opening);
+    }
+
+    /// <summary>One row's index, on the same basis and over that row's three tiers.</summary>
     public static double ForCategory(GoodsTable goods, int category, ReadOnlySpan<Money> traded)
     {
         ArgumentNullException.ThrowIfNull(goods);
@@ -68,9 +107,9 @@ public static class PriceIndex
     }
 
     /// <summary>
-    /// The realised tier mix: this tier's share of the category's sales this tick. Zero sales in a
-    /// category is reported as a zero share rather than as nothing, so the series has a value at
-    /// every tick and a reader never has to guess what a gap meant.
+    /// The realised tier mix: this tier's share of the row's sales this tick. Zero sales in a row
+    /// is reported as a zero share rather than as nothing, so the series has a value at every tick
+    /// and a reader never has to guess what a gap meant.
     /// </summary>
     public static double MixShare(Market market, GoodsTable goods, int category, int tier)
     {
@@ -85,6 +124,41 @@ public static class PriceIndex
         }
 
         return sold == 0 ? 0.0 : market.Sold(category, tier) / (double)sold;
+    }
+
+    /// <summary>
+    /// The same share taken **within the category label** rather than within the row: this tier's
+    /// share of everything sold under that label this tick.
+    ///
+    /// Within, never pooled across (`01-SIMULATION.md` §10.4). Pooling tier shares over categories
+    /// reverses their sign when exclusion moves units out of the denominator, so the widest
+    /// denominator this model will report a share over is one category.
+    /// </summary>
+    public static double LabelMixShare(Market market, GoodsTable goods, int category, int tier)
+    {
+        ArgumentNullException.ThrowIfNull(market);
+        ArgumentNullException.ThrowIfNull(goods);
+
+        var label = goods.LabelOf(category);
+        var sold = 0;
+        var thisTier = 0;
+
+        for (var c = 0; c < goods.CategoryCount; c++)
+        {
+            if (goods.LabelOf(c) != label)
+            {
+                continue;
+            }
+
+            thisTier += market.Sold(c, tier);
+
+            for (var t = 0; t < goods.TierCount; t++)
+            {
+                sold += market.Sold(c, t);
+            }
+        }
+
+        return sold == 0 ? 0.0 : thisTier / (double)sold;
     }
 
     /// <summary>A basket with nothing in it has an index of 1: it has not moved, because there is nothing to move.</summary>

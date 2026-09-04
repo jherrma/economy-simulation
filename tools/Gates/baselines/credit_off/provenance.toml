@@ -1,6 +1,6 @@
 # What these baselines were taken from. The effective configuration of
 # each run is stored beside it; this is the rest of the answer.
-commit = "d7a460a456c3e3a8f540716c02eb27e0b9a9ff09"
+commit = "17316f48e4983bc6af19e0dc42a5d4e19e8afb6c"
 taken = "2026-09-04"
 scenario = "credit_off"
 ticks = 48

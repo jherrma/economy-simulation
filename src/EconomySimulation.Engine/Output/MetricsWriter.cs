@@ -30,6 +30,13 @@ namespace EconomySimulation.Engine.Output;
 /// tick per cell, and `run.csv` keeps carrying the cohort totals it always carried. A test asserts
 /// the long file sums to them.
 ///
+/// **Every series is written per good and per category** (E11). A row of the goods table is a good;
+/// what it rolls up into is its label, and under §3.1 the two coincide, so `cpi_food` and
+/// `cpi_category_food` carry the same number and always will for that calibration. The duplication
+/// is deliberate: a schema that emitted the roll-up only where it differed from a good would be a
+/// schema a reader has to inspect the goods table to parse, and the test that the roll-up is right
+/// would have nothing to assert on the one table where it cannot be wrong.
+///
 /// **No share is written anywhere but the tier mix.** Counts only, per category and per tier, so a
 /// share computed from this file is necessarily computed *within* a category. Pooling a share
 /// across categories reverses its sign when exclusion moves units out of the denominator
@@ -222,12 +229,18 @@ public sealed class MetricsWriter : IDisposable
     /// <summary>
     /// Columns are **added, never renamed, reordered by meaning, or repurposed**. A reader keyed by
     /// name then survives every later version, and a fixture from an older version still parses —
-    /// which is what lets one campaign's files be read beside the next one's.
+    /// which is what lets one campaign's files be read beside the next one's. Added includes
+    /// *inserted*: `good` sits next to `category` rather than at the end of the row, because a
+    /// name-keyed reader does not care and a person reading the file does.
+    ///
+    /// `category` was not repurposed when E11 split it. It always held the label; under §3.1 the
+    /// label was also the row's name, and `good` is the column that now says which row.
     /// </summary>
     private static void TierHeader(Action<string> column)
     {
         Keys(column);
         column("category");
+        column("good");
         column("tier");
         column("price");
         column("units");
@@ -235,6 +248,7 @@ public sealed class MetricsWriter : IDisposable
         column("blocked");
         column("unaffordable");
         column("mix_share");
+        column("category_mix_share");
     }
 
     private void RunHeader(Action<string> column)
@@ -245,6 +259,11 @@ public sealed class MetricsWriter : IDisposable
         foreach (var category in goods.Categories)
         {
             column("cpi_" + category.Name);
+        }
+
+        foreach (var label in goods.Labels)
+        {
+            column("cpi_category_" + label);
         }
 
         column("money_stock");
@@ -339,6 +358,7 @@ public sealed class MetricsWriter : IDisposable
             for (var t = 0; t < goods.TierCount; t++)
             {
                 Begin(record);
+                Field(goods.Labels[goods.LabelOf(c)]);
                 Field(goods.Categories[c].Name);
                 Field(goods.Tiers[t].Name);
                 Field(record.PriceTraded(c, t));
@@ -347,6 +367,7 @@ public sealed class MetricsWriter : IDisposable
                 Field(simulation.Market.Blocked(c, t));
                 Field(simulation.Market.Unaffordable(c, t));
                 Field(PriceIndex.MixShare(simulation.Market, goods, c, t));
+                Field(PriceIndex.LabelMixShare(simulation.Market, goods, c, t));
                 End(tiers, tierColumns, "tiers.csv");
 
                 TierRows++;
@@ -362,6 +383,11 @@ public sealed class MetricsWriter : IDisposable
         for (var c = 0; c < goods.CategoryCount; c++)
         {
             Field(record.CategoryIndex(c));
+        }
+
+        for (var l = 0; l < goods.Labels.Count; l++)
+        {
+            Field(record.LabelIndex(l));
         }
 
         Field(record.MoneyStock);

@@ -50,7 +50,13 @@ public sealed class ArchetypeGateTests
 
         Assert.True(report.Passed, report.ToString());
 
-        Assert.Contains(against.Observations, o => o.Contains("compared whole: run.csv, tiers.csv", StringComparison.Ordinal));
+        // Nothing is compared whole any more: E11 adds a column to both `run.csv` and `tiers.csv`
+        // on purpose, so they moved to the shared-columns rule, where every column the fixture
+        // knows is still compared to the character and a new one is named and skipped.
+        Assert.Empty(ArchetypeGate.Whole);
+        Assert.Contains(against.Observations, o => o.Contains("compared whole: nothing", StringComparison.Ordinal));
+        Assert.Contains(against.Observations, o => o.Contains("run.csv compared on the shared columns", StringComparison.Ordinal));
+        Assert.Contains(against.Observations, o => o.Contains("tiers.csv compared on the shared columns", StringComparison.Ordinal));
         Assert.Contains(against.Observations, o => o.Contains("run.done: the keys the fixture states", StringComparison.Ordinal));
         Assert.Contains(against.Observations, o => o.Contains("not compared: effective-config.toml", StringComparison.Ordinal));
         Assert.Contains(against.Observations, o => o.Contains("columns the fixture and the run have in common", StringComparison.Ordinal));
@@ -305,6 +311,45 @@ public sealed class ArchetypeGateTests
     /// Copied rather than generated: there is no command that generates this fixture, which is the
     /// point of it.
     /// </summary>
+    /// <summary>
+    /// A column the fixture has and the run does not is a **failure**, not a column not compared.
+    ///
+    /// This is what E11 had to put back. Comparing on shared columns lets a new column through, and
+    /// the same rule would let a vanished one through in silence — at which point a gate comparing
+    /// shared columns is a gate that eventually compares the four key columns and passes. Adding to
+    /// the output is a version; removing from it is a run that cannot be compared with the ones
+    /// already published.
+    /// </summary>
+    [Fact]
+    public void AColumnTheFixtureHasAndTheRunDoesNot_IsAFailure()
+    {
+        using var workspace = Workspace.Create("test-archetypes-lost-column");
+
+        var fixture = Fresh(workspace, OneSeed);
+
+        foreach (var arm in ArchetypeGate.Arms)
+        {
+            var path = Path.Combine(Runs.Directory(Path.Combine(fixture, arm), 1), "run.csv");
+            var lines = File.ReadAllLines(path);
+
+            lines[0] += ",money_stock_v0";
+
+            for (var i = 1; i < lines.Length; i++)
+            {
+                lines[i] += ",0";
+            }
+
+            File.WriteAllLines(path, lines);
+        }
+
+        var report = ArchetypeGate.Run(Defaults, OneSeed, workspace, fixture);
+
+        Assert.False(report.Passed);
+        Assert.Contains(
+            Fixture(report).Failures,
+            f => f.Contains("no longer has money_stock_v0", StringComparison.Ordinal));
+    }
+
     private static string Fresh(Workspace workspace, IReadOnlyList<int> seeds)
     {
         var fixture = Path.Combine(workspace.Root, "fixture");

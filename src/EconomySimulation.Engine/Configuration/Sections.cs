@@ -54,10 +54,37 @@ public sealed record IncomeParameters
     public double OpeningCashShare { get; init; } = 1.00;
 }
 
-/// <summary>§3.1 — one row of the goods table.</summary>
+/// <summary>
+/// One row of the goods table — §3.1 called it a category, §3.6 calls it a **good**.
+///
+/// The two names are the same thing and the record keeps the older one, because the TOML section is
+/// `[categories]` and that spelling is frozen: V5a's fixture is never regenerated and has to keep
+/// loading through this schema. What changed in E11 is that a row now carries a <see cref="Category"/>
+/// label, and rows sharing a label are a category. **Nothing else defines one** — there is no group
+/// type, no nesting and no second index, because everything a group has (a life, a price, a
+/// capacity, a value weight, a financeable flag) is what this row already is
+/// (`01-SIMULATION.md` §5.5).
+/// </summary>
 public sealed record CategoryParameters
 {
     public required string Name { get; init; }
+
+    /// <summary>
+    /// What this row is grouped under for reporting, and nothing more. **Absent means the row's own
+    /// name**, so §3.1's six rows are six categories of one good each and every file written before
+    /// E11 means exactly what it always meant.
+    ///
+    /// It is a label rather than a thing: the engine never branches on it, no decision reads it, and
+    /// the only code that looks at it is the output roll-up (`01-SIMULATION.md` §7).
+    ///
+    /// **The loader always resolves it**, so a row that came from a configuration carries its label
+    /// spelled out and two rows are equal when they say the same thing. Only a row built by hand in
+    /// a test leaves it empty, and such a row should be read through <see cref="Label"/>.
+    /// </summary>
+    public string Category { get; init; } = "";
+
+    /// <summary>The category this row rolls up into — <see cref="Category"/>, or the row's own name.</summary>
+    public string Label => Category.Length == 0 ? Name : Category;
 
     /// <summary>Ticks a unit lasts. 1 means it is consumed every tick.</summary>
     public required int Life { get; init; }
@@ -97,12 +124,12 @@ public sealed record CategoryParameters
     /// <summary>The specification's six categories, in the order §3.1 lists them.</summary>
     public static IReadOnlyList<CategoryParameters> Default { get; } =
     [
-        new() { Name = "food",        Life = 1,  Capacity = 1000, PriceRef = Money.FromEuros(300), V = 0.620, Necessity = 0.70, Financeable = false, Term = 0 },
-        new() { Name = "leisure",     Life = 1,  Capacity = 1000, PriceRef = Money.FromEuros(200), V = 0.400, Necessity = 0.35, Financeable = false, Term = 0 },
-        new() { Name = "clothing",    Life = 6,  Capacity = 167,  PriceRef = Money.FromEuros(400), V = 0.110, Necessity = 0.50, Financeable = false, Term = 0 },
-        new() { Name = "hobby",       Life = 12, Capacity = 83,   PriceRef = Money.FromEuros(600), V = 0.088, Necessity = 0.15, Financeable = true,  Term = 12 },
-        new() { Name = "electronics", Life = 36, Capacity = 28,   PriceRef = Money.FromEuros(900), V = 0.048, Necessity = 0.25, Financeable = true,  Term = 24 },
-        new() { Name = "appliances",  Life = 96, Capacity = 10,   PriceRef = Money.FromEuros(800), V = 0.016, Necessity = 0.45, Financeable = true,  Term = 24 },
+        new() { Name = "food",        Category = "food",        Life = 1,  Capacity = 1000, PriceRef = Money.FromEuros(300), V = 0.620, Necessity = 0.70, Financeable = false, Term = 0 },
+        new() { Name = "leisure",     Category = "leisure",     Life = 1,  Capacity = 1000, PriceRef = Money.FromEuros(200), V = 0.400, Necessity = 0.35, Financeable = false, Term = 0 },
+        new() { Name = "clothing",    Category = "clothing",    Life = 6,  Capacity = 167,  PriceRef = Money.FromEuros(400), V = 0.110, Necessity = 0.50, Financeable = false, Term = 0 },
+        new() { Name = "hobby",       Category = "hobby",       Life = 12, Capacity = 83,   PriceRef = Money.FromEuros(600), V = 0.088, Necessity = 0.15, Financeable = true,  Term = 12 },
+        new() { Name = "electronics", Category = "electronics", Life = 36, Capacity = 28,   PriceRef = Money.FromEuros(900), V = 0.048, Necessity = 0.25, Financeable = true,  Term = 24 },
+        new() { Name = "appliances",  Category = "appliances",  Life = 96, Capacity = 10,   PriceRef = Money.FromEuros(800), V = 0.016, Necessity = 0.45, Financeable = true,  Term = 24 },
     ];
 }
 

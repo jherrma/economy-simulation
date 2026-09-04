@@ -358,7 +358,7 @@ public sealed class RepriceTests
 
     private static Money[] Prices(Market market)
     {
-        var prices = new Money[Goods.GoodCount];
+        var prices = new Money[Goods.ShelfCount];
 
         for (var c = 0; c < Goods.CategoryCount; c++)
         {

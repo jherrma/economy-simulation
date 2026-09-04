@@ -105,8 +105,8 @@ public sealed class Walker
         orderStream = RandomStream.ForTick(runSeed, 0, Purpose.Order);
         order = new int[population.Count];
         keenness = new double[population.Count];
-        candidates = new Candidate[goods.GoodCount];
-        visited = new bool[goods.GoodCount];
+        candidates = new Candidate[goods.ShelfCount];
+        visited = new bool[goods.ShelfCount];
         chosenTier = new int[goods.CategoryCount];
     }
 

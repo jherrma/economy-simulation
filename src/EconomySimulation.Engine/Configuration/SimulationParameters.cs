@@ -165,9 +165,18 @@ public sealed record SimulationParameters
         Write(toml, "opening_cash_share", Income.OpeningCashShare);
         toml.AppendLine();
 
+        // Always `replace = true`, and never mind that the rows below happen to be the defaults:
+        // an effective configuration is the table that ran, and a file that has to be overlaid on
+        // the right basis to mean what it says is not that. This is what lets a run be rebuilt from
+        // its own output six months from now without knowing which defaults it was written against.
+        toml.AppendLine("[categories]");
+        Write(toml, "replace", true);
+        toml.AppendLine();
+
         foreach (var category in Categories)
         {
             toml.AppendLine(CultureInfo.InvariantCulture, $"[categories.{category.Name}]");
+            Write(toml, "category", category.Label);
             Write(toml, "life", category.Life);
             Write(toml, "capacity", category.Capacity);
             Write(toml, "price_ref", category.PriceRef);

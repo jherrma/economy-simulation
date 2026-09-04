@@ -102,7 +102,7 @@ public sealed class OpeningStateTests
     [Fact]
     public void ThereAreEighteenOpeningPrices_AndNoneIsTuned()
     {
-        Assert.Equal(18, Opening.Goods.GoodCount);
+        Assert.Equal(18, Opening.Goods.ShelfCount);
 
         for (var c = 0; c < Opening.Goods.CategoryCount; c++)
         {

@@ -138,8 +138,8 @@ public sealed class FlowCostTests
         var population = Households.Specified(Goods, [Money.FromEuros(650)], [1.0]);
         var rate = Defaults.Credit.LoanRate;
 
-        var cash = new double[Goods.GoodCount];
-        var financed = new double[Goods.GoodCount];
+        var cash = new double[Goods.ShelfCount];
+        var financed = new double[Goods.ShelfCount];
 
         for (var c = 0; c < Goods.CategoryCount; c++)
         {
@@ -153,8 +153,8 @@ public sealed class FlowCostTests
             }
         }
 
-        var cashOrder = Enumerable.Range(0, Goods.GoodCount).OrderByDescending(i => cash[i]).ToArray();
-        var financedOrder = Enumerable.Range(0, Goods.GoodCount).OrderByDescending(i => financed[i]).ToArray();
+        var cashOrder = Enumerable.Range(0, Goods.ShelfCount).OrderByDescending(i => cash[i]).ToArray();
+        var financedOrder = Enumerable.Range(0, Goods.ShelfCount).OrderByDescending(i => financed[i]).ToArray();
 
         Assert.Equal(cashOrder, financedOrder);
     }

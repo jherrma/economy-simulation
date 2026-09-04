@@ -145,6 +145,6 @@ public sealed class DemandAccountingTests
             }
         }
 
-        Assert.Equal(18, Goods.GoodCount);
+        Assert.Equal(18, Goods.ShelfCount);
     }
 }

@@ -107,7 +107,7 @@ public sealed class CohortMetrics
         wanted = new int[cells * goods.CategoryCount];
         obtained = new int[cells * goods.CategoryCount];
         spendByCategory = new Money[cells * goods.CategoryCount];
-        units = new int[cells * goods.GoodCount];
+        units = new int[cells * goods.ShelfCount];
 
         // A histogram rather than a list: the median has to be computed every tick inside a run
         // that allocates nothing, and a wait is a small non-negative integer. The last bucket
@@ -251,7 +251,7 @@ public sealed class CohortMetrics
     }
 
     public int Units(CohortCell cell, int category, int tier) =>
-        units[(Index(cell) * goods.GoodCount) + goods.Index(category, tier)];
+        units[(Index(cell) * goods.ShelfCount) + goods.Index(category, tier)];
 
     /// <summary>Totals over the categories, for the columns a reader looks at first.</summary>
     public int Wanted(Cohort cohort) => Total(wanted, cohort);
@@ -307,7 +307,7 @@ public sealed class CohortMetrics
         obtained[At(cell, category)]++;
         spendByCategory[At(cell, category)] += paid;
         spend[cell] += paid;
-        units[(cell * goods.GoodCount) + goods.Index(category, tier)]++;
+        units[(cell * goods.ShelfCount) + goods.Index(category, tier)]++;
 
         // The **tier table's** value multiplier, not the household's `value_mult^kappa`. This is a
         // reported quantity, and it has to mean the same thing for every household or a cohort's
