@@ -226,13 +226,15 @@ table below is the `typed` table: it lives in a scenario file, not in the defaul
 | Parameter | Default | Why |
 |---|---|---|
 | `archetypes.<name>.share` | one type at 1.0 | Population share. The shares must sum to 1.0 or the run is rejected |
-| `archetypes.<name>.w.<category>` | 1.0 | Relative **score multiplier** `m` — how much better or worse than average a candidate in this category scores for this type. **Absent means 1.0**, so a type names only the categories it differs in (§2 of `01-SIMULATION.md` on absent-versus-unknown: an absent key defaults, an unknown key is an error). Under §3.7 the taste weight `ŵ = m / d` is *derived* from it, because a shorter replacement cycle raises the cost per tick and would otherwise cancel the intent; where `d = 1` — every life-1 good, and the whole of this section — the two are the same number |
-| `archetypes.<name>.kappa.<category>` | 1.0 | Quality steepness, applied as `value_mult(tier)^kappa`. Absent means 1.0 |
+| `archetypes.<name>.w.<label>` | 1.0 | Relative **score multiplier** `m` — how much better or worse than average a candidate in this category scores for this type. **Absent means 1.0**, so a type names only the categories it differs in (§2 of `01-SIMULATION.md` on absent-versus-unknown: an absent key defaults, an unknown key is an error). Under §3.7 the taste weight `ŵ = m / d` is *derived* from it, because a shorter replacement cycle raises the cost per tick and would otherwise cancel the intent; where `d = 1` — every life-1 good, and the whole of this section — the two are the same number |
+| `archetypes.<name>.kappa.<label>` | 1.0 | Quality steepness, applied as `value_mult(tier)^kappa`. Absent means 1.0 |
+| `archetypes.<name>.d.<good>` | 1.0 | Replacement-cycle multiplier (§3.7): the good's life times this is the life this type gets out of it. Keyed by the **goods-table row**, where `w` and `kappa` are keyed by the **category label** — a type wants electronics, but churns a phone and keeps a television. Requires `run.replacement = "hazard"`; rejected on a life-1 good, and rejected where the normalised table would put a realised life below one tick. Added 2026-09-06 (11-04) |
 | `archetypes.normalise_kappa` | **false** | Divide each `kappa` column by its share-weighted mean, as `w` is always divided. False everywhere except the `typed_kappa_neutral` control below, which is *defined* as that operation — naming it here is what keeps the control a one-line difference from `typed` rather than twenty-four numbers somebody worked out by hand and nothing re-checks. Added 2026-09-04 while building 10-04 |
 | `sigma_idio` | **0.0** | Spread of the per-household, per-category residual `ε`. Zero by default, so taste is perfectly correlated across categories exactly as in v1. Raising it walks that correlation toward zero and is the sweep for "does it matter that the same households want everything" |
 
 `w` is authored as a **relative** weight and normalised by the loader; see the identity below.
-`kappa` is authored as an absolute and is not normalised.
+`kappa` is authored as an absolute and is not normalised. `d` is relative too but normalised
+*harmonically*, which is §3.7 and is not the same operation.
 
 #### The `typed` table
 
@@ -633,6 +635,13 @@ A life-1 good has no cycle to stretch, so `d` is only meaningful on the twelve d
 `family_practical` wears out underwear in three months and a washing machine in ten years, and
 stretches the phone — hand-me-downs.
 
+**`d` is authored per good, where §3.5's `w` and `kappa` are authored per category label**, and the
+asymmetry is the point of the table above: taste is a statement about wanting electronics, a cycle is
+a statement about a phone, and there are three different cycles inside electronics. Under §3.1 a
+label is a row and the two levels coincide. The loader will not accept a good's name in a `w` or a
+label in a `d` — `w = { phone = 1.60 }` is an error on the grouped table and `w = { electronics =
+1.60 }` is what was meant.
+
 #### Taste and cycle compose: `ŵ = m / d`
 
 `flow_cost` divides by the household's own life (`01-SIMULATION.md` §5.5), so
@@ -641,7 +650,10 @@ cycle of 0.676 would divide away almost exactly the 1.553 score multiplier meant
 phone bidder, and `prudent` at 1.400 would come out bidding highest — the opposite of the intent.
 
 So §3.5's table is the **score multiplier** `m` and the loader derives `ŵ = m / d` per good. The
-derived weights, which are what the effective configuration records:
+derived weights — **not** what the effective configuration records: it records the two normalised
+tables `m` and `d`, and `ŵ` is their quotient (corrected 2026-09-06, 11-04; writing it as well would
+be seventy-two redundant numbers in a hashed file and a third place for the derivation to disagree
+with itself). What keeps this table honest is `ReplacementCycleTests`, which re-computes it:
 
 | Good | `prudent` | `health_conscious` | `gadget` | `family_practical` |
 |---|---|---|---|---|
@@ -692,7 +704,7 @@ assertion on the unrounded table passed.
 
 #### The residue, and why it must not be corrected
 
-Two residues remain, both small and both to be left alone.
+Three residues remain, all small and all to be left alone.
 
 **Assignment.** Assigning 5,000 households to four types by share leaves realised shares off nominal
 by about 0.65 pp, which moves a good's true replacement demand by roughly half a percent against the
@@ -701,10 +713,25 @@ capacity it was sized for.
 **The hazard itself.** Replacement demand is now `Binomial(owners, 1/life)` rather than a
 near-constant, so it has a per-tick relative standard deviation of 15.9% for large appliances, 12.7%
 for the TV, 8.0% for the phone and 2.5% for clothing basics at 5,000 households — falling to 0.84%,
-0.67%, 0.42% and 0.13% over a 360-tick window. This is **less** noise than the deterministic rule it
-replaces, not more: deterministic replacement preserves its opening cohorts for the life of the run,
-and an unconstrained four-month good oscillates at a per-tick sd of 500 units where the hazard sits
-at 31.2. Memorylessness is what mixes the cohorts.
+0.67%, 0.42% and 0.13% over a 360-tick window.
+
+**Corrected 2026-09-04 (11-03).** This paragraph used to claim the hazard was *quieter* than the
+calendar — "an unconstrained four-month good oscillates at a per-tick sd of 500 units where the
+hazard sits at 31.2" — and that V4 should therefore get easier. It does not reproduce. Measured at
+5,000 households the calendar sits at 1250.0 ± 35.8 and the hazard at 1251.8 ± 31.6: the same
+spread. The 500-unit figure is what ages initialised at zero produce, which is the sawtooth 02-04
+already fixed, so it was almost certainly measured against the un-fixed rule. What actually separates
+the two is **structure, not size**: the calendar's opening cohorts never mix, so its series is
+periodic with autocorrelation ≈ 1 at lag `life`, while the hazard's is ≈ 0 at every lag. `HazardTests`
+now asserts both spreads and both autocorrelations, so the claim cannot decay again.
+
+**Rounding.** A third residue, unmentioned until 11-04 and the largest of the three wherever a shelf
+is narrow: `capacity = round(households / life_g)` rounds. At 1,000 households §3.1's appliances come
+to `1000 / 96 = 10.4` units and round to 10, so that shelf is 4.2% undersized before any archetype is
+drawn. It is under a per cent on every shelf wider than about a hundred units, which is most of the
+argument for §3.6's 5,000 households and none of an argument for a cleverer capacity rule. The run
+reports the worst good and its gap in `run.done` (`replacement_residue_good`,
+`replacement_residue`).
 
 Do **not** fix this by deriving capacity from the realised population. That would make the goods
 table depend on the seed, and the campaign collector (09-02) refuses a scenario whose seeds ran

@@ -221,7 +221,12 @@ public sealed class LedgerTests
     /// The scan has to know the difference between an amount and a multiplier: `price_mult` and
     /// `opening_cash_share` are dimensionless and belong in a double, while a price or a balance
     /// never does. So a line naming a monetary quantity is only an offence when it does not also
-    /// name the thing that makes it a ratio.
+    /// name the thing that makes the double something other than an amount.
+    ///
+    /// Two kinds of exemption, and they are not the same kind. Most are **dimensionless** — a
+    /// ratio, a share, an exponent. `life` and `ticks` are not: they are durations, and they earn
+    /// the exemption because `flow_cost = price / life` has to name a price *and* divide by a real
+    /// number the moment a life is `life_g · d[A][g]` (§3.7).
     /// </summary>
     [Fact]
     public void NoMonetaryFieldIsADouble()
@@ -230,7 +235,11 @@ public sealed class LedgerTests
         // "index" and "cpi" join the list for 07-02: a price index is a ratio of two money sums and
         // is dimensionless by construction, which is exactly why λ is never indexed and why
         // doubling every nominal quantity doubles the index and changes no decision.
-        string[] dimensionless = ["share", "mult", "rate", "ratio", "factor", "slope", "weight", "sigma", "score", "count", "index", "cpi"];
+        string[] notAnAmount =
+        [
+            "share", "mult", "rate", "ratio", "factor", "slope", "weight", "sigma", "score", "count",
+            "index", "cpi", "life", "ticks",
+        ];
 
         var offenders = new List<string>();
 
@@ -258,7 +267,7 @@ public sealed class LedgerTests
                     continue;
                 }
 
-                if (dimensionless.Any(d => line.Contains(d, StringComparison.OrdinalIgnoreCase)))
+                if (notAnAmount.Any(d => line.Contains(d, StringComparison.OrdinalIgnoreCase)))
                 {
                     continue;
                 }

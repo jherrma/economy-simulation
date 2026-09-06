@@ -225,6 +225,11 @@ public sealed record SimulationParameters
             Write(toml, "share", type.Share);
             WriteWeights(toml, "w", type.W);
             WriteWeights(toml, "kappa", type.Kappa);
+
+            // Printed even where every entry is 1.0, and printed *normalised*, so that the effective
+            // configuration reloads to itself: both normalisations are idempotent, and a `d` column
+            // of ones is the one column `deterministic` accepts.
+            WriteWeights(toml, "d", type.D);
             toml.AppendLine();
         }
 

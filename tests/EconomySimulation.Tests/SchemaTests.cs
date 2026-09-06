@@ -112,8 +112,11 @@ public sealed class SchemaTests
         var spec = SpecFile.Defaults("#### Parameters");
 
         Assert.Equal(SpecFile.Number(spec["sigma_idio"]), Defaults.Archetypes.SigmaIdio);
-        Assert.Equal(1.0, SpecFile.Number(spec["archetypes.<name>.w.<category>"]));
-        Assert.Equal(1.0, SpecFile.Number(spec["archetypes.<name>.kappa.<category>"]));
+        // Taste by label, cycle by good (§3.7). The key names in the specification's table carry
+        // that distinction and this test is the one thing that reads them.
+        Assert.Equal(1.0, SpecFile.Number(spec["archetypes.<name>.w.<label>"]));
+        Assert.Equal(1.0, SpecFile.Number(spec["archetypes.<name>.kappa.<label>"]));
+        Assert.Equal(1.0, SpecFile.Number(spec["archetypes.<name>.d.<good>"]));
 
         Assert.True(Defaults.Archetypes.IsIdentity);
     }

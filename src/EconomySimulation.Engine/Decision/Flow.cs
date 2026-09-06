@@ -22,10 +22,15 @@ public readonly record struct Flow(double EurosPerTick) : IComparable<Flow>
     /// <summary>
     /// An amount of money spread over a number of ticks: `price / life`, the cost side of the
     /// decision. A non-durable has `life = 1`, so its flow cost collapses to its price.
+    ///
+    /// The span is a **double** since E11: under `replacement = "hazard"` a life is whatever
+    /// `life_g · d[A][g]` comes to (§3.7) and 20.27 months is a life a geometric distribution can
+    /// have. It is still at least one tick, because `1 / life` is a probability and the loader
+    /// refuses a table that would make it exceed 1.
     /// </summary>
-    public static Flow Spread(Money total, int ticks)
+    public static Flow Spread(Money total, double ticks)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(ticks, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(ticks, 1.0);
 
         return new Flow(total.Cents / 100.0 / ticks);
     }

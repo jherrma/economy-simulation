@@ -1,0 +1,76 @@
+# The four archetypes on the grouped calibration — `02-PARAMETERS.md` §3.5 and §3.7.
+#
+# **This file is an overlay on `grouped.toml`, not a configuration on its own.** It names goods that
+# only the eighteen-row table has, so loading it against the schema defaults fails on every `d` key.
+# Layer it: load `grouped.toml`, then load this on top of the result.
+#
+# Two tables, keyed at two different levels, and the asymmetry is the point:
+#
+#   * `w` and `kappa` are per **category label** (§3.5). A type is a statement about wanting
+#     electronics, not about wanting a laptop more than a phone. Under §3.1's six-row table a label
+#     is a row and the distinction is invisible, which is why `typed_credit_off.toml` reads the same
+#     as it always did.
+#   * `d` is per **good** (§3.7). A replacement cycle is a fact about a particular product, and this
+#     table has three different multipliers inside electronics to prove it: `gadget` churns its
+#     phone every twenty months and leaves its television alone for nearly six years.
+#
+# `d` **requires `replacement = "hazard"`**, which is why this file sets it. A deterministic life is
+# an integer count of ticks, so a realised 20.3 months would have to be rounded — and rounding it
+# per archetype breaks the units identity by more than an arithmetic normalisation would (1.040 on
+# clothing basics against 1.025), while a load-time assertion on the unrounded table still passes.
+# The loader rejects a `d` under `deterministic` rather than rounding it.
+#
+# **Both tables are relative and the loader normalises them, but not the same way.** `w` is divided
+# by its share-weighted mean, so `Sum_A share_A * m[A][g] = 1`: that fixes the score *level*, and is
+# what keeps §3.6's base scores meaning what they say at the population mean. `d` is scaled so that
+# `Sum_A share_A / d[A][g] = 1` — the **harmonic** mean, because demand per tick is `1 / life` and it
+# is the reciprocal that has to average to one. That fixes the *units*, and is what keeps
+# `capacity = round(households / life_g)` correct as written. Neither identity implies the other and
+# a table can satisfy one while breaking the other.
+#
+# Normalising `d` arithmetically instead is the expensive mistake. By Jensen's inequality
+# `E[1/d] > 1/E[d]` for any `d` that varies at all, so the town would replace strictly more than the
+# shelves were sized for — permanently, in every good, in every run. The reprice rule would absorb
+# it into the price level, no conservation identity would notice, and the finding would be measured
+# on a town quietly tighter than its goods table says. ReplacementCycleTests fails if the
+# multiplication is ever turned back into a division.
+#
+# What the loader records is the normalised table; the derived taste weight `w_hat = m / d` is not
+# written anywhere, because it is a quotient of two columns that are. §3.7 tabulates it, and a test
+# re-derives it — `gadget`'s phone comes to 2.299, which is not a typo: it bids 1.553x on a phone
+# while buying phones 48% more often, so it values a phone-month at more than twice the average.
+#
+# The table is swept, not fitted. Nothing in this repository can calibrate it, and a table adjusted
+# until the headline came out better would turn this model from evidence into an illustration.
+
+[run]
+replacement = "hazard"
+
+[archetypes.prudent]
+share = 0.30
+w     = { food = 0.90, leisure = 0.80, clothing = 0.85, hobby = 0.75, electronics = 0.80, appliances = 0.90 }
+kappa = { food = 0.85, leisure = 0.85, clothing = 0.85, hobby = 0.85, electronics = 0.85, appliances = 0.85 }
+# Keeps everything longer than anybody: a phone three and a half years, outerwear two and a half.
+d     = { clothing_basics = 1.20, clothing_everyday = 1.25, outerwear = 1.35, hobby_equipment = 1.30, hobby_big_kit = 1.40, phone = 1.45, laptop = 1.35, tv = 1.30, appliance_small = 1.30, appliance_medium = 1.25, appliance_large = 1.30, holiday = 1.50 }
+
+[archetypes.health_conscious]
+share = 0.20
+w     = { food = 1.20, hobby = 0.90, electronics = 0.85, appliances = 1.05 }
+kappa = { food = 1.25, leisure = 0.95, clothing = 0.95, hobby = 0.95, electronics = 0.95, appliances = 1.10 }
+# Average on every cycle, so `d` is absent throughout. The realised lives still move — the column is
+# normalised as a whole — which is what makes the identity a statement about the population rather
+# than about any one type.
+
+[archetypes.gadget]
+share = 0.20
+w     = { food = 0.95, leisure = 1.15, clothing = 1.05, hobby = 1.55, electronics = 1.60 }
+kappa = { food = 0.95, leisure = 1.05, clothing = 0.95, hobby = 1.20, electronics = 1.25, appliances = 0.95 }
+# Churns what it cares about and nothing else: hobby kit and electronics move, appliances do not.
+d     = { clothing_everyday = 0.90, outerwear = 0.85, hobby_equipment = 0.80, hobby_big_kit = 0.75, phone = 0.70, laptop = 0.80, tv = 0.85, holiday = 0.90 }
+
+[archetypes.family_practical]
+share = 0.30
+w     = { food = 1.05, clothing = 1.15, hobby = 0.95, appliances = 1.10 }
+kappa = { food = 0.90, leisure = 0.90, clothing = 0.95, hobby = 0.90, electronics = 0.90, appliances = 0.90 }
+# Wears out basics and appliances, and stretches the phone — hand-me-downs.
+d     = { clothing_basics = 0.80, clothing_everyday = 0.90, phone = 1.10, laptop = 1.05, appliance_small = 0.85, appliance_medium = 0.90, appliance_large = 0.90, holiday = 0.85 }

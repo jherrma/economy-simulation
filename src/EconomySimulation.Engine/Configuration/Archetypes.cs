@@ -31,12 +31,16 @@ public sealed record Archetype
     public required double Share { get; init; }
 
     /// <summary>
-    /// The **score multiplier** `m`, per category. Under E11 the taste weight is `ŵ = m / d`,
-    /// derived from this, because a shorter replacement cycle raises the cost per tick and would
-    /// otherwise cancel the intent. While every `d` is 1 — which is the whole of E10 — the two are
-    /// the same number and this is read plainly.
+    /// The **score multiplier** `m`, per **category label** — how much better or worse than average
+    /// a candidate scores for this type. This is what §3.5's table states and it is *not* the taste
+    /// weight: see <see cref="TasteWeightFor"/>.
     ///
-    /// What the loader stores here is the **normalised** weight: the share-weighted mean over a
+    /// Keyed by the label rather than by the goods-table row, because a type is a statement about
+    /// wanting electronics, not about wanting a laptop more than a phone (§3.6). Under §3.1 a label
+    /// *is* a row and the distinction is invisible, which is why every file written before E11
+    /// still means what it meant.
+    ///
+    /// What the loader stores here is the **normalised** multiplier: the share-weighted mean over a
     /// table is exactly 1 in every category, so a table redistributes a category's demand across
     /// the population without changing how much of it there is.
     /// </summary>
@@ -50,25 +54,69 @@ public sealed record Archetype
     /// </summary>
     public required IReadOnlyList<CategoryWeight> Kappa { get; init; }
 
-    /// <summary>This type's score multiplier for a category. **An absent category means 1.0.**</summary>
-    public double WeightFor(string category) => Lookup(W, category);
+    /// <summary>
+    /// The **replacement-cycle multiplier** `d`, per **good** (§3.7): the good's life times this is
+    /// the life this type actually gets out of it. Below 1 replaces sooner, above 1 keeps it longer.
+    ///
+    /// Keyed by the row and not by the label, deliberately the other way round from <see cref="W"/>.
+    /// A cycle is a fact about a particular product — `gadget` churns its phone and leaves its
+    /// television alone — where taste is a fact about a category, and §3.7's table has three
+    /// different multipliers inside electronics to prove it.
+    ///
+    /// Stored **harmonically normalised** — `Σ_A share_A / d[A][g] = 1` — because demand per tick is
+    /// `1 / life`, so it is the reciprocal that has to average to one for `capacity` to stay sized
+    /// right. See <see cref="ConfigurationLoader"/>'s Normalise for why the arithmetic mean is the
+    /// expensive mistake here.
+    ///
+    /// Meaningful only under `replacement = "hazard"`, and only on a good with a life to stretch;
+    /// the loader rejects a `d` anywhere else rather than rounding it away.
+    /// </summary>
+    public required IReadOnlyList<CategoryWeight> D { get; init; }
 
-    /// <summary>This type's quality steepness for a category. An absent category means 1.0.</summary>
-    public double ExponentFor(string category) => Lookup(Kappa, category);
+    /// <summary>This type's score multiplier for a category label. **An absent label means 1.0.**</summary>
+    public double WeightFor(string label) => Lookup(W, label);
 
-    /// <summary>One type, average in everything — v1's population, written as a table.</summary>
-    public static Archetype Identity(IEnumerable<string> categories)
+    /// <summary>This type's quality steepness for a category label. An absent label means 1.0.</summary>
+    public double ExponentFor(string label) => Lookup(Kappa, label);
+
+    /// <summary>This type's replacement-cycle multiplier for a good. An absent good means 1.0.</summary>
+    public double CycleFor(string good) => Lookup(D, good);
+
+    /// <summary>
+    /// `ŵ = m / d` — the taste weight the decision actually uses, **derived and never authored**.
+    ///
+    /// `flow_cost` divides by the household's own life (`01-SIMULATION.md` §5.5), so a score is
+    /// proportional to `ŵ · d` and the two tables compose to `m`. Author `ŵ` directly instead and
+    /// they fight: a type that replaces its phone 48% more often has already divided away almost
+    /// all of the 1.55 multiplier meant to make it the top phone bidder, and the type that keeps
+    /// its phone longest comes out bidding highest — the opposite of the table's intent.
+    ///
+    /// The consequence is that this can be much larger than any number in the file, and that is
+    /// correct rather than alarming. `gadget`'s phone comes out at 2.299: a household that both
+    /// churns and buys well values a phone-month at more than twice the average, because those are
+    /// competing claims on one budget.
+    /// </summary>
+    public double TasteWeightFor(string label, string good) => WeightFor(label) / CycleFor(good);
+
+    /// <summary>
+    /// One type, average in everything — v1's population, written as a table.
+    ///
+    /// Two lists because the two tables are keyed differently: taste by label, cycle by good. Under
+    /// §3.1 they are the same six strings.
+    /// </summary>
+    public static Archetype Identity(IEnumerable<string> labels, IEnumerable<string> goods)
     {
-        ArgumentNullException.ThrowIfNull(categories);
+        ArgumentNullException.ThrowIfNull(labels);
+        ArgumentNullException.ThrowIfNull(goods);
 
-        var ones = Ones(categories);
+        var ones = Ones(labels);
 
-        return new Archetype { Name = AverageName, Share = 1.0, W = ones, Kappa = ones };
+        return new Archetype { Name = AverageName, Share = 1.0, W = ones, Kappa = ones, D = Ones(goods) };
     }
 
-    /// <summary>Every named category at 1.0, in name order.</summary>
-    internal static IReadOnlyList<CategoryWeight> Ones(IEnumerable<string> categories) =>
-        [.. categories.OrderBy(c => c, StringComparer.Ordinal).Select(c => new CategoryWeight(c, 1.0))];
+    /// <summary>Every named key at 1.0, in name order.</summary>
+    internal static IReadOnlyList<CategoryWeight> Ones(IEnumerable<string> names) =>
+        [.. names.OrderBy(c => c, StringComparer.Ordinal).Select(c => new CategoryWeight(c, 1.0))];
 
     /// <summary>Two types are equal when they say the same thing, not when they share a list.</summary>
     public bool Equals(Archetype? other) =>
@@ -76,7 +124,8 @@ public sealed record Archetype
         && string.Equals(Name, other.Name, StringComparison.Ordinal)
         && Share.Equals(other.Share)
         && W.SequenceEqual(other.W)
-        && Kappa.SequenceEqual(other.Kappa);
+        && Kappa.SequenceEqual(other.Kappa)
+        && D.SequenceEqual(other.D);
 
     public override int GetHashCode()
     {
@@ -93,6 +142,11 @@ public sealed record Archetype
         foreach (var exponent in Kappa)
         {
             hash.Add(exponent);
+        }
+
+        foreach (var cycle in D)
+        {
+            hash.Add(cycle);
         }
 
         return hash.ToHashCode();
@@ -147,7 +201,11 @@ public sealed record ArchetypeParameters
     public bool NormaliseKappa { get; init; }
 
     public IReadOnlyList<Archetype> Types { get; init; } =
-        [Archetype.Identity(CategoryParameters.Default.Select(c => c.Name))];
+    [
+        Archetype.Identity(
+            CategoryParameters.Default.Select(c => c.Label),
+            CategoryParameters.Default.Select(c => c.Name)),
+    ];
 
     public bool Equals(ArchetypeParameters? other) =>
         other is not null
@@ -176,7 +234,8 @@ public sealed record ArchetypeParameters
         && Types.Count == 1
         && Types[0].Share == 1.0
         && Types[0].W.All(w => w.Value == 1.0)
-        && Types[0].Kappa.All(k => k.Value == 1.0);
+        && Types[0].Kappa.All(k => k.Value == 1.0)
+        && Types[0].D.All(d => d.Value == 1.0);
 }
 
 /// <summary>

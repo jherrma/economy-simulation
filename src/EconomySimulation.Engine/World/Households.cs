@@ -18,6 +18,8 @@ public sealed class Households
     private readonly double[] categoryTaste;
     private RandomStream[]? failure;
     private readonly double[] tierValue;
+    private readonly double[] archetypeLife;
+    private readonly double[] archetypeHazard;
 
     private Households(int count, int categoryCount, int tierCount, IReadOnlyList<string> archetypeNames)
     {
@@ -41,6 +43,12 @@ public sealed class Households
         // Math.Pow in the walk's inner loop would be ten million calls a run for an answer that
         // takes four rows of a table.
         tierValue = new double[archetypeNames.Count * categoryCount * tierCount];
+
+        // The same reasoning, and the hazard is kept alongside the life rather than divided out of
+        // it in the tick: the failure draw is one comparison per household per good per tick, and a
+        // division there is ninety thousand a tick for a number that is fixed for the run.
+        archetypeLife = new double[archetypeNames.Count * categoryCount];
+        archetypeHazard = new double[archetypeNames.Count * categoryCount];
     }
 
     public int Count { get; }
@@ -79,6 +87,9 @@ public sealed class Households
     /// The shared level `w_h` says how keen this household is in general; the archetype's `ŵ` says
     /// what it is keen *about*; `ε` is the residual that stops every household of a type being the
     /// same household. All three are fixed for the life of the run, so the product is computed once.
+    ///
+    /// `ŵ` is <see cref="Configuration.Archetype.TasteWeightFor"/> — `m / d`, derived, and not the
+    /// number §3.5's table states.
     /// </summary>
     public double Taste(int household, int category) => categoryTaste[AgeIndex(household, category)];
 
@@ -92,6 +103,38 @@ public sealed class Households
     /// </summary>
     public double ValueMult(int household, int category, int tier) =>
         tierValue[(((Archetype[household] * CategoryCount) + category) * TierCount) + tier];
+
+    /// <summary>
+    /// `life_h,g = life_g · d[A(h)][g]` — how long this household's unit of the good lasts, in
+    /// ticks (§3.7). A real number: a hazard takes any positive life, so 20.27 months needs no
+    /// integer to land on.
+    ///
+    /// Read by two places and they are the two halves of the composition: the ladder divides the
+    /// cash increment by it, and the failure draw compares against its reciprocal.
+    /// </summary>
+    public double Life(int household, int category) =>
+        archetypeLife[(Archetype[household] * CategoryCount) + category];
+
+    /// <summary>
+    /// Replacement demand per tick for a good, in units, from the population that was actually
+    /// drawn: `Σ_h 1 / life_h,g`.
+    ///
+    /// This is what the shelf has to supply once the run has settled, and `capacity_g` is
+    /// `round(households / life_g)` — the two agree only in expectation. See
+    /// <see cref="Simulation.ReplacementResidue"/> for what is done about the gap, which is
+    /// nothing.
+    /// </summary>
+    public double ReplacementDemand(int category)
+    {
+        var total = 0.0;
+
+        for (var h = 0; h < Count; h++)
+        {
+            total += archetypeHazard[(Archetype[h] * CategoryCount) + category];
+        }
+
+        return total;
+    }
 
     /// <summary>Opening cash: `income_h · opening_cash_share`, handed to the ledger to hold.</summary>
     public Money[] OpeningCash(double openingCashShare)
@@ -212,7 +255,8 @@ public sealed class Households
 
     /// <summary>
     /// Step 5 under `hazard`: every household draws for every good, and a unit it holds fails when
-    /// the draw is below `1 / life`.
+    /// the draw is below `1 / life_h,g` — **its own** life, which is the good's times its type's
+    /// cycle multiplier (§3.7).
     ///
     /// **Every household, every good, every tick, owned or not.** A household with nothing cannot
     /// lose anything, so drawing for it looks like waste — and skipping it makes the stream
@@ -245,7 +289,7 @@ public sealed class Households
 
                 Age[i]++;
 
-                if (Holds[i] && drawn < 1.0 / goods.Categories[c].Life)
+                if (Holds[i] && drawn < archetypeHazard[(Archetype[h] * CategoryCount) + c])
                 {
                     Holds[i] = false;
                 }
@@ -317,13 +361,20 @@ public sealed class Households
             }
         }
 
-        households.FillTierValues(goods, [Configuration.Archetype.Identity(goods.Categories.Select(g => g.Name))]);
+        households.FillTierValues(
+            goods,
+            [
+                Configuration.Archetype.Identity(
+                    goods.Categories.Select(g => g.Label),
+                    goods.Categories.Select(g => g.Name)),
+            ]);
 
         return households;
     }
 
     /// <summary>
-    /// `value_mult(tier)^kappa` for every (archetype, category, tier), computed once at setup.
+    /// `value_mult(tier)^kappa` and `life_g · d` for every (archetype, category), computed once at
+    /// setup.
     /// </summary>
     private void FillTierValues(GoodsTable goods, IReadOnlyList<Configuration.Archetype> types)
     {
@@ -331,7 +382,17 @@ public sealed class Households
         {
             for (var c = 0; c < CategoryCount; c++)
             {
-                var kappa = types[a].ExponentFor(goods.Categories[c].Name);
+                // The exponent by label, the cycle by row: taste is a fact about a category, a
+                // replacement cycle a fact about a product (§3.5, §3.7). Under §3.1 the two strings
+                // are the same and the distinction is invisible.
+                var kappa = types[a].ExponentFor(goods.Categories[c].Label);
+
+                // `d` is exactly 1.0 under the identity table and wherever no type states one, so
+                // this is the good's own life to the bit and V5a stays a byte-for-byte comparison.
+                var life = goods.Categories[c].Life * types[a].CycleFor(goods.Categories[c].Name);
+
+                archetypeLife[(a * CategoryCount) + c] = life;
+                archetypeHazard[(a * CategoryCount) + c] = 1.0 / life;
 
                 for (var t = 0; t < TierCount; t++)
                 {
@@ -406,8 +467,12 @@ public sealed class Households
             {
                 var epsilon = residual.NextLogNormal(1.0, parameters.Archetypes.SigmaIdio);
 
+                // `ŵ = m / d`, derived rather than authored (§3.7). Under E10's tables every `d` is
+                // 1 and this is the score multiplier read plainly.
                 households.categoryTaste[households.AgeIndex(h, c)] =
-                    households.TasteWeight[h] * types[archetype].WeightFor(goods.Categories[c].Name) * epsilon;
+                    households.TasteWeight[h]
+                    * types[archetype].TasteWeightFor(goods.Categories[c].Label, goods.Categories[c].Name)
+                    * epsilon;
             }
 
             // Drawn per household rather than by assigning an exact count, so that adding a

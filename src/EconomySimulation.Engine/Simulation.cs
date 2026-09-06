@@ -51,6 +51,38 @@ public sealed class Simulation
         Recorded = new TickRecord(Goods);
         Cohorts = new CohortMetrics(Goods, Population, parameters.Run.Ticks);
         Shopping.Cohorts = Cohorts;
+        ReplacementResidue = Residue(Goods, Population);
+    }
+
+    /// <summary>
+    /// The good whose realised replacement demand sits furthest from its capacity, and the signed
+    /// relative gap. Ties go to the earlier row, so the answer does not depend on how the goods
+    /// table was sorted beyond the order it already has.
+    /// </summary>
+    private static (string Good, double Relative) Residue(GoodsTable goods, Households population)
+    {
+        var worst = "";
+        var gap = 0.0;
+
+        for (var c = 0; c < goods.CategoryCount; c++)
+        {
+            var capacity = goods.Categories[c].Capacity;
+
+            if (capacity <= 0)
+            {
+                continue;
+            }
+
+            var relative = (population.ReplacementDemand(c) / capacity) - 1.0;
+
+            if (Math.Abs(relative) > Math.Abs(gap))
+            {
+                worst = goods.Categories[c].Name;
+                gap = relative;
+            }
+        }
+
+        return (worst, gap);
     }
 
     public SimulationParameters Parameters { get; }
@@ -79,6 +111,27 @@ public sealed class Simulation
 
     /// <summary>The abstainer and borrower series for the last tick — the finding itself (07-03).</summary>
     public CohortMetrics Cohorts { get; }
+
+    /// <summary>
+    /// The worst good's finite-sample residue, and by how much: realised replacement demand per
+    /// tick against the capacity the shelf was sized for, as a signed relative gap (§3.7).
+    ///
+    /// `capacity_g = round(households / life_g)` is a statement about the population in
+    /// expectation. The population that was drawn has realised archetype shares off nominal by
+    /// half a percentage point or so, and `round` is `round`, so the shelf is always a little wrong
+    /// — well under a per cent, and it is **reported rather than corrected**. Deriving capacity
+    /// from the realised assignment is the tempting fix and it makes the goods table a function of
+    /// the seed; the campaign collector then refuses a scenario whose seeds ran different effective
+    /// configurations, correctly, because a seed that changes a parameter has become a parameter.
+    ///
+    /// It enters the finding as variance rather than bias: the assignment is drawn per household
+    /// and per seed rather than per scenario, so the same households are the same types in both
+    /// arms of a paired comparison.
+    ///
+    /// Written into `run.done` once, so nobody rediscovers it as an anomaly halfway through an
+    /// analysis.
+    /// </summary>
+    public (string Good, double Relative) ReplacementResidue { get; }
 
     /// <summary>The last completed tick. −1 before the run starts.</summary>
     public int Tick { get; private set; } = -1;

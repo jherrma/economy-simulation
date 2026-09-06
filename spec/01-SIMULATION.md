@@ -485,7 +485,7 @@ owned. That is the rule `θ` obeys (§8), and here it means the same households 
 same months in both arms, so the noise cancels in the paired difference rather than merely
 averaging out.
 
-#### `flow_cost` uses the household's own life — decided 2026-09-04
+#### `flow_cost` uses the household's own life — decided 2026-09-04, built 2026-09-06 (11-04)
 
 ```
 flow_cost(h, g, t) = price_(g,t) / life_h,g
@@ -513,6 +513,21 @@ So the archetype table states the **score multiplier**, which is the quantity wi
 `ŵ` is derived from it: `ŵ = m / d`. `02-PARAMETERS.md` §3.5's numbers are unchanged and are now read
 as `m`; where `d = 1` — every life-1 good, and the whole of E10 — the two are identical and nothing
 about §5.4 moves.
+
+**The effective configuration records `m` and `d`, not `ŵ`** — an earlier draft of §3.7 said
+otherwise. `ŵ` is the quotient of two columns that are both written down, so recording it as well
+would be seventy-two numbers of pure redundancy in a file the campaign manifest hashes, and a third
+place for the derivation to mean something different. What guards §3.7's table of derived weights is
+a test that re-computes it, which is the same answer 11-02 gave for `base_score` and `v`.
+
+**The two tables are keyed at two different levels, and this is deliberate.** `w` and `kappa` are
+authored per **category label**: a type is a statement about wanting electronics, not about wanting a
+laptop more than a phone. `d` is authored per **good**, because a replacement cycle is a fact about a
+particular product — `gadget` churns its phone every twenty months and leaves its television alone
+for nearly six years, and §3.7's table has three different multipliers inside electronics to say so.
+Under §3.1 a label *is* a row and the distinction is invisible, which is why every file written
+before E11 still means exactly what it meant. The loader will not accept a good's name in a `w` or a
+label in a `d`.
 
 **The normalisation is harmonic** — `Σ_A share_A / d[A][g] = 1` — because demand per tick is
 `1 / life`, so it is the reciprocal that must average to one. Normalising `d` itself would hand the

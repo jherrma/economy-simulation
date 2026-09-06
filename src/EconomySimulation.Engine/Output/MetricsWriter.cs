@@ -61,6 +61,7 @@ public sealed class MetricsWriter : IDisposable
     private readonly string directory;
     private readonly string scenario;
     private readonly int runSeed;
+    private readonly (string Good, double Relative) residue;
     private readonly int tierColumns;
     private readonly int runColumns;
     private readonly int cohortColumns;
@@ -74,6 +75,7 @@ public sealed class MetricsWriter : IDisposable
         string directory,
         string scenario,
         int runSeed,
+        (string Good, double Relative) residue,
         StreamWriter tiers,
         StreamWriter run,
         StreamWriter cohorts)
@@ -82,6 +84,7 @@ public sealed class MetricsWriter : IDisposable
         this.directory = directory;
         this.scenario = scenario;
         this.runSeed = runSeed;
+        this.residue = residue;
         this.tiers = tiers;
         this.run = run;
         this.cohorts = cohorts;
@@ -142,6 +145,7 @@ public sealed class MetricsWriter : IDisposable
                 directory,
                 parameters.Run.Scenario,
                 simulation.RunSeed,
+                simulation.ReplacementResidue,
                 Open(directory, "tiers.csv"),
                 Open(directory, "run.csv"),
                 Open(directory, "cohorts.csv")));
@@ -205,6 +209,14 @@ public sealed class MetricsWriter : IDisposable
             marker.AppendLine(CultureInfo.InvariantCulture, $"ticks = {ticksWritten}");
             marker.AppendLine(CultureInfo.InvariantCulture, $"tier_rows = {TierRows}");
             marker.AppendLine(CultureInfo.InvariantCulture, $"cohort_rows = {CohortRows}");
+
+            // §3.7's residue, stated once. It is a property of the population this seed drew, not
+            // of the files, and it belongs beside them rather than in a per-tick column that would
+            // repeat one number three hundred and sixty times.
+            marker.AppendLine(CultureInfo.InvariantCulture, $"replacement_residue_good = \"{residue.Good}\"");
+            marker.AppendLine(
+                CultureInfo.InvariantCulture,
+                $"replacement_residue = {residue.Relative.ToString(RatioFormat, CultureInfo.InvariantCulture)}");
 
             File.WriteAllText(Path.Combine(directory, MarkerFile), marker.ToString());
             finished = true;

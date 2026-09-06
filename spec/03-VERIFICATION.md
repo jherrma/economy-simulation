@@ -282,12 +282,30 @@ category-shaped:
 - **Every published entry income and base-score crossing of §3.6 is read out of the specification
   and put to the engine.** That found two goods missing from §3.6's entry table.
 - **Both identities.** `Σ_A share_A / d[A][g] = 1` for units, and
-  `Σ_A share_A · m[A][g] = 1` for the score level, asserted at load on the normalised tables.
+  `Σ_A share_A · m[A][g] = 1` for the score level, asserted on the normalised tables.
   The first is the expensive error of the epic: normalising `d` rather than `1/d` gives the
   population permanently more replacement demand than capacity was sized for, by an amount nothing
   else measures. The second is what stops a replacement cycle silently cancelling the taste it was
   meant to accompany — `ŵ = m / d` is derived, so a test must assert the identity on `m` and **not**
   on `ŵ`, whose share-weighted mean is not 1 and is not meant to be.
+  **Done 2026-09-06** (11-04), and the claim that nothing else measures it was checked rather than
+  asserted: with the normalisation turned arithmetic, **587 of 593 tests still pass** and the six
+  that fail are all in `ReplacementCycleTests`. The catching test is the one the story asks for by
+  name — §3.7's phone column, rescaled so its *arithmetic* mean is 1, overshoots the harmonic
+  identity by 6.7% in the direction Jensen guarantees, and the loader has to put it back. The
+  derived mean of `ŵ` is asserted **strictly above 1** on all twelve goods with a cycle rather than
+  outside a tolerance: it runs from 1.0098 on medium appliances to 1.0715 on the phone, so a
+  magnitude threshold would be a threshold where a direction is a claim.
+- **Taste is authored per category label, the cycle per good.** **Done 2026-09-06** (11-04). The two
+  levels only differ on a table where a category is more than one row, so §3.1 cannot test it and
+  the grouped calibration can: `gadget` has one electronics taste and three different electronics
+  cycles. The loader rejects a good's name in a `w` and a label in a `d`, which is the same
+  absent-versus-unknown rule as everywhere else.
+- **`flow_cost` divides by the household's own life, and the composition is measured through the
+  engine.** **Done 2026-09-06** (11-04). A `gadget` household's realised score multiplier on a phone
+  is 1.553 — its authored `m` — recovered from `Taste` and `Life` on a drawn population rather than
+  from the table. Authoring `ŵ` directly instead would have given 1.050 against `prudent`'s 1.087,
+  leaving the type defined by wanting phones bidding below the type defined by keeping them.
 - **The hazard reproduces the deterministic rule in the mean.** Over a long unconstrained run,
   realised replacement demand per tick per good matches `capacity_g` within sampling error, and
   the `"failure"` draw is taken for every household, good and tick regardless of ownership. The
@@ -305,13 +323,25 @@ category-shaped:
   relative bound on a series whose mean is nought is a check that cannot fail. That the level is
   zero is the stronger claim and the one the gate now reports: the null run has no queue at all, so
   any wait appearing in a credit arm is credit's.
-- **The `d`-under-`deterministic` rejection belongs to 11-04.** `life` is an `int` and `d` does not
-  exist yet, so under 11-03 there is no way to state a non-integer life and nothing to reject. The
-  rule is stated in §1 of `02-PARAMETERS.md` and the check lands with the parameter.
-- `d ≡ 1` reproduces the same calibration run without `d`, byte for byte.
+- **A `d` is rejected, never rounded, wherever it cannot mean what it says.** **Done 2026-09-06**
+  (11-04), having been deferred from 11-03 because `life` was an `int` and there was no `d` to
+  reject. Three cases, all reported per **good** rather than per (type, good), because the
+  normalisation is per column and the moment one type states a cycle every other type's 1.0 is
+  scaled off 1 as well: under `replacement = "deterministic"`, on a life-1 good, and where the
+  normalised table would put a realised life below one tick — at which point `1 / life` stops being
+  a probability and a durable quietly becomes a consumable at a durable's price. That last one is
+  harder to trip than it looks, and the test says why: the normalisation scales the whole column by
+  `Σ share / d`, which an extreme minority dominates, so it takes a tenth of the population on
+  `d = 0.001` rather than half of it on 0.05.
+- `d ≡ 1` reproduces the same calibration run without `d`, byte for byte. **Done 2026-09-06**
+  (11-04). It rests on the same snapping `Scale` that makes V5a byte-for-byte: a share-weighted mean
+  within a part in a billion of 1 becomes exactly 1, so `life_g · 1.0` is `life_g` to the bit and
+  every draw in the run stays where it was. The mechanism is switched off by data, not by a flag.
 - **`capacity` is derived from `households` and `life`, never from the realised population.**
   A test asserts two seeds of one scenario produce identical effective configurations — which is
-  also what the campaign collector refuses to proceed without (09-02).
+  also what the campaign collector refuses to proceed without (09-02). **Done 2026-09-06** (11-04),
+  together with the residue that tempts the correction: the run reports the worst good's gap between
+  realised replacement demand and capacity once, in `run.done`, and leaves it there.
 
 What V5b cannot say is that the grouped calibration is *right*. Nothing here can. It is defended by
 being checkable against observable prices and cycles, which is precisely what §3.1's blob was not.

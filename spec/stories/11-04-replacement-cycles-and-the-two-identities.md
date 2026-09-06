@@ -35,6 +35,25 @@ The trap on the first identity is subtler and it is why `ŵ` is derived rather t
 
 The second trap is the tempting correction for the sampling residue. Once you know the identity only holds in expectation, deriving `capacity` from the realised population looks like the rigorous fix. It makes the goods table a function of the seed, the effective configuration then differs between seeds of one scenario, and the campaign collector refuses to collect — correctly, because a seed that changes a parameter has become a parameter. Leave the residue: it is well under a per cent, and it is identical in both arms because the assignment is drawn per household and per seed rather than per scenario, so it cancels in the paired difference that is the finding.
 
+> **Built 2026-09-06.** Two things the story left open, decided here.
+>
+> **The effective configuration records `m` and `d`, not `ŵ`.** §3.7 said otherwise and has been
+> corrected. `ŵ` is the quotient of two columns that are both written down, so recording it as well
+> would be seventy-two redundant numbers in a file the campaign manifest hashes, and a third place
+> for the derivation to disagree with itself. §3.7's table of derived weights is guarded by a test
+> that re-computes it — the answer 11-02 already gave for `base_score` and `v`.
+>
+> **`w` and `kappa` are keyed by category label, `d` by good.** The story does not say, and the two
+> levels have to differ for the worked case to exist at all: `m = 1.553` is `gadget`'s *electronics*
+> weight, while `d = 0.676` is its *phone* cycle, and there are three different cycles inside
+> electronics. Under §3.1 a label is a row and the distinction is invisible, which is why every file
+> written before E11 still means what it meant. The loader rejects a good's name in a `w` and a
+> label in a `d`.
+>
+> **The claim that nothing else catches an arithmetic normalisation was checked, not assumed.** With
+> the normalisation turned arithmetic, 587 of 593 tests still pass and all six failures are in
+> `ReplacementCycleTests`.
+
 ## How to verify
 
 ```sh

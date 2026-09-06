@@ -7,7 +7,7 @@ namespace EconomySimulation.Engine.Decision;
 ///
 /// <code>
 /// flow_value(h, g, t) = (a_g + b_g · income_h) · w_h · ŵ_g,A(h) · ε_h,g · value_mult_t ^ κ_g,A(h)
-/// flow_cost(g, t)     = price_(g,t) / life_g
+/// flow_cost(g, t)     = price_(g,t) / life_h,g
 /// </code>
 ///
 /// The three taste factors are multiplied out once, at initialisation, and read back as
@@ -62,7 +62,7 @@ public static class Valuation
     }
 
     /// <summary>`flow_cost = price / life`, per tick. Never the purchase price.</summary>
-    public static Flow FlowCost(Money price, int life) => Flow.Spread(price, life);
+    public static Flow FlowCost(Money price, double life) => Flow.Spread(price, life);
 
     /// <summary>
     /// What a financed candidate costs per tick: the cash cost times `finance_mult`, which comes

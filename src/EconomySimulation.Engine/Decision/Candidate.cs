@@ -14,14 +14,14 @@ namespace EconomySimulation.Engine.Decision;
 /// <param name="Tier">The tier the step lands on. Tier 0 is a purchase; anything above is an upgrade.</param>
 /// <param name="DeltaValue">What the step adds, in euros per tick: `V · (value_mult_t − value_mult_(t−1))`.</param>
 /// <param name="DeltaPrice">What the step costs in cash, now: `price_t − price_(t−1)`. The increments telescope to the tier's posted price exactly.</param>
-/// <param name="Life">The category's life, which turns the cash increment into a per-tick cost.</param>
+/// <param name="Life">The life **this household** gets out of the good, which turns the cash increment into a per-tick cost. `life_g · d[A][g]` under §3.7, and the good's own life wherever `d` is 1.</param>
 /// <param name="Score">`Δvalue / Δcost`, a pure number, compared against λ.</param>
 public readonly record struct Candidate(
     int Category,
     int Tier,
     Flow DeltaValue,
     Money DeltaPrice,
-    int Life,
+    double Life,
     double Score)
 {
     /// <summary>An upgrade needs the step below it taken first; a purchase needs nothing.</summary>

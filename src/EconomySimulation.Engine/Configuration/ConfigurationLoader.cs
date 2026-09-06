@@ -343,12 +343,20 @@ public static class ConfigurationLoader
         var sigmaIdio = section.Double("sigma_idio", basis.Archetypes.SigmaIdio);
         var normaliseKappa = section.Bool("normalise_kappa", basis.Archetypes.NormaliseKappa);
         var stated = section.Subtables();
-        var names = categories.Select(c => c.Name).ToArray();
+        var goods = categories.Select(c => c.Name).ToArray();
+
+        // Taste is authored per **label** and the cycle per **good** (§3.5, §3.7). Distinct labels
+        // rather than one per row: `w = { electronics = 1.60 }` is one statement about a category,
+        // and under §3.1 the two lists are the same six strings.
+        var labels = categories
+            .Select(c => c.Label)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
         var authored = stated.Count == 0
             ? basis.Archetypes.Types
             : stated
-                .Select(name => ReadArchetype(section, name, names, problems))
+                .Select(name => ReadArchetype(section, name, labels, goods, problems))
                 .Where(type => type is not null)
                 .Select(type => type!)
                 .ToArray();
@@ -359,14 +367,15 @@ public static class ConfigurationLoader
         {
             SigmaIdio = sigmaIdio,
             NormaliseKappa = normaliseKappa,
-            Types = Normalise(authored, names, normaliseKappa, problems),
+            Types = Normalise(authored, labels, goods, normaliseKappa, problems),
         };
     }
 
     private static Archetype? ReadArchetype(
         TomlSection section,
         string name,
-        IReadOnlyList<string> categories,
+        IReadOnlyList<string> labels,
+        IReadOnlyList<string> goods,
         Validation problems)
     {
         var table = section.Subtable(name);
@@ -378,17 +387,18 @@ public static class ConfigurationLoader
 
         var row = new TomlSection(table, $"archetypes.{name}", problems);
         var share = row.Double("share", 0.0);
-        var w = ReadWeights(row, "w", $"archetypes.{name}.w", categories, problems);
-        var kappa = ReadWeights(row, "kappa", $"archetypes.{name}.kappa", categories, problems);
+        var w = ReadWeights(row, "w", $"archetypes.{name}.w", labels, problems);
+        var kappa = ReadWeights(row, "kappa", $"archetypes.{name}.kappa", labels, problems);
+        var d = ReadWeights(row, "d", $"archetypes.{name}.d", goods, problems);
 
         row.RejectUnknownKeys();
 
-        return new Archetype { Name = name, Share = share, W = w, Kappa = kappa };
+        return new Archetype { Name = name, Share = share, W = w, Kappa = kappa, D = d };
     }
 
     /// <summary>
-    /// One `w` or `kappa` row: a number per category, **absent meaning 1.0** and an unknown
-    /// category name an error.
+    /// One `w`, `kappa` or `d` row: a number per key, **absent meaning 1.0** and an unknown key an
+    /// error. The keys are category labels for `w` and `kappa`, goods-table rows for `d`.
     ///
     /// That asymmetry is 02-02's, inherited rather than re-implemented — reading the row through a
     /// <see cref="TomlSection"/> is what buys it. A type that is average in leisure should not have
@@ -421,19 +431,33 @@ public static class ConfigurationLoader
     }
 
     /// <summary>
-    /// Divides each column by its share-weighted mean, so that `Σ_A share_A · m_g,A = 1` holds by
-    /// construction (§3.5).
+    /// Normalises the table: two identities, conserving two different things.
     ///
-    /// The identity is what keeps `v_g` meaning what it says: a table redistributes a category's
-    /// demand across the population, it does not change how much of it there is. Applied to a table
-    /// that already satisfies it, every scale is 1 and nothing moves — which is why the identity
-    /// table survives this untouched, and why V5a can be a byte-for-byte comparison.
+    /// **`w`, arithmetically.** Each column is divided by its share-weighted mean, so that
+    /// `Σ_A share_A · m_g,A = 1` holds by construction (§3.5). The identity is what keeps `v_g`
+    /// meaning what it says: a table redistributes a category's demand across the population, it
+    /// does not change how much of it there is.
+    ///
+    /// **`d`, harmonically.** Each column is *multiplied* by `Σ_A share_A / d[A][g]`, so that
+    /// `Σ_A share_A / d[A][g] = 1` holds instead. Demand per tick is `1 / life`, so what has to
+    /// average to one is the **reciprocal**, and this is not a stylistic preference. Normalise `d`
+    /// itself arithmetically and Jensen's inequality — `E[1/d] > 1/E[d]` for any `d` that varies at
+    /// all — hands the population strictly more replacement demand than `capacity` was sized for,
+    /// permanently, in every good, in every run. The reprice rule absorbs it into the price level,
+    /// no conservation identity notices, and the town is simply a little tighter than the goods
+    /// table says it is. The multiplication rather than the division is the whole of the difference,
+    /// and ReplacementCycleTests exists to fail if it is ever turned back around.
+    ///
+    /// Applied to a table that already satisfies either identity, the scale is exactly 1 and nothing
+    /// moves — which is why the identity table survives this untouched, and why V5a can be a
+    /// byte-for-byte comparison.
     ///
     /// `kappa` gets no such treatment: see <see cref="Archetype.Kappa"/>.
     /// </summary>
     private static IReadOnlyList<Archetype> Normalise(
         IReadOnlyList<Archetype> authored,
-        IReadOnlyList<string> categories,
+        IReadOnlyList<string> labels,
+        IReadOnlyList<string> goods,
         bool normaliseKappa,
         Validation problems)
     {
@@ -445,23 +469,42 @@ public static class ConfigurationLoader
 
         var scales = new Dictionary<string, double>(StringComparer.Ordinal);
         var kappaScales = new Dictionary<string, double>(StringComparer.Ordinal);
+        var cycleScales = new Dictionary<string, double>(StringComparer.Ordinal);
 
-        foreach (var category in categories)
+        foreach (var label in labels)
         {
-            kappaScales[category] = normaliseKappa
-                ? Scale(authored.Sum(a => a.Share * a.ExponentFor(category)))
+            kappaScales[label] = normaliseKappa
+                ? Scale(authored.Sum(a => a.Share * a.ExponentFor(label)))
                 : 1.0;
 
-            var scale = authored.Sum(a => a.Share * a.WeightFor(category));
+            var scale = authored.Sum(a => a.Share * a.WeightFor(label));
 
             problems.Require(
                 scale > 0.0 && double.IsFinite(scale),
-                $"archetypes.w.{category}",
+                $"archetypes.w.{label}",
                 "a positive share-weighted mean — the column is divided by it, and a column of "
                 + "zeros is a category nobody wants at any price",
                 Format(scale));
 
-            scales[category] = Scale(scale);
+            scales[label] = Scale(scale);
+        }
+
+        foreach (var good in goods)
+        {
+            // A cycle of zero or less is not a shorter life, it is a division by zero one step
+            // later. Caught here rather than in the sum, so the message names the multiplier.
+            var usable = authored.All(a => a.CycleFor(good) > 0.0 && double.IsFinite(a.CycleFor(good)));
+
+            problems.Require(
+                usable,
+                $"archetypes.d.{good}",
+                "a positive replacement-cycle multiplier from every type — the life is multiplied "
+                + "by it and the per-tick failure probability is its reciprocal",
+                Format(authored.Min(a => a.CycleFor(good))));
+
+            cycleScales[good] = usable
+                ? Scale(authored.Sum(a => a.Share / a.CycleFor(good)))
+                : 1.0;
         }
 
         return
@@ -470,15 +513,24 @@ public static class ConfigurationLoader
             {
                 W =
                 [
-                    .. categories
+                    .. labels
                         .OrderBy(c => c, StringComparer.Ordinal)
                         .Select(c => new CategoryWeight(c, a.WeightFor(c) / scales[c])),
                 ],
                 Kappa =
                 [
-                    .. categories
+                    .. labels
                         .OrderBy(c => c, StringComparer.Ordinal)
                         .Select(c => new CategoryWeight(c, a.ExponentFor(c) / kappaScales[c])),
+                ],
+
+                // Multiplied, where `w` is divided. `Σ share / (d · k) = (1 / k) · Σ share / d`, so
+                // scaling *up* by the reciprocal sum is what drives that sum to one.
+                D =
+                [
+                    .. goods
+                        .OrderBy(c => c, StringComparer.Ordinal)
+                        .Select(c => new CategoryWeight(c, a.CycleFor(c) * cycleScales[c])),
                 ],
             }),
         ];
@@ -657,6 +709,8 @@ public static class ConfigurationLoader
             "shares summing to exactly 1 — they split the population",
             Format(shares));
 
+        CheckCycles(p, problems);
+
         // The bound is read off the tier table, never written down: a literal would be correct
         // today and silently wrong the first time somebody edits a tier multiplier.
         var maxExponent = QualityLadder.MaxExponent(p.Tiers);
@@ -679,6 +733,62 @@ public static class ConfigurationLoader
                     + "upgrade ladder inverts and buying the budget unit scores below upgrading it",
                     exponent.Value);
             }
+        }
+    }
+
+    /// <summary>
+    /// What a replacement-cycle multiplier needs from the rest of the configuration (§3.7).
+    ///
+    /// Per **good** rather than per (type, good), because normalisation is per column: the moment
+    /// one type states a `d`, every other type's 1.0 is scaled off 1 as well, and complaining about
+    /// each of them separately would report one mistake four times.
+    ///
+    /// The three conditions are all cases of the same thing — a `d` that cannot mean what it says:
+    /// under `deterministic` a life is an integer count of ticks and a fractional one would have to
+    /// be rounded, which breaks the identity by more than an arithmetic normalisation would; a
+    /// life-1 good is consumed the tick it is bought and has no cycle to stretch; and a realised
+    /// life below one tick turns `1 / life` into something that is not a probability, so the good
+    /// silently becomes a consumable.
+    /// </summary>
+    private static void CheckCycles(SimulationParameters p, Validation problems)
+    {
+        var hazard = p.Run.Replacement == Replacement.Hazard;
+
+        foreach (var good in p.Categories)
+        {
+            var column = p.Archetypes.Types
+                .Select(t => (t.Name, Cycle: t.CycleFor(good.Name)))
+                .ToArray();
+
+            if (column.All(c => c.Cycle == 1.0))
+            {
+                continue;
+            }
+
+            var stated = string.Join(", ", column.Select(c => $"{c.Name} = {Format(c.Cycle)}"));
+
+            problems.Require(
+                hazard,
+                $"archetypes.d.{good.Name}",
+                "run.replacement = \"hazard\" — a deterministic life is an integer count of ticks, "
+                + "so a cycle multiplier would have to be rounded away rather than applied",
+                stated);
+
+            problems.Require(
+                good.Life > 1,
+                $"archetypes.d.{good.Name}",
+                $"a good with a life to stretch — {good.Name} has life 1 and is consumed the tick "
+                + "it is bought, so a cycle multiplier has nothing to multiply",
+                stated);
+
+            var shortest = column.Min(c => c.Cycle) * good.Life;
+
+            problems.Require(
+                shortest >= 1.0,
+                $"archetypes.d.{good.Name}",
+                "a realised life of at least one tick for every type — the per-tick failure "
+                + "probability is 1 / life, and below one tick that stops being a probability",
+                Format(shortest));
         }
     }
 

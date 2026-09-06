@@ -38,7 +38,11 @@ public static class Ladder
         }
 
         var baseValue = Valuation.BaseValue(goods, population, household, category);
-        var life = goods.Categories[category].Life;
+
+        // The household's own life, not the good's (§3.7). This is the half of the composition that
+        // makes `ŵ = m / d` come out at `m`: a type that replaces a phone half as often pays half
+        // as much per tick for it, and its derived taste weight is what puts the score back.
+        var life = population.Life(household, category);
 
         var previousMult = 0.0;
         var previousPrice = Money.Zero;

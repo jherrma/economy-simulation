@@ -3,3 +3,5 @@ seed = 4
 ticks = 48
 tier_rows = 864
 cohort_rows = 96
+replacement_residue_good = "appliances"
+replacement_residue = 0.041667
