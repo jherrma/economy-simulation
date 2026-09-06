@@ -343,6 +343,32 @@ category-shaped:
   together with the residue that tempts the correction: the run reports the worst good's gap between
   realised replacement demand and capacity once, in `run.done`, and leaves it there.
 
+- **No shelf too thin to carry a price series.** **Done 2026-09-06** (11-05). `run.min_shelf_units`
+  is checked at load and names every offending (good, tier) rather than failing on the first, because
+  the fix is more households or a group merged back and neither follows from one count. The counts
+  come from `Allocation.LargestRemainder` and **not** from `round(share × capacity)`: the two
+  disagree in the direction of passing — a capacity of 19 splits 8 / 7 / 4 where per-tier rounding
+  says 8 / 8 / 4, twenty units of which one does not exist. It is **off by default**, deliberately:
+  §3.1 at a thousand households has an appliance premium shelf of two units, and turning the check on
+  there would reject the configuration every published v1 number came from.
+- **The town is set by that check and the warm-up by the null run.** **Done 2026-09-06** (11-05).
+  5,000 households because the threshold is 4,680 and the binding shelf then sits at exactly seven
+  units. `warmup_ticks = 840`, three and a half times §3.1's, because V4 says so and not because
+  anyone judged it: at 240 the worst shelf drifts −7.4% across the measured window on average over
+  thirty seeds and at 480 still −2.4%, against the 1.0% their seed spread can explain. The offender
+  is a *systematic* transient rather than noise — every seed drifts the same way, seed spread 0.7%
+  around a mean of −5.3% — which is what makes it a warm-up problem and not a power problem.
+- **V4 passes on the grouped calibration**, `dotnet run --project tools/Gates -- nullrun grouped`:
+  worst tier-price drift −0.727% of 1.00% allowed, and `wait_median_met` identically zero across
+  thirty seeds. The gate reports which calibration and which replacement rule it ran, so a green
+  line cannot be read as being about the wrong town.
+- **The pilot probe and the campaign both run on it**, `pilot grouped` and
+  `--calibration config/calibrations/grouped.toml`. The calibration is the **basis** and the scenario
+  is laid on top; the pairing check is resolved against the same basis, because `scenario.Parameters`
+  is always the scenario on the *schema defaults* and a grouped campaign checked through it would
+  pair six-good, thousand-household worlds and pronounce the run paired. That failure is silent and
+  the dataset would be well-formed either way, so it has a test.
+
 What V5b cannot say is that the grouped calibration is *right*. Nothing here can. It is defended by
 being checkable against observable prices and cycles, which is precisely what §3.1's blob was not.
 

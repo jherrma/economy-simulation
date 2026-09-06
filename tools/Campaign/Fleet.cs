@@ -27,7 +27,11 @@ public static class Fleet
         return [.. scenarios.SelectMany(scenario => seeds.Select(seed => new Unit(scenario, seed)))];
     }
 
-    public static Result RunAll(IReadOnlyList<Unit> units, string output, Action<Unit>? done = null)
+    public static Result RunAll(
+        IReadOnlyList<Unit> units,
+        string output,
+        Action<Unit>? done = null,
+        string? calibration = null)
     {
         ArgumentNullException.ThrowIfNull(units);
         ArgumentException.ThrowIfNullOrWhiteSpace(output);
@@ -41,7 +45,7 @@ public static class Fleet
             new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
             unit =>
             {
-                var ran = Spawn(runner, unit, Layout.Run(output, unit.Scenario, unit.Seed));
+                var ran = Spawn(runner, unit, Layout.Run(output, unit.Scenario, unit.Seed), calibration);
 
                 lock (failures)
                 {
@@ -60,7 +64,7 @@ public static class Fleet
         return failures.Count > 0 ? Result.Fail(failures) : Result.Ok();
     }
 
-    private static Result Spawn(string runner, Unit unit, string into)
+    private static Result Spawn(string runner, Unit unit, string into, string? calibration)
     {
         var start = new ProcessStartInfo
         {
@@ -82,6 +86,12 @@ public static class Fleet
         start.ArgumentList.Add(into);
         start.ArgumentList.Add("--scenarios");
         start.ArgumentList.Add(Layout.Scenarios);
+
+        if (calibration is not null)
+        {
+            start.ArgumentList.Add("--calibration");
+            start.ArgumentList.Add(calibration);
+        }
 
         using var process = Process.Start(start)
             ?? throw new InvalidOperationException($"Could not start {runner}.");

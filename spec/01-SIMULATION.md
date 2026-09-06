@@ -1055,6 +1055,14 @@ spread across seeds can resolve.
 Re-check with `dotnet run --project tools/Gates -- nullrun`, which reports every drift, every
 settling tick, and the seed spread behind both.
 
+**Turned into a check on 2026-09-06** (11-05). "No claim about a single thin shelf" is a rule nobody
+can be relied on to remember when they are plotting, so the loader now refuses a configuration whose
+thinnest shelf is below a stated floor — `run.min_shelf_units`, naming every offending (good, tier)
+rather than merely failing. It is **off by default**, because §3.1 at a thousand households would not
+clear a floor of seven: its appliance premium shelf is the two units this section is about. Turning
+it on there would be rewriting the configuration every published v1 number came from. §3.6's table
+sets it to 7, and that is what forces its five thousand households.
+
 ### 10.4 The effect is large; the pooled tier mix reports it backwards — found 2026-09-04
 
 Found with `tools/Gates` `pilot`, which is not a gate: it runs both arms of the experiment over the
@@ -1217,6 +1225,91 @@ but this section has not tested that reading, and it should not be quoted as tho
 **What this does not say.** It does not say the `typed` table is right. Nothing in this repository
 can (§3.5). It says the headline is not an artefact of v1's assumption that one number describes
 what a household wants — which was the live risk, and is now measured rather than hoped.
+
+### 10.6 The harm is graded by lump size, and the grading is credit's, not the price's — found 2026-09-06
+
+§5.5 split six categories into eighteen goods to make one question askable: *does the harm
+concentrate in the frequent-medium lump — a €600 phone every two and a half years — or in the
+rare-huge one, a €1,440 washing machine every twelve?* This is the answer, and it is unambiguous.
+
+Measured with `dotnet run --project tools/Gates -- pilot grouped`, thirty paired seeds, 1,200 ticks,
+window from tick 841, 5,000 households, identity population, `credit_off` against `credit_high`.
+
+**The headline survives the recalibration**, a little smaller and far better resolved: the
+abstainer's share of wanted units obtained falls **−4.24%** (*t* = −59.5) against v1's −5.61%
+(*t* = −23.8). Five thousand households and fifty-four shelves cut the paired spread from 1.29% to
+0.39%, so thirty seeds now resolve the effect twenty-nine times over rather than twelve.
+
+**The grading, by good:**
+
+| Good | `price_ref` | `life` | financeable | units obtained | its price |
+|---|---|---|---|---|---|
+| Appliances/large | €1,440 | 144 | yes, 36 | **−58.3%** | **+38.4%** |
+| Electronics/laptop | €900 | 54 | yes, 24 | −32.8% | +9.6% |
+| Electronics/phone | €600 | 30 | yes, 24 | −27.6% | +6.9% |
+| Electronics/TV | €700 | 84 | yes, 24 | −17.1% | +2.8% |
+| Appliances/medium | €640 | 96 | yes, 24 | −16.8% | +1.1% |
+| Hobby/big kit | €540 | 60 | yes, 24 | −7.2% | +0.5% |
+| Hobby/equipment | €216 | 18 | yes, 12 | −0.4% *(t = −1.2)* | +0.4% |
+| Appliances/small | €120 | 36 | **no** | +2.1% | −1.4% |
+| Clothing/outerwear | €576 | 24 | **no** | **+16.0%** | **−3.6%** |
+| Leisure/holiday | €360 | 12 | no | +4.3% | −2.3% |
+| Clothing/everyday | €152 | 8 | no | +2.6% | −1.5% |
+| Food/groceries | €210 | 1 | no | +0.1% | −0.6% |
+
+So it is the rare-huge lump, and the gradient is steep: the washing machine is more than twice as
+badly hit as the laptop and eight times worse than the hobby big kit. **The abstainer is not merely
+squeezed — they are squeezed out of the top of their basket and slightly better off at the bottom of
+it.** Everything cheap and frequent goes the other way, and total CPI moves +0.145%.
+
+#### Outerwear is the control the calibration accidentally provided
+
+Compare two goods of nearly the same size and nearly the same cycle:
+
+| | `price_ref` | `life` | `base_score` | financeable | units obtained | its price |
+|---|---|---|---|---|---|---|
+| Electronics/phone | €600 | 30 | 1.24 | **yes** | **−27.6%** | **+6.9%** |
+| Clothing/outerwear | €576 | 24 | 1.05 | **no** | **+16.0%** | **−3.6%** |
+
+Four per cent apart in price, six months apart in cycle, and the effects are opposite in sign and
+large in both directions. **It is not that big-ticket goods become hard to get. It is that
+*financeable* goods do.** The phone is the more wanted of the two — a higher base score — which
+makes the contrast sharper rather than weaker, and the mechanism is exactly §5.2's: credit does not
+make a candidate cheaper, it puts a tier within reach that cash could not pay for, and every
+household that reaches raises the price the household that does not reach has to pay.
+
+This is the strongest evidence in the project for §1's claim, and it is stronger than §10.4's
+because it does not rest on comparing categories with different price levels and different lives. It
+rests on a pair that differ in one flag.
+
+#### The abstainer accumulates cash
+
+`abstainer cash` is **+4.34%** (*t* = 28.1) and abstainer spend per tick is +0.16%: the money not
+spent on the washing machine does not go anywhere else. Units obtained per tick are flat (+0.011%)
+and the quality index rises +0.51%, the same shape §10.5 found under a typed population — about as
+many things, marginally better on average, and the ones lost are the expensive ones.
+
+**Nobody is rationed in either arm.** `rationed / tick` is 0 throughout and `wait_median_met` is
+identically zero, which means the exclusion is entirely by price and not at all by stock-out. §10.1
+found that on six categories; it holds on eighteen goods and fifty-four shelves.
+
+#### What this does not say
+
+It is one calibration, one population table (the identity), and one pair of arms. The per-good
+numbers come from the power probe rather than from the campaign, so they are a measurement of the
+same two scenarios the campaign runs rather than of the campaign's dataset. And the grading is
+confounded to the extent that `financeable` and `term` were themselves assigned by size in §3.6 —
+outerwear is the one row that breaks that alignment, which is why it carries so much of the argument
+above. A calibration with two or three more non-financeable large goods would test it properly, and
+this section should not be quoted as though one row were a design.
+
+**And §10.3's rule about thin shelves still binds, in the form it was written.** Large appliances
+run 14 / 14 / 7 units at five thousand households, so the *level* of `cpi_appliance_large` is not
+identified and none is quoted here. What is quoted is a **paired difference between two arms on the
+same thirty seeds**, where the trajectory noise is common to both and cancels — which is why a
++38.4% difference carries a *t* of 273 on a shelf whose absolute price nobody may state. The two
+claims are not the same claim, and mixing them up would be the easiest mistake to make with this
+table.
 
 ## 11. What this model cannot show
 

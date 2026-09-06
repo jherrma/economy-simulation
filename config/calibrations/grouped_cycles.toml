@@ -44,6 +44,8 @@
 # until the headline came out better would turn this model from evidence into an illustration.
 
 [run]
+# Pinned rather than inherited: `grouped.toml` already sets it, and a `d` is meaningless without it,
+# so this file states the thing it depends on instead of following a default that might move.
 replacement = "hazard"
 
 [archetypes.prudent]

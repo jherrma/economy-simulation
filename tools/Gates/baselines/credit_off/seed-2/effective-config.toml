@@ -9,6 +9,7 @@ ticks = 48
 warmup_ticks = 19
 seeds = 30
 scenario = "credit_off"
+min_shelf_units = 0
 replacement = "deterministic"
 
 [income]

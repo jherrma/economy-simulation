@@ -155,6 +155,57 @@ tested; do not quote it as though it were.
 
 ---
 
+## 2026-09-06 — The harm is graded by lump size, and outerwear is the control
+
+E11 split six categories into eighteen goods, each with its own price, life and replacement cycle,
+and re-sized the town to five thousand households because eighteen goods split three ways by tier
+left one shelf holding a single washing machine. `spec/01-SIMULATION.md` §10.6 carries the evidence;
+this is the shape of it.
+
+**The headline survives and sharpens.** The abstainer's share of wanted units obtained falls 4.24%
+under credit, against 5.61% on the six-category table — a slightly smaller effect, resolved
+twenty-nine times over instead of twelve, because a bigger town has a much smaller paired spread.
+
+**The harm is not spread evenly; it is graded by lump size.** A €1,440 washing machine replaced every
+twelve years: the abstainer gets **58% fewer** of them, and its price rises **38%**. A €900 laptop:
+33% fewer, 10% dearer. A €600 phone: 28% fewer, 7% dearer. Hobby equipment at €216: no measurable
+effect at all. And everything cheap and frequent goes the *other* way — the abstainer gets slightly
+more clothing, more holidays, more small appliances, all of them slightly cheaper. The abstainer is
+squeezed out of the top of their basket and marginally better off at the bottom of it. Total CPI
+moves 0.145%.
+
+**The best single line in the project so far: outerwear.** A winter coat at €576 replaced every two
+years and a phone at €600 replaced every two and a half are the same purchase by any measure this
+model has — except that a phone can be financed and a coat cannot. The abstainer gets **16% more**
+coats, 3.6% cheaper, while getting **28% fewer** phones, 6.9% dearer. Opposite in sign, large in both
+directions, from goods four per cent apart in price.
+
+That is the cleanest statement of the mechanism available: **it is not that expensive things become
+hard for B to get. It is that *financeable* things do.** Credit does not make anything cheaper — it
+puts a tier within reach that cash could not pay for, and everyone who reaches bids up the shelf that
+the person who never borrows still has to buy from. Lead the write-up with this pair. It needs no
+chart and no statistics to be understood, and it forecloses the obvious objection that big things are
+simply hard for poor people to buy.
+
+**Caveat, and it is a real one.** In §3.6's table, `financeable` was assigned roughly by size, so the
+grading by lump size and the grading by financeability are largely the same ordering. Outerwear is
+the one row that breaks the alignment, and it is therefore carrying more argumentative weight than
+one row should. A calibration with two or three more large non-financeable goods would test this
+properly. Do not write it up as though the design had been built to test it — it was not, and saying
+so is cheaper than being caught.
+
+**Nobody is rationed, in either arm.** Not one household in any tick of any seed fails to buy
+something because the shelf was empty; every unmet want is unmet because it could not be afforded.
+The exclusion is a price, not a queue, and that survived going from eighteen shelves to fifty-four.
+
+**A methodological finding worth carrying forward.** The warm-up had to be re-measured and it more
+than tripled, from 240 ticks to 840. The reason is one good: eating out has the highest entry income
+in the table, so almost nobody wants it at the opening price, and its budget shelf takes seven
+hundred ticks to fall to where demand meets it — systematically, in every seed. **The model's
+convergence time is set by its most marginal good, and splitting a category manufactures marginal
+goods.** The six-category `leisure` blended going out, events and a holiday, and the blend cleared
+quickly. Any future split should re-measure rather than inherit.
+
 ---
 
 *Convention: entries are dated because they age. A finding here is true of the model as it stood on

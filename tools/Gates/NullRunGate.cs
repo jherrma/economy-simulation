@@ -107,7 +107,8 @@ public static class NullRunGate
         ArgumentNullException.ThrowIfNull(workspace);
 
         var baseline = Scenarios.CreditOff(parameters);
-        var report = new GateReport("V4 — the null run");
+        var report = new GateReport(Invariant(
+            $"V4 — the null run ({Calibration.NameOf(parameters)}, {parameters.Run.Replacement.ToTomlValue()})"));
 
         if (baseline.Credit.CreditEnabled)
         {

@@ -25,7 +25,10 @@ public static class Pairing
     /// Opening the world is cheap next to running it, and it is the only place the abstainer set
     /// exists as a set: the output carries a count, and equal counts are not the same claim.
     /// </summary>
-    public static Result Check(IReadOnlyList<Scenario> scenarios, IReadOnlyList<int> seeds)
+    public static Result Check(
+        IReadOnlyList<Scenario> scenarios,
+        IReadOnlyList<int> seeds,
+        SimulationParameters? calibration = null)
     {
         ArgumentNullException.ThrowIfNull(scenarios);
         ArgumentNullException.ThrowIfNull(seeds);
@@ -37,6 +40,24 @@ public static class Pairing
 
         var problems = new List<IError>();
         var baseline = scenarios[0];
+
+        // Every arm is laid on the same calibration, because the calibration is the *town* rather
+        // than a treatment. Resolved once here rather than read off `scenario.Parameters`, which is
+        // always the schema defaults and would silently pair the wrong worlds on a grouped campaign.
+        var basis = calibration ?? SimulationParameters.Default;
+        var applied = new Dictionary<string, SimulationParameters>(StringComparer.Ordinal);
+
+        foreach (var scenario in scenarios)
+        {
+            var result = scenario.ApplyTo(basis);
+
+            if (result.IsFailed)
+            {
+                return Result.Fail(result.Errors);
+            }
+
+            applied[scenario.Name] = result.Value;
+        }
 
         // Each scenario's archetype control is the **first scenario of its own row of §3.5's sweep
         // grid**, and the untyped baseline for anything the grid does not name. A typed scenario is
@@ -50,26 +71,26 @@ public static class Pairing
 
         foreach (var seed in seeds)
         {
-            var expected = Opening(baseline.Parameters, seed);
+            var expected = Opening(applied[baseline.Name], seed);
             var opened = new Dictionary<string, (HashSet<int> Abstainers, int[] Archetypes)>(StringComparer.Ordinal);
 
             foreach (var scenario in scenarios.Skip(1))
             {
-                var actual = Opening(scenario.Parameters, seed);
+                var actual = Opening(applied[scenario.Name], seed);
                 var control = controls[scenario.Name];
 
                 if (!ReferenceEquals(control, scenario))
                 {
                     if (!opened.TryGetValue(control.Name, out var expectedTypes))
                     {
-                        expectedTypes = Opening(control.Parameters, seed);
+                        expectedTypes = Opening(applied[control.Name], seed);
                         opened[control.Name] = expectedTypes;
                     }
 
                     // The table first: two arms of one grid row that do not carry the same table
                     // are not a comparison at all, and eight hand-written scenario files is exactly
                     // where that typo lives.
-                    Same(problems, seed, scenario, control);
+                    Same(problems, seed, scenario, control, applied);
                     Compare(problems, seed, scenario.Name, control.Name, expectedTypes.Archetypes, actual.Archetypes);
                 }
 
@@ -123,15 +144,20 @@ public static class Pairing
     /// Two scenarios meant to be compared have to carry the **same** archetype table, or the
     /// difference between them is the table and the mechanism together.
     /// </summary>
-    private static void Same(List<IError> problems, int seed, Scenario scenario, Scenario control)
+    private static void Same(
+        List<IError> problems,
+        int seed,
+        Scenario scenario,
+        Scenario control,
+        IReadOnlyDictionary<string, SimulationParameters> applied)
     {
-        if (seed != 1 || scenario.Parameters.Archetypes == control.Parameters.Archetypes)
+        if (seed != 1 || applied[scenario.Name].Archetypes == applied[control.Name].Archetypes)
         {
             return;
         }
 
-        var keys = scenario.Parameters
-            .DifferencesFrom(control.Parameters)
+        var keys = applied[scenario.Name]
+            .DifferencesFrom(applied[control.Name])
             .Where(k => k.StartsWith("archetypes", StringComparison.Ordinal));
 
         problems.Add(new Error(Invariant(

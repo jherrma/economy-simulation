@@ -93,6 +93,34 @@ public sealed class CampaignTests
     }
 
     /// <summary>
+    /// The pairing holds on a **calibration other than the defaults**, and is resolved against it
+    /// rather than against `scenario.Parameters` (11-05).
+    ///
+    /// This is the failure the change was made to avoid, and it is silent: `scenario.Parameters` is
+    /// always the scenario laid on the *schema defaults*, so a grouped campaign checked through it
+    /// would pair six-good, thousand-household worlds and pronounce a run of eighteen-good,
+    /// five-thousand-household worlds paired. The dataset would be well-formed either way.
+    /// </summary>
+    [Fact]
+    public void ThePairingIsCheckedAgainstTheCalibrationTheCampaignRuns()
+    {
+        var grouped = ConfigurationLoader.FromFile(
+            Path.Combine(Repo.Root, "config", "calibrations", "grouped.toml"));
+
+        Assert.True(grouped.IsSuccess, string.Join("; ", grouped.Errors.Select(e => e.Message)));
+
+        var scenarios = Scenarios();
+        var paired = Pairing.Check(scenarios, [1], grouped.Value);
+
+        Assert.True(paired.IsSuccess, string.Join("; ", paired.Errors.Select(e => e.Message)));
+
+        // And it really is the other town: the defaults would have paired a different world.
+        Assert.Equal(18, grouped.Value.Categories.Count);
+        Assert.Equal(5000, grouped.Value.Run.Households);
+        Assert.Equal(6, scenarios[0].Parameters.Categories.Count);
+    }
+
+    /// <summary>
     /// And the check can fail. A pairing test that cannot distinguish a moved abstainer set from an
     /// unmoved one is a line of output, not a check.
     /// </summary>

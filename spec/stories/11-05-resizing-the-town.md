@@ -26,6 +26,35 @@ Everything else here is measurement, and the order matters. The warm-up has to b
 
 Expect the power to be worse than §10.4's. This epic adds dispersion in replacement timing on top of §5.4's dispersion in taste, and pairing cancels the draw but not the trajectory. If the headline no longer resolves at thirty seeds, the honest responses are more seeds or a bigger town — never a finer cut of the same data, and never the difference reported without its floor beside it.
 
+> **Built 2026-09-06.** Four things worth recording, three of them measurements the story could not
+> have predicted.
+>
+> **The thin-shelf floor is a parameter, off by default, and that is a statement about §3.1.** The v1
+> calibration at 1,000 households has an appliance premium shelf of *two* units and an electronics
+> premium shelf of six, so a floor turned on by default would reject the configuration every
+> published v1 number came from. It is `run.min_shelf_units`; §3.6's table sets it to 7. The floor
+> forces the town rather than the other way round — the threshold is **4,680** households and 5,000
+> is the nearest round thousand above it, so the binding shelf has no margin at all.
+>
+> **The warm-up more than tripled, from 240 to 840, and one good sets it.** `eating_out` has the
+> highest entry income in the table, so almost nobody wants it at the opening price and its budget
+> shelf takes about seven hundred ticks to fall to where demand meets it — *systematically*, with a
+> seed spread of 0.7% around a mean drift of −5.3% at tick 300. The general lesson is worth more than
+> the number: **the model's convergence time is set by its most marginal good, and splitting a
+> category manufactures marginal goods.**
+>
+> **The power got better, not worse.** The story expected worse. The abstainer headline resolves at
+> *t* = −59.5 against v1's −23.8, because five thousand households cut the paired spread from 1.29%
+> to 0.39% — the bigger town buys more than it costs.
+>
+> **The finding, and it is the epic's reason to exist.** The harm is graded by lump size: −58% on a
+> €1,440 washing machine, −28% on a €600 phone, nothing measurable on €216 hobby equipment, and
+> *positive* on everything cheap and frequent. And outerwear is the control the calibration
+> accidentally provided — €576 every two years, not financeable, and the abstainer gets **16% more**
+> of it while getting 28% fewer phones. It is not that expensive goods become hard to get; it is that
+> **financeable** goods do. §10.6 carries it, with the caveat that one row is carrying a lot of the
+> argument.
+
 ## How to verify
 
 ```sh

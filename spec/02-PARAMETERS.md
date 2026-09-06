@@ -561,8 +561,35 @@ than off `round(share × capacity)`.
 
 | Parameter | v1 | Grouped | Why |
 |---|---|---|---|
-| `households` | 1000 | **5000** | Every premium shelf reaches 7 units or more; no shelf is under 7. The walk scales with households × candidates, so the 150-run campaign goes from about 70 seconds to roughly ten to fifteen minutes — the price of admission for 54 shelves |
-| `warmup_ticks` | 240 | **set on the null run** | §10.3 found relative prices converge eight times slower than the level with 18 shelves. Fifty-four repricing independently will be slower again. This number is **measured, not guessed** — the same rule that set 240 |
+| `households` | 1000 | **5000** | Every premium shelf reaches 7 units or more; no shelf is under 7. The threshold is 4,680 and 5,000 is the nearest round thousand above it, so the binding shelf — large appliances, premium — sits at exactly 7 units with no margin. The loader checks this at load: `run.min_shelf_units = 7`, and it names every offending shelf rather than merely failing (11-05) |
+| campaign | 390 runs, 2:56 | **390 runs, 38:45** | Both measured 2026-09-06 on eight cores. An earlier draft of this row guessed "ten to fifteen minutes" for the grouped campaign and quoted "about seventy seconds" for v1; the first was out by a factor of three and the second by two and a half, because the sentence was written when the campaign was five scenarios rather than thirteen. The walk scales with households × goods × candidates and the run is twice as long as well, so the grouped campaign is 13× v1's. 7.6 million tier rows against 2.5 million; 1.3 GB of dataset |
+| `warmup_ticks` | 240 | **840** | Measured on the null run, and it does **not** carry over: at 240 the worst shelf drifts −7.4% across the measured window on average over 30 seeds, at 480 still −2.4%, against the 1.0% their spread across seeds can explain. See below |
+| `ticks` | 600 | **1200** | 840 + the 360-tick measured window §10 reads its results off |
+
+#### The warm-up is three and a half times v1's, and one good sets it — measured 2026-09-06
+
+The offending shelf is **`eating_out.budget`**, and its transient is *systematic* rather than noise:
+every seed drifts the same way, with a seed spread of 0.7% around a mean of −5.3% at tick 300. That
+is what makes it a warm-up problem rather than a power problem — noise averages over seeds and this
+does not.
+
+Eating out has the **highest entry income in the table** (€592, above), so at the opening price
+almost nobody wants it, and the shelf has to fall a long way before demand meets it. Measured over
+ten 2,400-tick runs of `credit_off` at 5,000 households, the mean drift over a 360-tick window
+starting at tick `w`:
+
+| `w` | 0 | 300 | 420 | 600 | 720 | 840 | 1200 |
+|---|---|---|---|---|---|---|---|
+| worst systematic drift | −40.8% | −5.3% | −3.1% | −1.5% | −2.3% | none | none |
+
+A decay constant near 210 ticks, inside its own seed spread from about tick 700. **From 840, no
+shelf's mean drift exceeds what its spread across seeds explains.**
+
+The general lesson is worth more than the number: **the model's convergence time is set by its most
+marginal good, and splitting a category manufactures marginal goods.** §3.1's `leisure` was a blend
+of going out, events and a holiday, and its blended entry income was low enough that the blend
+cleared quickly. Separating the three exposes one that almost nobody buys, and the whole run now
+waits for it. Any future split should expect the same and re-measure rather than inherit.
 
 #### Configuration shape — added 2026-09-04
 
@@ -595,8 +622,10 @@ It decides how the output rolls up (`01-SIMULATION.md` §10) and, per §3.5, the
 archetype taste is authored.
 
 `capacity` is omitted throughout, because it is `round(households / life)` and the loader derives it
-— so this table is independent of how big the town is, and the 5,000 households below belong to the
-scenario rather than to the goods table.
+— so the `[categories]` table is independent of how big the town is. The 5,000 households live in a
+`[run]` block in the same file rather than in a scenario (11-05): the number is a fact about *this*
+goods table, since it is this table's lives that decide how thin its shelves get, and a campaign has
+one calibration the way it has one town.
 
 **Row names are globally unique and readable on their own**, because each becomes an output column
 (`abstainer_appliance_large_wanted`). The table above calls them "small", "medium", "large" within a

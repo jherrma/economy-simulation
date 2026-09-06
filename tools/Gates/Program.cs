@@ -31,11 +31,15 @@ internal static class Program
         {
             "determinism" => DeterminismGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "neutrality" => NeutralityGate.Run(SimulationParameters.Default, Runs.WindowSeeds, workspace),
-            "nullrun" => NullRunGate.Run(Replaced(args), Runs.CampaignSeeds(SimulationParameters.Default), workspace),
+            "nullrun" => NullRunGate.Run(Replaced(args), Runs.CampaignSeeds(Calibration.From(args)), workspace),
             "creditoff" => CreditOffGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "archetypes" => ArchetypeGate.Run(SimulationParameters.Default, Runs.ShortSeeds, workspace),
             "rebaseline" => CreditOffGate.Rebaseline(SimulationParameters.Default, Runs.ShortSeeds),
-            "pilot" => PilotProbe.Run(Probe(args, SimulationParameters.Default), Runs.CampaignSeeds(SimulationParameters.Default), workspace, Table(args)),
+            "pilot" => PilotProbe.Run(
+                Probe(args, Calibration.From(args)),
+                Runs.CampaignSeeds(Calibration.From(args)),
+                workspace,
+                Table(args)),
             _ => null,
         };
 
@@ -64,11 +68,11 @@ internal static class Program
     /// </summary>
     private static SimulationParameters Replaced(string[] args)
     {
-        var defaults = SimulationParameters.Default;
+        var basis = Calibration.From(args);
 
         return Array.Exists(args, a => string.Equals(a, "hazard", StringComparison.Ordinal))
-            ? defaults with { Run = defaults.Run with { Replacement = Replacement.Hazard } }
-            : defaults;
+            ? basis with { Run = basis.Run with { Replacement = Replacement.Hazard } }
+            : basis;
     }
 
     /// <summary>
@@ -128,11 +132,13 @@ internal static class Program
         Console.Error.WriteLine("  neutrality    V3 — multiply every nominal quantity by c and nothing real moves");
         Console.Error.WriteLine("  nullrun       V4 — the creditless baseline sits still after the warm-up");
         Console.Error.WriteLine("                     add 'hazard' to run it under §5.5's failure rule");
+        Console.Error.WriteLine("                     add 'grouped' to run it on §3.6's eighteen goods");
         Console.Error.WriteLine("  creditoff     V5 — credit_high with theta = 0 reproduces credit_off, byte for byte");
         Console.Error.WriteLine("  archetypes    V5a — the identity archetype table reproduces the pre-archetype model");
         Console.Error.WriteLine("  pilot         not a gate — how finely the campaign's seed set resolves the headline");
         Console.Error.WriteLine("                pilot table=<row> runs it over one row of the §3.5 sweep grid:");
         Console.Error.WriteLine("                " + string.Join(", ", Scenario.SweepGrid.Select(r => r.Table)));
+        Console.Error.WriteLine("                pilot grouped runs it on §3.6's eighteen goods");
         Console.Error.WriteLine("  rebaseline    write new committed baselines for V5 — deliberate, never automatic");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  --keep        leave the runs on disk instead of removing them");

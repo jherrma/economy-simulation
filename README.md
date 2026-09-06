@@ -11,23 +11,27 @@ assumed.
 
 ## Status
 
-**All nine epics of v1 complete**, with 463 tests. Two further epics are **specified and not built**: household
-archetypes with per-category taste and quality steepness
-([§5.4](spec/01-SIMULATION.md), [E10](spec/stories/README.md)), and product groups with their own
-replacement cycles — eighteen goods instead of six
-([§5.5](spec/01-SIMULATION.md), [§3.6](spec/02-PARAMETERS.md), [E11](spec/stories/README.md)). The model runs: a population, a ledger of integer
-cents, a shopping walk over quality tiers, consumer credit that creates money and has to be repaid,
-and two CSV files of output. The campaign runs it five scenarios wide and thirty seeds deep, one
-process per run, and collects one dataset:
+**All eleven epics complete**, with 601 tests. The model runs: a population of households that differ
+in taste, in quality steepness and in how often they replace what they own; a ledger of integer
+cents; a shopping walk over quality tiers; consumer credit that creates money and has to be repaid;
+and three CSV files of output. There are two calibrations — [§3.1](spec/02-PARAMETERS.md)'s six
+categories, which stays the default so every published number keeps its referent, and
+[§3.6](spec/02-PARAMETERS.md)'s **eighteen goods**, each with its own price, life and replacement
+cycle. The campaign runs thirteen scenarios over thirty seeds, one process per run, and collects one
+dataset:
 
 ```sh
 dotnet run --project tools/Campaign -- --all
+dotnet run --project tools/Campaign -- --all --calibration config/calibrations/grouped.toml
 ```
 
-150 runs in about seventy seconds, into `campaign/` — the measured window of every run, with the
-scenario and the seed on every row, beside a manifest naming the engine commit and the hash of the
-effective configuration each scenario actually ran. Nothing is differenced, averaged or plotted:
-the campaign produces a dataset, not a result.
+390 runs in about **three minutes** on the six-category table and **thirty-nine minutes** on the
+eighteen-good one — both measured on eight cores, 2026-09-06 (the grouped table is five times the
+town, three times the goods and twice the ticks, and produces 7.6 million tier rows against 2.5
+million). Output goes into `campaign/`: the measured window of every run, with the scenario and the
+seed on every row, beside a manifest naming the engine commit and the hash of the effective
+configuration each scenario actually ran. Nothing is differenced, averaged or plotted: the campaign
+produces a dataset, not a result.
 
 **All six verification devices are green.** V1 and V6 run inside every tick; V2 to V5 are a program:
 
@@ -37,6 +41,8 @@ dotnet run --project tools/Gates -- determinism   # V2 — same seed, twice and 
 dotnet run --project tools/Gates -- neutrality    # V3 — scale every nominal quantity, nothing real moves
 dotnet run --project tools/Gates -- nullrun       # V4 — the creditless baseline sits still
 dotnet run --project tools/Gates -- creditoff     # V5 — credit off reproduces the baseline, byte for byte
+dotnet run --project tools/Gates -- archetypes    # V5a — the identity table reproduces the pre-archetype model
+dotnet run --project tools/Gates -- nullrun grouped   # V4 again, on the eighteen-good calibration
 ```
 
 Three of those gates changed the specification rather than the other way round, which is the point
@@ -47,7 +53,17 @@ price level — which is why `warmup_ticks` is 240 and not 120).
 
 A fourth finding came out of E9's own dry run rather than a gate: [§10.4](spec/01-SIMULATION.md)
 measures the headline at ten to sixty times the spread across thirty seeds, and corrects two ways of
-reading it that would have reported the wrong sign or the wrong size.
+reading it that would have reported the wrong sign or the wrong size. A fifth came out of E11's
+recalibration: V4 on eighteen goods needs a warm-up of **840** ticks rather than 240, because
+[the model's convergence time is set by its most marginal good](spec/02-PARAMETERS.md) and splitting
+a category manufactures marginal goods.
+
+**The sharpest result so far** is [§10.6](spec/01-SIMULATION.md): the harm to the household that
+never borrows is **graded by lump size** — 58% fewer €1,440 washing machines, 28% fewer €600 phones,
+nothing measurable on €216 hobby equipment, and *more* of everything cheap and frequent. And a coat
+at €576 every two years, which cannot be financed, goes the opposite way from a phone at €600 every
+two and a half, which can: **it is not that expensive goods become hard to get, it is that
+financeable ones do.**
 
 What remains is the analysis and the write-up, neither of which lives in this repository. The
 [Notes](Notes.md) are the working model of what has been found so far.
@@ -58,14 +74,14 @@ The repository holds two specifications, and the difference between them matters
 
 ### [`spec/`](spec/) — **the implementation target**
 
-The smallest model that can test the claim: a thousand households with a fixed monthly income, six
-categories of goods produced in fixed quantity each tick — each in a budget, standard and premium
-tier with its own price — and consumer credit that creates money and has to be repaid. A fifth of
-households never borrow, and what happens to *them* is the finding: what they pay, what share of
-what they wanted they got, how long they waited, and **which tier they ended up on**.
+The smallest model that can test the claim: a town of households with a fixed monthly income, goods
+produced in fixed quantity each tick — each in a budget, standard and premium tier with its own
+price — and consumer credit that creates money and has to be repaid. A fifth of households never
+borrow, and what happens to *them* is the finding: what they pay, what share of what they wanted
+they got, how long they waited, and **which tier they ended up on**.
 
 Start at [`spec/README.md`](spec/README.md). The backlog is
-[`spec/stories/`](spec/stories/) — 33 stories across 9 epics.
+[`spec/stories/`](spec/stories/) — 42 stories across 11 epics.
 
 ### [`draft/`](draft/) — **a first idea, kept for reference**
 

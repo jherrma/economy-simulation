@@ -3,6 +3,7 @@ using FluentResults;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Syntax;
+using static System.FormattableString;
 
 namespace EconomySimulation.Engine.Configuration;
 
@@ -155,6 +156,7 @@ public static class ConfigurationLoader
             WarmupTicks = section.Int("warmup_ticks", defaults.WarmupTicks),
             Seeds = section.Int("seeds", defaults.Seeds),
             Scenario = section.Text("scenario", defaults.Scenario),
+            MinShelfUnits = section.Int("min_shelf_units", defaults.MinShelfUnits),
             Replacement = section.Choice(
                 "replacement",
                 defaults.Replacement.ToTomlValue(),
@@ -671,6 +673,74 @@ public static class ConfigurationLoader
         CheckCategories(p, problems);
         CheckTiers(p, problems);
         CheckArchetypes(p, problems);
+        CheckShelves(p, problems);
+    }
+
+    /// <summary>
+    /// No shelf too thin to carry a price series (11-05).
+    ///
+    /// A shelf is a (good, tier) pair and each one reprices on its own from its own excess demand.
+    /// Below a handful of units that series is not a measurement of anything: a single unit sold or
+    /// not sold moves it by the whole reprice step, so it looks exactly like data and is a coin
+    /// toss. The eighteen-good table makes this pressing rather than theoretical — splitting a
+    /// category into three divides its capacity three ways as well as its budget — and at 1,000
+    /// households it puts four premium shelves at three units or fewer, one of them at **one**.
+    ///
+    /// **The counts come from <see cref="Allocation.LargestRemainder"/>, not from
+    /// `round(share · capacity)`, because the two disagree.** A capacity of 19 splits 8 / 7 / 4,
+    /// where rounding each share on its own gives 8 / 8 / 4 and a shelf that does not exist. Using
+    /// the wrong one here would make the check disagree with the table it is checking, in the
+    /// direction of passing.
+    ///
+    /// Every offending shelf is named, not just the first: the fix is more households or a group
+    /// merged back, and neither follows from one count.
+    /// </summary>
+    private static void CheckShelves(SimulationParameters p, Validation problems)
+    {
+        var floor = p.Run.MinShelfUnits;
+
+        problems.Require(floor >= 0, "run.min_shelf_units", "zero or more (zero switches the check off)", floor);
+
+        if (floor <= 0 || p.Tiers.Count == 0)
+        {
+            return;
+        }
+
+        var shares = p.Tiers.Select(t => t.UnitShare).ToArray();
+
+        if (shares.Any(share => share < 0.0 || double.IsNaN(share)) || shares.Sum() <= 0.0)
+        {
+            // CheckTiers is already saying so, and an allocation on those weights would throw.
+            return;
+        }
+
+        var thin = new List<string>();
+
+        foreach (var good in p.Categories)
+        {
+            if (good.Capacity <= 0)
+            {
+                continue;
+            }
+
+            var perTier = Allocation.LargestRemainder(good.Capacity, shares);
+
+            for (var t = 0; t < p.Tiers.Count; t++)
+            {
+                if (perTier[t] < floor)
+                {
+                    thin.Add(Invariant($"{good.Name}.{p.Tiers[t].Name} = {perTier[t]}"));
+                }
+            }
+        }
+
+        problems.Require(
+            thin.Count == 0,
+            "the opening shelves",
+            Invariant($"every (good, tier) shelf at {floor} units or more — below that a shelf's ")
+            + "price series is a coin toss that looks like data. Raise run.households, or merge a "
+            + "group back into its neighbour",
+            string.Join(", ", thin));
     }
 
     /// <summary>

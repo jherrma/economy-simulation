@@ -46,6 +46,24 @@ public sealed record RunParameters
     /// calibration needs it.
     /// </summary>
     public Replacement Replacement { get; init; } = Replacement.Deterministic;
+
+    /// <summary>
+    /// The thinnest opening shelf this configuration will accept, in units. **Zero switches the
+    /// check off**, which is the default.
+    ///
+    /// A shelf is a (good, tier) pair and it reprices on its own, so a shelf of one unit produces
+    /// a price series that looks exactly like data and is a coin toss — and it will be plotted by
+    /// somebody next year. The check names every offending shelf rather than merely failing,
+    /// because the fix is either more households or a group merged back and neither is obvious
+    /// from a count.
+    ///
+    /// Off by default rather than on, and this is a statement about §3.1 rather than a
+    /// convenience. The v1 calibration at 1,000 households has an appliance premium shelf of
+    /// **two** units and an electronics premium shelf of six, so the check would reject the
+    /// configuration every published v1 number came from. Turning it on there would be rewriting
+    /// history; §3.6's table sets it to 7, which is what forces the 5,000 households.
+    /// </summary>
+    public int MinShelfUnits { get; init; }
 }
 
 /// <summary>§2.</summary>

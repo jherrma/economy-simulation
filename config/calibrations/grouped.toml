@@ -39,6 +39,44 @@
 # Nominal neutrality survives it (V3): `price_ref` and `mean_income` are both money and scale
 # together, so `v` is invariant under a change of unit.
 
+# `households` and `min_shelf_units` are here rather than in a scenario because they are facts about
+# *this* goods table. Eighteen goods split the same capacity eighteen ways and then three ways again
+# by tier, so the shelves are thin where the lives are long: at 1,000 households four premium shelves
+# hold three units or fewer and the large-appliance one holds **one**. A shelf reprices on its own,
+# so a shelf of one unit produces a price series that looks exactly like data and is a coin toss.
+#
+# The floor of 7 is what forces 5,000, not the other way round. The threshold is 4,680 households —
+# below that the large-appliance premium shelf drops to six — and 5,000 is the nearest round thousand
+# above it. The binding shelf is large appliances, at exactly 7 units. The `[categories]` table below
+# still states no `capacity` and stays independent of the town's size — the loader derives it — which
+# is the distinction §3.6 draws.
+
+[run]
+households      = 5000
+min_shelf_units = 7
+# §1: the grouped calibration requires the hazard. Its lives are all integers, so the calendar would
+# *run* — and §3.7's per-archetype cycles would then have nowhere to land, because a deterministic
+# life is an integer count of ticks. Stating it here rather than in each scenario keeps the
+# calibration one file that means one town.
+replacement     = "hazard"
+
+# `warmup_ticks` and `ticks` are **measured on the null run, not inherited** — the same rule that set
+# §3.1's 240, applied again rather than assumed to carry over. It does not carry over: at 240 the
+# worst shelf drifts -7.4% across the measured window on average over 30 seeds, and at 480 it still
+# drifts -2.4%, both far past the 1.0% their own spread across seeds can explain.
+#
+# The offender is `eating_out.budget` and its transient is *systematic*, not noise: every seed drifts
+# the same way, with a seed spread of 0.7% around a mean of -5.3% at tick 300. Eating out is the good
+# with the highest entry income in the table (EUR 592, §3.6), so almost nobody wants it at the opening
+# price and the shelf falls a long way before demand meets it. Measured over ten 2,400-tick runs the
+# decay has a time constant near 210 ticks: -40.8% at tick 0, -5.3% at 300, -3.1% at 420, -1.5% at
+# 600, and inside its own seed spread from about tick 700. From a warm-up of 840 no shelf's mean
+# drift exceeds what its spread across seeds explains.
+#
+# 1,200 = 840 + the 360-tick measured window §10 reads its results off.
+warmup_ticks    = 840
+ticks           = 1200
+
 [categories]
 replace = true
 

@@ -42,8 +42,21 @@ public sealed class ReplacementCycleTests
     private static SimulationParameters Town(int households) =>
         Sized(Cycles(), households);
 
+    /// <summary>
+    /// The calibration in a smaller town, for a test that does not need §3.6's 5,000.
+    ///
+    /// **The thin-shelf floor is cleared deliberately.** `grouped.toml` sets `min_shelf_units = 7`
+    /// and 5,000 is the smallest town that clears it (11-05), so any of these would be refused with
+    /// a list of thin shelves — correctly, because a shelf of three units cannot carry a price
+    /// series. None of these tests reads a price series: they check arithmetic on the tables, the
+    /// composition of two multipliers, and that a run completes. Leaving the floor on and shrinking
+    /// nothing would make them take minutes each for no extra claim.
+    /// </summary>
     private static SimulationParameters Sized(SimulationParameters parameters, int households) =>
-        parameters.WithHouseholds(households);
+        parameters.WithHouseholds(households) with
+        {
+            Run = parameters.Run with { Households = households, MinShelfUnits = 0 },
+        };
 
     // ---- the file loads at all ---------------------------------------------------------------
 
@@ -382,7 +395,10 @@ public sealed class ReplacementCycleTests
     [Fact]
     public void ACycleUnderTheDeterministicRule_IsRejectedRatherThanRounded()
     {
-        var calendar = Read("grouped_cycles.toml").Replace("replacement = \"hazard\"", "", StringComparison.Ordinal);
+        // Set back to the calendar rather than merely unset: since 11-05 the calibration itself
+        // states `replacement = "hazard"`, so removing the pin here would inherit it.
+        var calendar = Read("grouped_cycles.toml")
+            .Replace("replacement = \"hazard\"", "replacement = \"deterministic\"", StringComparison.Ordinal);
         var loaded = ConfigurationLoader.FromToml(calendar, Grouped());
 
         Assert.True(loaded.IsFailed);

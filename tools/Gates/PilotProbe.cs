@@ -155,7 +155,8 @@ public static class PilotProbe
         ArgumentNullException.ThrowIfNull(seeds);
         ArgumentNullException.ThrowIfNull(workspace);
 
-        var report = new GateReport(Invariant($"pilot — can the campaign resolve the difference it is for? ({table})"));
+        var report = new GateReport(Invariant(
+            $"pilot — can the campaign resolve the difference it is for? ({table}, {Calibration.NameOf(parameters)})"));
         var arms = report.Check(Invariant($"both arms complete on {seeds.Count} seeds"));
 
         var row = Scenario.SweepGrid.FirstOrDefault(r => string.Equals(r.Table, table, StringComparison.Ordinal));

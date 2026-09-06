@@ -23,6 +23,7 @@ internal static class Program
         }
 
         var output = Argument(args, "--into") ?? Layout.DefaultOutput;
+        var calibration = Argument(args, "--calibration");
         var scenarios = Scenario.All(Layout.Scenarios);
 
         if (scenarios.IsFailed)
@@ -30,17 +31,39 @@ internal static class Program
             return Fail("the scenarios", scenarios.Errors);
         }
 
-        var parameters = scenarios.Value[0].Parameters;
+        // The calibration is the town, not an arm: it is the basis every scenario is laid on, and
+        // every run of one campaign is in the same one or the comparison is between two towns.
+        var basis = calibration is null
+            ? Result.Ok(SimulationParameters.Default)
+            : ConfigurationLoader.FromFile(calibration);
+
+        if (basis.IsFailed)
+        {
+            return Fail("the calibration", basis.Errors);
+        }
+
+        var applied = scenarios.Value[0].ApplyTo(basis.Value);
+
+        if (applied.IsFailed)
+        {
+            return Fail("the calibration", applied.Errors);
+        }
+
+        var parameters = applied.Value;
         var seeds = Enumerable.Range(1, parameters.Run.Seeds).ToArray();
         var names = scenarios.Value.Select(s => s.Name).ToArray();
         var units = Fleet.Units(names, seeds);
 
+        var source = calibration ?? "the schema defaults";
+
         Console.Out.WriteLine(Invariant(
             $"campaign: {names.Length} scenarios x {seeds.Length} seeds = {units.Count} runs of {parameters.Run.Ticks} ticks, into {output}"));
+        Console.Out.WriteLine(Invariant(
+            $"calibration: {parameters.Categories.Count} goods, {parameters.Run.Households} households, from {source}"));
 
         // Before the runs, not after: a campaign whose arms are not paired is void, and finding
         // that out having spent the runs is finding it out too late to be useful.
-        var paired = Pairing.Check(scenarios.Value, seeds);
+        var paired = Pairing.Check(scenarios.Value, seeds, basis.Value);
 
         if (paired.IsFailed)
         {
@@ -53,7 +76,7 @@ internal static class Program
         var started = DateTimeOffset.UtcNow;
         var finished = 0;
 
-        var ran = Fleet.RunAll(units, output, _ => Report(++finished, units.Count));
+        var ran = Fleet.RunAll(units, output, _ => Report(++finished, units.Count), calibration);
 
         Console.Out.WriteLine();
 
@@ -114,10 +137,14 @@ internal static class Program
     private static int Usage()
     {
         Console.Error.WriteLine("usage: dotnet run --project tools/Campaign -- --all [--into <directory>]");
+        Console.Error.WriteLine("                                              [--calibration <file>]");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  Runs every scenario in config/scenarios over seeds 1..run.seeds, one");
         Console.Error.WriteLine("  process each, and collects the measured window of every run into one");
         Console.Error.WriteLine("  dataset with a manifest. Warm-up rows stay in the per-run files.");
+        Console.Error.WriteLine("  --calibration runs every arm on a goods table other than the schema");
+        Console.Error.WriteLine("  defaults, e.g. config/calibrations/grouped.toml. It is the town, not");
+        Console.Error.WriteLine("  an arm: one campaign, one calibration.");
 
         return 2;
     }

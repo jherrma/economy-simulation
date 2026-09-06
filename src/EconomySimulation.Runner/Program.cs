@@ -28,7 +28,7 @@ internal static class Program
             return Usage(arguments.Errors);
         }
 
-        var (scenarioName, seed, into, scenarios) = arguments.Value;
+        var (scenarioName, seed, into, scenarios, calibration) = arguments.Value;
         var scenario = Scenario.FromFile(Path.Combine(scenarios, scenarioName + ".toml"));
 
         if (scenario.IsFailed)
@@ -36,7 +36,24 @@ internal static class Program
             return Fail(scenario.Errors);
         }
 
-        var ran = Execute(scenario.Value.Parameters, seed, into);
+        var basis = Basis(calibration);
+
+        if (basis.IsFailed)
+        {
+            return Fail(basis.Errors);
+        }
+
+        // The calibration is the **basis** and the scenario goes on top of it. The other order
+        // would work only by accident — it relies on the two never setting the same key — and
+        // `run.replacement` is a key they both do set.
+        var applied = scenario.Value.ApplyTo(basis.Value);
+
+        if (applied.IsFailed)
+        {
+            return Fail(applied.Errors);
+        }
+
+        var ran = Execute(applied.Value, seed, into);
 
         if (ran.IsFailed)
         {
@@ -92,13 +109,26 @@ internal static class Program
         return writer.Finish();
     }
 
-    private sealed record Arguments(string Scenario, int Seed, string Into, string Scenarios)
+    /// <summary>
+    /// The goods table the scenario is laid on: the schema defaults, or a calibration file.
+    ///
+    /// A calibration is not a scenario and is not one of the campaign's arms. It is the town the
+    /// experiment is run in — §3.1's six goods or §3.6's eighteen — and every arm has to be run in
+    /// the same one or the comparison is between two towns.
+    /// </summary>
+    private static Result<SimulationParameters> Basis(string? calibration) =>
+        calibration is null
+            ? Result.Ok(SimulationParameters.Default)
+            : ConfigurationLoader.FromFile(calibration);
+
+    private sealed record Arguments(string Scenario, int Seed, string Into, string Scenarios, string? Calibration)
     {
         internal static Result<Arguments> Parse(string[] args)
         {
             string? scenario = null;
             string? into = null;
             var scenarios = Path.Combine("config", "scenarios");
+            string? calibration = null;
             int? seed = null;
 
             for (var i = 0; i < args.Length; i++)
@@ -127,6 +157,9 @@ internal static class Program
                     case "--scenarios":
                         scenarios = value;
                         break;
+                    case "--calibration":
+                        calibration = value;
+                        break;
                     default:
                         return Result.Fail<Arguments>(Invariant($"{args[i - 1]}: not an argument this takes"));
                 }
@@ -137,7 +170,7 @@ internal static class Program
                 return Result.Fail<Arguments>("--scenario, --seed and --into are all required");
             }
 
-            return Result.Ok(new Arguments(scenario, seed.Value, into, scenarios));
+            return Result.Ok(new Arguments(scenario, seed.Value, into, scenarios, calibration));
         }
     }
 
@@ -157,10 +190,12 @@ internal static class Program
 
         Console.Error.WriteLine();
         Console.Error.WriteLine("usage: economy-simulation --scenario <name> --seed <n> --into <directory>");
-        Console.Error.WriteLine("                          [--scenarios <directory>]");
+        Console.Error.WriteLine("                          [--scenarios <directory>] [--calibration <file>]");
         Console.Error.WriteLine();
         Console.Error.WriteLine("  Writes run.csv, tiers.csv, effective-config.toml and, on a clean");
         Console.Error.WriteLine("  finish, the run.done marker. Scenarios default to config/scenarios.");
+        Console.Error.WriteLine("  --calibration lays the scenario on a goods table other than the");
+        Console.Error.WriteLine("  schema defaults, e.g. config/calibrations/grouped.toml.");
 
         return 2;
     }
