@@ -68,10 +68,10 @@ replacement     = "hazard"
 # The offender is `eating_out.budget` and its transient is *systematic*, not noise: every seed drifts
 # the same way, with a seed spread of 0.7% around a mean of -5.3% at tick 300. Eating out is the good
 # with the highest entry income in the table (EUR 592, §3.6), so almost nobody wants it at the opening
-# price and the shelf falls a long way before demand meets it. Measured over ten 2,400-tick runs the
-# decay has a time constant near 210 ticks: -40.8% at tick 0, -5.3% at 300, -3.1% at 420, -1.5% at
-# 600, and inside its own seed spread from about tick 700. From a warm-up of 840 no shelf's mean
-# drift exceeds what its spread across seeds explains.
+# price and the shelf falls a long way before demand meets it. Probed on ten long runs the decay has a
+# time constant near 210 ticks: -40.8% at tick 0, -5.3% at 300, -3.1% at 420, -1.5% at 600, and
+# inside its own seed spread from about tick 700. The probe chose 840; V4 on thirty complete seeds
+# confirmed it, at a worst tier-price drift of -0.727% against the 1.00% allowed.
 #
 # 1,200 = 840 + the 360-tick measured window §10 reads its results off.
 warmup_ticks    = 840

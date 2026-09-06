@@ -574,9 +574,9 @@ is what makes it a warm-up problem rather than a power problem — noise average
 does not.
 
 Eating out has the **highest entry income in the table** (€592, above), so at the opening price
-almost nobody wants it, and the shelf has to fall a long way before demand meets it. Measured over
-ten 2,400-tick runs of `credit_off` at 5,000 households, the mean drift over a 360-tick window
-starting at tick `w`:
+almost nobody wants it, and the shelf has to fall a long way before demand meets it. Probed on ten
+runs of `credit_off` at 5,000 households, each reaching at least tick 2,016, the mean drift over a
+360-tick window starting at tick `w` — every window below therefore complete on every seed:
 
 | `w` | 0 | 300 | 420 | 600 | 720 | 840 | 1200 |
 |---|---|---|---|---|---|---|---|
@@ -584,6 +584,13 @@ starting at tick `w`:
 
 A decay constant near 210 ticks, inside its own seed spread from about tick 700. **From 840, no
 shelf's mean drift exceeds what its spread across seeds explains.**
+
+The probe chose the number; **the gate is what confirms it.**
+`dotnet run --project tools/Gates -- nullrun grouped`, thirty complete seeds at `ticks = 1200`,
+passes with a worst tier-price drift of −0.727% against the 1.00% allowed. A ten-seed probe cannot
+certify a warm-up on its own — with ten seeds the allowance `3σ/√n` is 1.7× wider than with thirty,
+so it is the more forgiving test of the two, and reading it as an answer rather than as a search
+would be reading the weaker instrument.
 
 The general lesson is worth more than the number: **the model's convergence time is set by its most
 marginal good, and splitting a category manufactures marginal goods.** §3.1's `leisure` was a blend
