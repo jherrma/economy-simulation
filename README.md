@@ -101,6 +101,8 @@ they will be raised. **Nothing in it is scheduled. Do not implement from it.**
 - [`src/`](src/) and [`tests/`](tests/) — the engine, the runner, the analysers and the tests.
 - [`tools/Gates/`](tools/Gates/) — the validation gates as a runnable program, and the committed
   baselines V5 compares against.
+- [`docs/TICK-ALGORITHM.md`](docs/TICK-ALGORITHM.md) — how one tick is computed, in pseudocode:
+  the seven steps, the shopping walk and the finance test, and how every metric is derived.
 - [`docs/REVIEW-CHECKLIST.md`](docs/REVIEW-CHECKLIST.md) — the review items no test can check.
 - [`docs/LANGUAGE-CHOICE.md`](docs/LANGUAGE-CHOICE.md) — how the implementation language was chosen:
   the benchmark, the measurements, and the argument for C#. Settled, and applies to `spec/`.
