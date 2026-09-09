@@ -199,10 +199,20 @@ gcc 16.2.1 (`-O2`), Zig 0.17.0-dev.644 (`-OReleaseFast`), .NET SDK 10.0.111 (Rel
 up to 60% under background load — enough to reorder adjacent languages, and enough that a
 first-past-the-post measurement produced a table that had to be retracted.
 
+**Re-measured 2026-09-07, and section 5.3's table is that re-measurement.** The original run gave
+Zig `std.mem.sort` while giving C a hand-rolled sort — a violation of section 5.2's own rule that
+went unnoticed because no `bench_zig2.zig` existed to compare against. Writing one meant re-running
+every candidate together rather than splicing one new number into an old table. Same machine, same
+toolchain versions, same protocol; **wall clock for every language**, where the original used each
+program's internal timer for C, Go and C# and wall clock for Zig, which has no timer in 0.17-dev.
+That basis change costs the runtimes their startup — about 20 ms for .NET — and reorders nothing.
+
 ### 5.2 Best idiom per language
 
 The first measurement was wrong in two directions, because the sort idiom dominates (section 4.3) and the
-idioms are not equivalent:
+idioms are not equivalent. Measured 2026-09-04, on that session's internal timers — so these
+absolute figures sit a few per cent below section 5.3's wall-clock re-measurement, and it is the
+**ratios** in the last column that this table is for:
 
 | Language | Slow idiom | Fast idiom | Ratio |
 |---|---|---|---|
@@ -214,40 +224,60 @@ Note that C# inverts the expectation: the supposedly-faster devirtualisable stru
 the plain delegate. **Every language must be given its best idiom or the comparison is fiction**,
 and which idiom is best cannot be assumed.
 
+**Zig was left out of this exercise, and that was the table's one real error.** Measured
+2026-09-07, interleaved against C on the same protocol — a Zig-only round in which C's hand-rolled
+sort came out at 0.492 s, so read these against that anchor rather than against section 5.3's
+all-language round:
+
+| Zig 0.17 idiom | min | vs its own best |
+|---|---|---|
+| `std.sort.pdq` | 1.185 s | 1.94× |
+| `std.mem.sort` — the original table's entry | 0.712 s | 1.17× |
+| hand-rolled inlined insertion sort — mirrors `bench_c2.c` | **0.611 s** | 1.00× |
+| the same, with `pow` taken from libm rather than `std.math` | 0.558 s | — |
+
+Three things fall out of it. **`std.sort.pdq` is the slowest option here** — at *n* = 120 its pivot
+selection never earns back its cost, and it loses to `qsort`. **`std.math.pow` is roughly half the
+speed of glibc's**, which matters because the scoring loop calls it 3.8 M times; stripping the sort
+from both languages gives C 0.181 s against Zig 0.229 s, routing Zig's `pow` to libm gives 0.185 s,
+and deleting the call from both gives 0.107 s and 0.106 s. And **on library sort against library
+sort Zig beats C** — 0.712 s against `qsort`'s 0.907 s. The gap section 5.3 used to report was a
+gap between a hand-tuned C and a stock Zig, not between the two languages.
+
 ### 5.3 The table
 
 800 households × 100 ticks × 120 candidates, all producing `bought = 8072155`:
 
 | | min | vs Python | vs C |
 |---|---|---|---|
-| **C** (inlined sort) | 0.487 s | 75.6× | 1.00× |
-| **Zig 0.17** (`std.mem.sort`) | 0.729 s | 50.4× | 1.50× |
-| **C# .NET 10** (`Array.Sort`) | **0.857 s** | **43.0×** | **1.76×** |
-| **Go 1.26** (`slices.SortFunc`) | 1.022 s | 36.0× | 2.10× |
-| **Python 3.14** | 36.788 s | 1.0× | 75.6× |
+| **C** (inlined sort) | 0.528 s | 75.7× | 1.00× |
+| **Zig 0.17** (inlined sort) | 0.645 s | 61.9× | 1.22× |
+| **C# .NET 10** (`Array.Sort`) | **0.877 s** | **45.6×** | **1.66×** |
+| **Go 1.26** (`slices.SortFunc`) | 1.085 s | 36.8× | 2.05× |
+| **Python 3.14** | 39.956 s | 1.0× | 75.7× |
 
 Extrapolated (one seed = 480 ticks = 4.8× the benchmark; one scenario = 30 seeds; campaign = 150
 scenarios over 8 cores):
 
 | | 1 seed | 1 scenario | Full campaign, 8 cores |
 |---|---|---|---|
-| C | 2 s | 70 s | 22 min |
-| Zig | 4 s | 2 min | 33 min |
+| C | 3 s | 76 s | 24 min |
+| Zig | 3 s | 93 s | 29 min |
 | **C#** | 4 s | 2 min | **39 min** |
-| Go | 5 s | 2 min | 46 min |
-| **Python** | 3 min | 88 min | **27.6 h** |
+| Go | 5 s | 3 min | 49 min |
+| **Python** | 3 min | 96 min | **30.0 h** |
 
 ### 5.4 What this settles, and what it does not
 
 **It settles one thing: the choice is binary.** Python is 36–76× behind *every* compiled candidate.
-Twenty-eight hours per campaign against forty minutes is not a tuning difference — it is the
+Thirty hours per campaign against forty minutes is not a tuning difference — it is the
 difference between "start it Friday and hope there was no bug" and "re-run it over lunch". In a
 research loop where the model changes many times, that compounds into how many questions get asked
 at all.
 
-**It does not settle anything finer.** The four compiled options span **2.1×**, and 33 minutes
-versus 46 minutes for an entire sensitivity campaign is not a decision criterion. The C#-to-Go gap
-of 1.2× is comfortably inside the range the `CANDIDATES = 120` guess could move on its own.
+**It does not settle anything finer.** The four compiled options span **2.05×**, and 29 minutes
+versus 49 minutes for an entire sensitivity campaign is not a decision criterion. The C#-to-Go gap
+of 1.24× is comfortably inside the range the `CANDIDATES = 120` guess could move on its own.
 
 Which means: **pick on maintainability, type safety and fluency, and the speed takes care of
 itself — provided it is not Python.**
@@ -355,8 +385,10 @@ It is also worth noting that Rust's *unique* strengths — fearless concurrency 
 management — are the two things this workload does not need. Parallelism here is embarrassingly
 parallel across seeds, one process per seed with no shared state at all.
 
-**Zig** was fastest of the practical options and would be an appealing project. It is excluded for
-stability: it is pre-1.0, and during this very benchmark `std.time.Timer` proved not to exist in
+**Zig** was fastest of the practical options — and by more than the original table showed, since
+that table never gave it its best sort idiom (section 5.2). Given one it lands within 1.22× of C,
+and within 1.09× once `pow` comes from the same libm C uses. It would be an appealing project. It
+is excluded for stability: it is pre-1.0, and during this very benchmark `std.time.Timer` proved not to exist in
 0.17-dev, so code written against current documentation would not compile. That is acceptable
 friction when the language *is* the project. It is not acceptable in a research instrument backing
 a published claim.
@@ -393,7 +425,7 @@ Stated so that it is a decision rather than a preference:
   tick and the whole benchmark is measuring the wrong loop. Re-profile the real engine at phase 2
   before trusting these extrapolations further.
 - **If `CANDIDATES` is much larger than 120** — say the model ends up evaluating several hundred
-  units per household per tick — the campaign moves from 39 minutes toward hours, and the 2.1×
+  units per household per tick — the campaign moves from 39 minutes toward hours, and the 2.05×
   spread among compiled languages starts to matter after all.
 - **If the campaign grows past ~1,000 scenarios**, the same applies.
 

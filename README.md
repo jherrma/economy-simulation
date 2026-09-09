@@ -104,7 +104,7 @@ they will be raised. **Nothing in it is scheduled. Do not implement from it.**
 - [`docs/REVIEW-CHECKLIST.md`](docs/REVIEW-CHECKLIST.md) — the review items no test can check.
 - [`docs/LANGUAGE-CHOICE.md`](docs/LANGUAGE-CHOICE.md) — how the implementation language was chosen:
   the benchmark, the measurements, and the argument for C#. Settled, and applies to `spec/`.
-- [`bench/`](bench/) — the benchmark sources, in six languages.
+- [`bench/`](bench/) — the benchmark sources: seven variants across five languages.
 
 ## Approach
 
